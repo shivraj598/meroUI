@@ -69,7 +69,7 @@ export function Showcase() {
           const front = Math.cos(((i * step + rot) * Math.PI) / 180);
           const t = (front + 1) / 2;
           gsap.set(p.querySelector(".panel-vis"), {
-            opacity: gsap.utils.interpolate(0.1, 1, t),
+            opacity: gsap.utils.interpolate(0.4, 1, t),
             scale: gsap.utils.interpolate(0.84, 1, t),
             y: gsap.utils.interpolate(28, 0, t),
           });
@@ -147,7 +147,7 @@ export function Showcase() {
 
         <div
           ref={ring}
-          className="preserve-3d absolute inset-0 will-change-transform"
+          className="ring3d preserve-3d absolute inset-0 will-change-transform"
         >
           <Panel index="01" label="The library">
             <p className="text-7xl font-semibold tracking-tight text-zinc-50 md:text-8xl">
@@ -297,7 +297,7 @@ export function Showcase() {
         <div className="pointer-events-none absolute bottom-10 left-1/2 -translate-x-1/2">
           <span
             ref={counter}
-            className="font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-400"
+            className="counter font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-400"
           >
             01 / 08
           </span>

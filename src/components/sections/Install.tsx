@@ -39,12 +39,7 @@ export function Install() {
   }, []);
 
   useEffect(() => {
-    if (reduced) {
-      setTyped(CODE[pm]);
-      return;
-    }
-    setTyped("");
-    let i = 0;
+    let i = reduced ? CODE[pm].length : 0;
     const id = window.setInterval(() => {
       i += 1;
       setTyped(CODE[pm].slice(0, i));

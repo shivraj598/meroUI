@@ -75,7 +75,7 @@ export function Marquee() {
       aria-label="Available components"
       className="overflow-hidden border-y border-zinc-800 bg-zinc-950 py-9 [perspective:600px] md:py-11"
     >
-      <div ref={track} className="flex w-max [transform:rotateX(-16deg)]">
+      <div ref={track} className="marquee-track flex w-max [transform:rotateX(-16deg)]">
         {row(false)}
         {row(true)}
       </div>

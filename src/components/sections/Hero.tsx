@@ -24,7 +24,7 @@ function RingCard({
     <div className="ring-card backface-hidden absolute top-1/2 left-1/2 w-40 will-change-transform md:w-48">
       <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3.5">
         <div className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-400">
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-300">
             {label}
           </span>
           <span className="font-mono text-[9px] text-zinc-600">{index}</span>
@@ -69,8 +69,8 @@ export function Hero() {
       const layoutRing = () => {
         R = Math.min(470, Math.max(235, Math.min(innerWidth, 1024) * 0.47));
         const rot =
-          gsap.getProperty(ringAuto, "rotationY") +
-          gsap.getProperty(ringSpin, "rotation");
+          Number(gsap.getProperty(ringAuto, "rotationY")) +
+          Number(gsap.getProperty(ringSpin, "rotation"));
         ringCards.forEach((card, i) => {
           gsap.set(card, { transform: cardTransform(i, rot) });
         });
@@ -78,14 +78,14 @@ export function Hero() {
 
       const tickDepth = () => {
         const rot =
-          gsap.getProperty(ringAuto, "rotationY") +
-          gsap.getProperty(ringSpin, "rotation");
+          Number(gsap.getProperty(ringAuto, "rotationY")) +
+          Number(gsap.getProperty(ringSpin, "rotation"));
         ringCards.forEach((card, i) => {
           const front = Math.cos((((i * step + rot) % 360) * Math.PI) / 180);
           const t = (front + 1) / 2;
           gsap.set(card, {
             transform: cardTransform(i, rot, gsap.utils.interpolate(0.82, 1, t)),
-            opacity: gsap.utils.interpolate(0.15, 1, t),
+            opacity: gsap.utils.interpolate(0.45, 1, t),
           });
         });
       };
@@ -115,8 +115,8 @@ export function Hero() {
         gsap.ticker.add(tickDepth);
       } else {
         const rot =
-          gsap.getProperty(ringAuto, "rotationY") +
-          gsap.getProperty(ringSpin, "rotation");
+          Number(gsap.getProperty(ringAuto, "rotationY")) +
+          Number(gsap.getProperty(ringSpin, "rotation"));
         ringCards.forEach((card, i) => {
           gsap.set(card, {
             transform: cardTransform(i, rot),
@@ -134,49 +134,53 @@ export function Hero() {
       cleanups.push(() => window.removeEventListener("resize", handleResize));
 
       /* -------- entry timeline (waits for preloader) -------- */
-      const tl = gsap.timeline({
-        paused: true,
-        defaults: { ease: "power4.out" },
-      });
+      if (reduced) {
+        gsap.set([".hero-char", ".hero-ghost-inner", ".hero-sub", ".hero-cta", ".hero-hint", ".hero-ring", ".hero-chip", ".hero-meta"], { opacity: 1 });
+      } else {
+        const tl = gsap.timeline({
+          paused: true,
+          defaults: { ease: "power4.out" },
+        });
 
-      tl.from(".hero-eyebrow", { y: 14, opacity: 0, duration: 0.6 })
-        .from(
-          ".hero-char",
-          {
-            rotationX: -100,
-            opacity: 0,
-            transformOrigin: "50% 0%",
-            duration: 1.05,
-            stagger: 0.06,
-          },
-          "-=0.3"
-        )
-        .from(".hero-ghost-inner", { opacity: 0, duration: 0.8 }, "-=0.7")
-        .from(".hero-sub", { y: 22, opacity: 0, duration: 0.7 }, "-=0.6")
-        .from(
-          ".hero-cta",
-          { y: 22, opacity: 0, duration: 0.6, stagger: 0.1 },
-          "-=0.5"
-        )
-        .from(".hero-hint", { opacity: 0, duration: 0.5 }, "-=0.2")
-        .from(".hero-ring", { y: 60, opacity: 0, duration: 1 }, "-=0.4")
-        .from(
-          ".hero-chip",
-          { opacity: 0, y: 20, duration: 0.6, stagger: 0.08 },
-          "-=0.6"
-        )
-        .from(
-          ".hero-meta",
-          { opacity: 0, duration: 0.5, stagger: 0.1 },
-          "-=0.8"
-        );
+        tl.from(".hero-eyebrow", { y: 14, opacity: 0, duration: 0.6 })
+          .from(
+            ".hero-char",
+            {
+              rotationX: -100,
+              opacity: 0,
+              transformOrigin: "50% 0%",
+              duration: 1.05,
+              stagger: 0.06,
+            },
+            "-=0.3"
+          )
+          .from(".hero-ghost-inner", { opacity: 0, duration: 0.8 }, "-=0.7")
+          .from(".hero-sub", { y: 22, opacity: 0, duration: 0.7 }, "-=0.6")
+          .from(
+            ".hero-cta",
+            { y: 22, opacity: 0, duration: 0.6, stagger: 0.1 },
+            "-=0.5"
+          )
+          .from(".hero-hint", { opacity: 0, duration: 0.5 }, "-=0.2")
+          .from(".hero-ring", { y: 60, duration: 1 }, "-=0.4")
+          .from(
+            ".hero-chip",
+            { opacity: 0, y: 20, duration: 0.6, stagger: 0.08 },
+            "-=0.6"
+          )
+          .from(
+            ".hero-meta",
+            { opacity: 0, duration: 0.5, stagger: 0.1 },
+            "-=0.8"
+          );
 
-      const startHero = () => tl.play();
-      const onReady = () => startHero();
-      window.addEventListener("mero:ready", onReady);
-      cleanups.push(() => window.removeEventListener("mero:ready", onReady));
-      const fallback = window.setTimeout(startHero, 2600);
-      cleanups.push(() => window.clearTimeout(fallback));
+        const startHero = () => tl.play();
+        const onReady = () => startHero();
+        window.addEventListener("mero:ready", onReady);
+        cleanups.push(() => window.removeEventListener("mero:ready", onReady));
+        const fallback = window.setTimeout(startHero, 2600);
+        cleanups.push(() => window.clearTimeout(fallback));
+      }
 
       /* -------- mouse depth (desktop only) -------- */
       const mm = gsap.matchMedia();
@@ -210,7 +214,7 @@ export function Hero() {
         return () => window.removeEventListener("pointermove", move);
       });
 
-      /* -------- scroll exit -------- */
+      /* -------- scroll exit (ring keeps spinning) -------- */
       if (!reduced) {
         gsap.to(el, {
           yPercent: -6,
@@ -221,13 +225,6 @@ export function Hero() {
             start: "top top",
             end: "bottom top",
             scrub: true,
-            onToggle: (self) => {
-              if (!self.isActive) {
-                spinTween?.pause();
-              } else if (!draggable?.isDragging) {
-                spinTween?.play();
-              }
-            },
           },
         });
       }

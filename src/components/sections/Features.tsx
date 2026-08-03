@@ -52,7 +52,10 @@ export function Features() {
 
       if (reduced) return;
 
-      const tilts = new Map<HTMLElement, { rx: Function; ry: Function }>();
+      const tilts = new Map<
+        HTMLElement,
+        { rx: (v: number) => void; ry: (v: number) => void }
+      >();
       gsap.utils.toArray<HTMLElement>(".tilt-inner").forEach((inner) => {
         const rx = gsap.quickTo(inner, "rotationX", {
           duration: 0.5,
