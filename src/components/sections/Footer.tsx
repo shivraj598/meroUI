@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 
 const LINKS = [
-  { href: "#components", label: "Components" },
+  { href: "#features", label: "Features" },
   { href: "#install", label: "Install" },
   { href: "https://github.com", label: "GitHub" },
 ];

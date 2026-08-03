@@ -91,10 +91,10 @@ export function FinalCTA() {
           <div className="mt-12 flex flex-wrap items-center gap-5">
             <Button href="#install">Get started</Button>
             <a
-              href="#components"
+              href="#features"
               className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-50 hover:underline"
             >
-              view the ring
+              view the features
             </a>
           </div>
         </div>

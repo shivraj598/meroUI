@@ -21,7 +21,7 @@ function RingCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="ring-card backface-hidden absolute top-1/2 left-1/2 w-40 will-change-transform md:w-48">
+    <div className="ring-card backface-hidden absolute top-1/2 left-1/2 w-32 will-change-transform md:w-36">
       <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3.5">
         <div className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">
           <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-300">
@@ -67,7 +67,7 @@ export function Hero() {
         `translate(-50%, -50%) rotateY(${(i * step + rot) % 360}deg) translateZ(${R}px) rotateY(${-i * step}deg) scale(${s})`;
 
       const layoutRing = () => {
-        R = Math.min(470, Math.max(235, Math.min(innerWidth, 1024) * 0.47));
+        R = Math.min(360, Math.max(190, Math.min(innerWidth, 1024) * 0.36));
         const rot =
           Number(gsap.getProperty(ringAuto, "rotationY")) +
           Number(gsap.getProperty(ringSpin, "rotation"));
@@ -319,8 +319,8 @@ export function Hero() {
             </Button>
           </Magnetic>
           <Magnetic className="hero-cta" strength={0.3}>
-            <Button href="#components" variant="ghost" size="lg">
-              Browse components
+            <Button href="#features" variant="ghost" size="lg">
+              Browse features
             </Button>
           </Magnetic>
         </div>
@@ -330,7 +330,7 @@ export function Hero() {
         </p>
 
         {/* 3D component ring */}
-        <div className="hero-ring relative mt-4 h-60 w-full md:h-64">
+        <div className="hero-ring relative mt-2 h-52 w-full md:h-56">
           <div className="ring-tilt preserve-3d absolute inset-0 [transform:rotateX(-14deg)]">
             <div className="ring-spin preserve-3d absolute inset-0">
               <div className="ring-auto preserve-3d absolute inset-0">

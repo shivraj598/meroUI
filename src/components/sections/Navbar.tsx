@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/Button";
 
 const links = [
-  { label: "Components", href: "#components" },
+  { label: "Features", href: "#features" },
   { label: "Install", href: "#install" },
   { label: "Changelog", href: "#changelog" },
 ];

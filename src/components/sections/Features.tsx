@@ -109,6 +109,7 @@ export function Features() {
   return (
     <section
       ref={section}
+      id="features"
       className="relative bg-zinc-950 px-6 py-28 md:px-10 md:py-40"
     >
       <div className="mx-auto w-full max-w-6xl">
