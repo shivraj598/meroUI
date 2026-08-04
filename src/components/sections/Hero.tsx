@@ -21,7 +21,7 @@ function RingCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="ring-card backface-hidden absolute top-1/2 left-1/2 w-32 will-change-transform md:w-36">
+    <div className="ring-card absolute top-1/2 left-1/2 w-32 will-change-transform md:w-36">
       <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3.5">
         <div className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">
           <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-300">
@@ -56,49 +56,53 @@ export function Hero() {
 
     const ctx = gsap.context(() => {
       const ringCards = gsap.utils.toArray<HTMLElement>(".ring-card");
-      const ringAuto = el.querySelector<HTMLElement>(".ring-auto");
       const ringSpin = el.querySelector<HTMLElement>(".ring-spin");
-      if (!ringAuto || !ringSpin) return;
+      if (!ringSpin) return;
 
       const step = 360 / ringCards.length;
       let R = 300;
 
-      const cardTransform = (i: number, rot: number, s = 1) =>
-        `translate(-50%, -50%) rotateY(${(i * step + rot) % 360}deg) translateZ(${R}px) rotateY(${-i * step}deg) scale(${s})`;
+      /* ---------------------------------------------------------------
+       * Carousel spin is driven here in JS (not on a rotating parent).
+       * This is the only way to truly billboard the cards: each card's
+       * own transform is `rotateY(angle) translateZ(R) rotateY(-angle)`,
+       * so its face always points at the viewer while it orbits. If we
+       * instead rotated a parent container, the parent transform would
+       * flip the billboards over every half turn (mirrored backs).
+       * ------------------------------------------------------------- */
+      let spin = 0;
+
+      const cardTransform = (i: number, s: number) => {
+        const angle = (i * step + s) % 360;
+        return `translate(-50%, -50%) rotateY(${angle}deg) translateZ(${R}px) rotateY(${-angle}deg)`;
+      };
+
+      const renderRing = () => {
+        ringCards.forEach((card, i) => {
+          gsap.set(card, { transform: cardTransform(i, spin) });
+        });
+      };
 
       const layoutRing = () => {
         R = Math.min(360, Math.max(190, Math.min(innerWidth, 1024) * 0.36));
-        const rot =
-          Number(gsap.getProperty(ringAuto, "rotationY")) +
-          Number(gsap.getProperty(ringSpin, "rotation"));
-        ringCards.forEach((card, i) => {
-          gsap.set(card, { transform: cardTransform(i, rot) });
-        });
+        renderRing();
       };
 
-      const tickDepth = () => {
-        const rot =
-          Number(gsap.getProperty(ringAuto, "rotationY")) +
-          Number(gsap.getProperty(ringSpin, "rotation"));
-        ringCards.forEach((card, i) => {
-          const front = Math.cos((((i * step + rot) % 360) * Math.PI) / 180);
-          const t = (front + 1) / 2;
-          gsap.set(card, {
-            transform: cardTransform(i, rot, gsap.utils.interpolate(0.82, 1, t)),
-            opacity: gsap.utils.interpolate(0.45, 1, t),
-          });
-        });
-      };
+      const tickDepth = () => renderRing();
 
       let spinTween: gsap.core.Tween | null = null;
       let draggable: Draggable | null = null;
 
       if (!reduced) {
-        spinTween = gsap.to(ringAuto, {
-          rotationY: 360,
+        const proxy = { value: 0 };
+        spinTween = gsap.to(proxy, {
+          value: 360,
           duration: 46,
           ease: "none",
           repeat: -1,
+          onUpdate: () => {
+            spin = proxy.value;
+          },
         });
 
         draggable = Draggable.create(ringSpin, {
@@ -114,15 +118,7 @@ export function Hero() {
 
         gsap.ticker.add(tickDepth);
       } else {
-        const rot =
-          Number(gsap.getProperty(ringAuto, "rotationY")) +
-          Number(gsap.getProperty(ringSpin, "rotation"));
-        ringCards.forEach((card, i) => {
-          gsap.set(card, {
-            transform: cardTransform(i, rot),
-            opacity: Math.cos((((i * step + rot) % 360) * Math.PI) / 180) > 0 ? 1 : 0.25,
-          });
-        });
+        renderRing();
       }
       layoutRing();
 
