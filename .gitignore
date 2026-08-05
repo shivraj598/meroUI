@@ -14,6 +14,7 @@
 /coverage
 .playwright-mcp
 /test-preview-images
+.pi-subagents
 
 #agentskill
 .agent

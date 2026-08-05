@@ -3,7 +3,7 @@ import { Hero } from "@/components/sections/Hero";
 import { Marquee } from "@/components/sections/Marquee";
 import { Features } from "@/components/sections/Features";
 import { Install } from "@/components/sections/Install";
-import { FinalCTA } from "@/components/sections/FinalCTA";
+import { Design } from "@/components/sections/Design";
 import { Footer } from "@/components/sections/Footer";
 
 export default function Home() {
@@ -15,7 +15,7 @@ export default function Home() {
         <Marquee />
         <Features />
         <Install />
-        <FinalCTA />
+        <Design />
       </main>
       <Footer />
     </>
