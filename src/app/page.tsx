@@ -1,7 +1,6 @@
 import { Navbar } from "@/components/sections/Navbar";
 import { Hero } from "@/components/sections/Hero";
 import { Marquee } from "@/components/sections/Marquee";
-import { Manifesto } from "@/components/sections/Manifesto";
 import { Features } from "@/components/sections/Features";
 import { Install } from "@/components/sections/Install";
 import { FinalCTA } from "@/components/sections/FinalCTA";
@@ -14,7 +13,6 @@ export default function Home() {
       <main id="main" className="flex-1">
         <Hero />
         <Marquee />
-        <Manifesto />
         <Features />
         <Install />
         <FinalCTA />

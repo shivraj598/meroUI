@@ -115,14 +115,12 @@ export function Install() {
   return (
     <section
       ref={section}
-      className="relative overflow-hidden bg-zinc-950 px-6 py-28 [perspective:1200px] md:px-10 md:py-40"
+      id="install"
+      className="relative overflow-hidden bg-zinc-950 px-6 pt-20 pb-28 [perspective:1200px] md:px-10 md:pt-28 md:pb-40"
     >
       <div className="mx-auto w-full max-w-4xl [transform-style:preserve-3d]">
         <div className="mb-14 text-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-            one command · zero setup
-          </p>
-          <h2 className="mt-5 text-5xl font-semibold tracking-tight md:text-7xl">
+          <h2 className="text-5xl font-semibold tracking-tight md:text-7xl">
             Install.
           </h2>
         </div>
@@ -136,7 +134,7 @@ export function Install() {
               <span className="size-2.5 rounded-full bg-zinc-700" />
             </div>
             <span className="font-mono text-[11px] text-zinc-500">
-              ~/mero-ui — zsh
+              ~/mero-ui - zsh
             </span>
             <button
               type="button"
@@ -196,7 +194,7 @@ export function Install() {
         </div>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-          works with server components · no config file · no theme setup
+          server components / client components / zero config
         </p>
       </div>
     </section>

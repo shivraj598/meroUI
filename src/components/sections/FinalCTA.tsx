@@ -24,27 +24,14 @@ export function FinalCTA() {
     ).matches;
 
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ".cta-fill",
-        { clipPath: "inset(100% 0% 0% 0%)" },
-        {
-          clipPath: "inset(0% 0% 0% 0%)",
-          ease: "none",
-          scrollTrigger: {
-            trigger: el,
-            start: "top bottom",
-            end: "top 25%",
-            scrub: 0.6,
-          },
-        }
-      );
-      gsap.from(".cta-content", {
-        y: 50,
+      /* content rises up out of the section as it enters the viewport */
+      gsap.from(".cta-rise", {
+        y: 80,
         opacity: 0,
-        duration: 0.8,
-        delay: 0.15,
+        duration: 0.9,
         ease: "power3.out",
-        scrollTrigger: { trigger: el, start: "top 40%" },
+        stagger: 0.12,
+        scrollTrigger: { trigger: el, start: "top 72%" },
       });
 
       if (!reduced) {
@@ -74,27 +61,33 @@ export function FinalCTA() {
   return (
     <section
       ref={section}
-      className="relative overflow-hidden bg-zinc-100"
+      className="relative overflow-hidden border-t border-zinc-800 bg-zinc-950"
     >
-      <div className="cta-fill absolute inset-0 bg-zinc-950 will-change-[clip-path]" />
+      {/* faint outlined ghost */}
+      <span
+        aria-hidden
+        className="cta-rise pointer-events-none absolute bottom-[-6vw] left-[-2vw] hidden select-none text-[26vw] font-semibold leading-none tracking-[-0.05em] text-outline-soft lg:block"
+      >
+        meroUI
+      </span>
 
-      <div className="relative z-10 px-6 py-32 md:px-10 md:py-48">
-        <div className="cta-content mx-auto w-full max-w-6xl">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">
-            08 · one command away
+      <div className="relative z-10 px-6 py-32 md:px-10 md:py-44">
+        <div className="mx-auto w-full max-w-6xl">
+          <p className="cta-rise font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+            one command away
           </p>
-          <h2 className="mt-6 max-w-3xl text-5xl font-semibold tracking-tight text-zinc-50 md:text-8xl">
+          <h2 className="cta-rise mt-6 max-w-3xl text-5xl font-semibold tracking-tight text-zinc-50 md:text-8xl">
             Stop building UIs.
             <br />
             Start building products.
           </h2>
-          <div className="mt-12 flex flex-wrap items-center gap-5">
+          <div className="cta-rise mt-12 flex flex-wrap items-center gap-5">
             <Button href="#install">Get started</Button>
             <a
               href="#features"
               className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-50 hover:underline"
             >
-              view the features
+              Browse features
             </a>
           </div>
         </div>
@@ -106,7 +99,7 @@ export function FinalCTA() {
               <div
                 key={face}
                 aria-hidden
-                className="absolute inset-0 border border-zinc-50/60 bg-zinc-50/5"
+                className="absolute inset-0 border border-zinc-50/25 bg-zinc-50/5"
                 style={{ transform: face }}
               />
             ))}

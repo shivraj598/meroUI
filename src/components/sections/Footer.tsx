@@ -96,7 +96,7 @@ export function Footer() {
 
         <div className="mt-8 flex flex-col gap-2 border-t border-zinc-800 pt-6 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} meroUI</p>
-          <p>next.js 16 · react 19 · typescript</p>
+          <p>Next.js 16 / React 19 / TypeScript 5</p>
         </div>
       </div>
     </footer>
