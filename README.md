@@ -25,25 +25,6 @@ A live hero built from meroUI's own components:
 - **Design** - premium web-design showcase, driven by markdown content
 - **Footer** - links, careers, premium request, and ghosted wordmark
 
-## Design showcase
-
-Add a `.md` file to `content/web-design/` to drop a new design into the
-showcase grid. Each file carries a live demo link, an image, and a thumbnail:
-
-```md
----
-title: "mero / studio"
-summary: "A monochrome landing page for an independent studio."
-liveDemoUrl: "https://example.com/mero-studio"
-image: "https://.../1440/1000"
-thumbnail: "https://.../400/300"
-tags: ["landing", "studio"]
-date: "2026-07-18"
----
-```
-
----
-
 ## Getting Started
 
 First, run the development server:
