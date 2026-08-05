@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "meroUI — Production-ready UI for Next.js 16",
+  title: "meroUI: Production-ready UI for Next.js 16",
   description:
     "Type-safe, accessible, zero-config React components built for Next.js 16 and React 19. Ship faster with meroUI.",
 };
