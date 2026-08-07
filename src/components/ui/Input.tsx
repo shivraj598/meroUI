@@ -12,7 +12,7 @@ export function Input({
   const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
   return (
     <label htmlFor={fieldId} className="flex w-full flex-col gap-2">
-      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
+      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
         {label}
       </span>
       <input
@@ -21,10 +21,10 @@ export function Input({
         type="text"
         autoComplete={label.toLowerCase().includes("email") ? "email" : "off"}
         placeholder={placeholder}
-        className="h-10 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-50 placeholder:text-zinc-400 transition-colors focus:border-zinc-50 focus:outline-none"
+        className="h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink placeholder:text-muted transition-colors focus:border-ink focus:outline-none"
       />
       {hint ? (
-        <span className="font-mono text-[11px] text-zinc-400">{hint}</span>
+        <span className="font-mono text-[11px] text-muted">{hint}</span>
       ) : null}
     </label>
   );
