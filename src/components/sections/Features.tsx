@@ -177,18 +177,18 @@ export function Features() {
                   Zero runtime deps. Your bundle stays lean, your npm audit stays
                   quiet.
                 </p>
-                <div className="mt-7 rounded-md border border-line bg-canvas/60 px-4 py-4">
+                <div className="mt-7 rounded-md border border-code-border bg-code px-4 py-4">
                   <p className="caret font-mono text-xs leading-6">
-                    <span className="text-ink">$ </span>
-                    <span className="text-ink">npx meroui add button</span>
+                    <span className="text-code-muted">$ </span>
+                    <span className="text-code-ink">npx meroui add button</span>
                   </p>
-                  <p className="mt-1 font-mono text-xs leading-6 text-faint">
+                  <p className="mt-1 font-mono text-xs leading-6 text-code-muted">
                     resolve / 0 packages
                   </p>
-                  <p className="font-mono text-xs leading-6 text-ink">
+                  <p className="font-mono text-xs leading-6 text-code-ink">
                     copied button to src/components/ui
                   </p>
-                  <p className="font-mono text-xs leading-6 text-faint">
+                  <p className="font-mono text-xs leading-6 text-code-muted">
                     no dependencies. that&apos;s the point.
                   </p>
                 </div>
@@ -261,10 +261,10 @@ export function Features() {
                   {[0, 1, 2].map((col) => (
                     <div
                       key={col}
-                      className="flex flex-col items-center gap-1 rounded-sm border border-line bg-scrim/80 px-3 py-3"
+                      className="flex flex-col items-center gap-1 rounded-sm border border-code-border bg-code px-3 py-3"
                     >
-                      <span className="size-1.5 rounded-full bg-faint" />
-                      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
+                      <span className="size-1.5 rounded-full bg-code-muted" />
+                      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-code-muted">
                         pass
                       </span>
                     </div>
