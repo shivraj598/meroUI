@@ -287,7 +287,7 @@ export function Features() {
                     No attribution needed.
                   </p>
                 </div>
-                <Button href="#install" variant="ghost">
+                <Button href="/docs" variant="ghost">
                   Get started
                 </Button>
               </div>
