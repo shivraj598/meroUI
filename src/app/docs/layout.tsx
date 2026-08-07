@@ -20,7 +20,7 @@ export default function DocsLayout({
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-50">
       <Sidebar />
-      <div className="lg:pl-16">
+      <div className="lg:pl-64">
         <main
           id="main"
           className="mx-auto w-full max-w-6xl px-5 pt-24 pb-28 md:px-10 lg:pt-16"
