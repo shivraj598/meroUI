@@ -58,12 +58,12 @@ export function Marquee() {
         <span key={`${hidden ? "b" : "a"}-${item}`} className="flex items-center">
           <span
             className={`whitespace-nowrap px-7 text-3xl font-semibold tracking-tight [transform:rotateY(12deg)] md:px-10 md:text-5xl ${
-              i % 2 === 0 ? "text-zinc-50" : "text-outline"
+              i % 2 === 0 ? "text-ink" : "text-outline"
             }`}
           >
             {item}
           </span>
-          <span className="font-mono text-sm text-zinc-600">/</span>
+          <span className="font-mono text-sm text-dim">/</span>
         </span>
       ))}
     </div>
@@ -73,7 +73,7 @@ export function Marquee() {
     <section
       ref={section}
       aria-label="Available components"
-      className="relative -mt-[6.875rem] overflow-hidden border-y border-zinc-800 bg-zinc-950 py-9 [perspective:600px] md:-mt-[8.625rem] md:py-11"
+      className="relative -mt-[6.875rem] overflow-hidden border-y border-line bg-canvas py-9 [perspective:600px] md:-mt-[8.625rem] md:py-11"
     >
       <div
         ref={track}
