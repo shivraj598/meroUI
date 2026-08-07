@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const variants = {
-  solid: "bg-zinc-50 text-zinc-950 hover:bg-zinc-200",
+  solid: "bg-ink text-canvas hover:bg-muted",
   ghost:
-    "border border-zinc-800 text-zinc-50 hover:border-zinc-50 hover:bg-zinc-50 hover:text-zinc-950",
-  quiet: "text-zinc-400 hover:text-zinc-50",
+    "border border-line text-ink hover:border-ink hover:bg-ink hover:text-canvas",
+  quiet: "text-muted hover:text-ink",
 };
 
 const sizes = {
