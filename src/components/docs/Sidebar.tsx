@@ -1,20 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
-import {
-  ALL_COMPONENTS,
-  COMPONENT_GROUPS,
-  DOC_SECTIONS,
-} from "./nav";
+import { COMPONENT_GROUPS, DOC_SECTIONS } from "./nav";
 
-/* Scrollspy targets: the three sections plus every component card. */
-const SPY_IDS = [
-  ...DOC_SECTIONS.map((s) => s.id),
-  ...ALL_COMPONENTS.map((c) => `c-${c.slug}`),
-];
+/* Scrollspy targets: the three /docs sections. Component pages highlight by
+   path instead, so no component anchors are tracked here. */
+const SPY_IDS = DOC_SECTIONS.map((s) => s.id);
 
-type NavItem = { id: string; label: string; built?: boolean };
+type NavItem = { id: string; label: string; built?: boolean; href: string };
 
 type Group = {
   id: string;
@@ -36,7 +31,11 @@ function buildGroups(): Group[] {
       id: "start",
       title: "Start",
       icon: GROUP_ICONS.Start,
-      children: DOC_SECTIONS.map((s) => ({ id: s.id, label: s.label })),
+      children: DOC_SECTIONS.map((s) => ({
+        id: s.id,
+        label: s.label,
+        href: `#${s.id}`,
+      })),
     },
     ...COMPONENT_GROUPS.map((g) => ({
       id: `group-${g.title.toLowerCase()}`,
@@ -46,6 +45,7 @@ function buildGroups(): Group[] {
         id: `c-${it.slug}`,
         label: it.name,
         built: it.built,
+        href: `/components/${it.slug}`,
       })),
     })),
   ];
@@ -73,13 +73,14 @@ function Chevron({ open }: { open: boolean }) {
 /**
  * Documentation sidebar in the classic docs-shell style: a sticky grouped
  * index where each category is collapsible, sub-links sit on a left border
- * rail, and the active entry is a filled pill that follows the scrollspy.
- * Below lg it becomes a slide-in drawer (hamburger, backdrop, Escape,
- * focus trap, scroll lock).
+ * rail, and the active entry is a filled pill. The active component follows
+ * the current /components/[slug] route; on the /docs index it follows the
+ * scrollspy. Below lg it becomes a slide-in drawer.
  */
 export function Sidebar() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<string | null>("overview");
+  const [activeSection, setActiveSection] = useState<string | null>("overview");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const groups = buildGroups();
     const state: Record<string, boolean> = {};
@@ -87,19 +88,22 @@ export function Sidebar() {
     return state;
   });
   const toggleRef = useRef<HTMLButtonElement>(null);
-
   const groups = buildGroups();
+
+  /* which single entry is active: the open component page, or on the /docs
+     index the section nearest the reading band */
+  const match = pathname.match(/^\/components\/([^/]+)$/);
+  const onDocs = pathname === "/docs";
+  const current = match ? `c-${match[1]}` : onDocs ? activeSection : null;
 
   const toggleGroup = (id: string) =>
     setOpenGroups((o) => ({ ...o, [id]: !o[id] }));
 
   /* -------------------------- scrollspy -------------------------- */
   useEffect(() => {
+    if (!onDocs) return;
     const obs = new IntersectionObserver(
       () => {
-        /* score every tracked section and component against the reading
-           band (40% from top) so the active entry follows the element
-           actually centered in the band */
         const bandCenter = innerHeight * 0.4;
         let best: string | null = null;
         let bestD = Infinity;
@@ -114,7 +118,7 @@ export function Sidebar() {
             best = id;
           }
         }
-        if (best) setActive(best);
+        if (best) setActiveSection(best);
       },
       { rootMargin: "-30% 0px -50% 0px", threshold: 0 }
     );
@@ -123,23 +127,22 @@ export function Sidebar() {
       if (el) obs.observe(el);
     });
     return () => obs.disconnect();
-  }, []);
+  }, [onDocs]);
 
-  /* keep the group containing the active entry open */
+  /* keep the group holding the active entry open */
   const openGroupsRef = useRef(openGroups);
   useEffect(() => {
     openGroupsRef.current = openGroups;
   }, [openGroups]);
   useEffect(() => {
-    if (!active) return;
-    const holder = groups.find((g) => g.children.some((c) => c.id === active));
+    if (!current) return;
+    const holder = groups.find((g) => g.children.some((c) => c.id === current));
     if (holder && !openGroupsRef.current[holder.id]) {
       setOpenGroups((o) => ({ ...o, [holder.id]: true }));
     }
-  }, [active, groups]);
+  }, [current, groups]);
 
-  /* Escape closes the mobile drawer; lock scroll, move focus in, trap Tab,
-     and restore focus to the toggle on close */
+  /* Escape closes the mobile drawer; lock scroll, move focus in, trap Tab */
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -176,7 +179,7 @@ export function Sidebar() {
 
   const linkCls = (item: NavItem) =>
     `relative z-10 flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
-      active === item.id
+      current === item.id
         ? "bg-zinc-50 font-medium text-zinc-950"
         : "text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-50"
     }`;
@@ -203,20 +206,16 @@ export function Sidebar() {
               {g.children.map((item) => (
                 <div key={item.id} className="relative">
                   <a
-                    href={`#${item.id}`}
+                    href={item.href}
                     onClick={() => setOpen(false)}
-                    aria-current={active === item.id ? "true" : undefined}
+                    aria-current={current === item.id ? "true" : undefined}
                     className={linkCls(item)}
                   >
                     <span className="truncate">{item.label}</span>
                     {typeof item.built === "boolean" && (
                       <span
                         aria-hidden
-                        className={`ml-2 shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] ${
-                          active === item.id
-                            ? "text-zinc-600"
-                            : "text-zinc-600"
-                        }`}
+                        className="ml-2 shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-600"
                       >
                         {item.built ? "rdy" : "soon"}
                       </span>
