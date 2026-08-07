@@ -310,7 +310,7 @@ export function Hero() {
         {/* CTAs */}
         <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <Magnetic className="hero-cta" strength={0.3}>
-            <Button href="#install" size="lg">
+            <Button href="/docs" size="lg">
               Get started
             </Button>
           </Magnetic>
