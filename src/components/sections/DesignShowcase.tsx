@@ -75,7 +75,7 @@ function DesignCard({
       href={entry.liveDemoUrl || "#"}
       target={entry.liveDemoUrl ? "_blank" : undefined}
       rel={entry.liveDemoUrl ? "noreferrer noopener" : undefined}
-      className={`design-card group relative block rounded-md border border-zinc-800 bg-zinc-900/60 will-change-transform ${
+      className={`design-card group relative block rounded-md border border-line bg-panel/60 will-change-transform ${
         featured ? "aspect-[16/8]" : "aspect-[16/10]"
       }`}
     >
@@ -94,35 +94,35 @@ function DesignCard({
               className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-900">
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600">
+            <div className="flex h-full w-full items-center justify-center bg-panel">
+              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
                 no image
               </span>
             </div>
           )}
           {/* dark overlay lifts on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/35 to-zinc-950/10 transition-opacity duration-500 group-hover:opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-t from-scrim/95 via-scrim/35 to-scrim/10 transition-opacity duration-500 group-hover:opacity-90" />
         </div>
 
         {/* content plane */}
         <div className="absolute inset-x-0 bottom-0 p-5 [transform:translateZ(44px)] md:p-6">
-          <p className="text-xl font-semibold tracking-tight text-zinc-50 md:text-2xl">
+          <p className="text-xl font-semibold tracking-tight text-ink md:text-2xl">
             {entry.title}
           </p>
-          <p className="mt-2 line-clamp-2 max-w-md text-sm leading-6 text-zinc-400">
+          <p className="mt-2 line-clamp-2 max-w-md text-sm leading-6 text-muted">
             {entry.summary}
           </p>
           {entry.tags.length > 0 && (
-            <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-500">
+            <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.2em] text-faint">
               {entry.tags.join(" / ")}
             </p>
           )}
         </div>
 
         {/* floating chips (highest depth) */}
-        <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-950/70 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-300 [transform:translateZ(64px)] backdrop-blur-sm transition-colors group-hover:border-zinc-50 group-hover:text-zinc-50">
+        <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full border border-line-strong bg-scrim/70 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-ink [transform:translateZ(64px)] backdrop-blur-sm transition-colors group-hover:border-ink group-hover:text-ink">
           view live
-          <span aria-hidden className="text-zinc-400 group-hover:text-zinc-50">
+          <span aria-hidden className="text-muted group-hover:text-ink">
             &#8599;
           </span>
         </span>
@@ -133,13 +133,13 @@ function DesignCard({
             alt=""
             aria-hidden
             loading="lazy"
-            className="absolute top-3 left-3 hidden w-20 rounded border border-zinc-700/60 object-cover shadow-lg [transform:translateZ(58px)] sm:block"
+            className="absolute top-3 left-3 hidden w-20 rounded border border-line-strong/60 object-cover shadow-lg [transform:translateZ(58px)] sm:block"
           />
         )}
 
         {/* cursor glare */}
         <div className="pointer-events-none absolute top-1/2 left-1/2 size-64 -translate-x-1/2 -translate-y-1/2 [transform:translateZ(70px)]">
-          <div className="card-glare h-full w-full rounded-full bg-zinc-50/10 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
+          <div className="card-glare h-full w-full rounded-full bg-ink/10 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
         </div>
       </div>
     </a>
@@ -180,8 +180,8 @@ export function DesignShowcase({ entries }: { entries: DesignEntry[] }) {
 
   if (entries.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-md border border-dashed border-zinc-800 py-24">
-        <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+      <div className="flex items-center justify-center rounded-md border border-dashed border-line py-24">
+        <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-faint">
           add .md files to content/web-design
         </p>
       </div>
