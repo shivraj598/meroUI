@@ -22,12 +22,12 @@ function RingCard({
 }) {
   return (
     <div className="ring-card absolute top-1/2 left-1/2 w-32 will-change-transform md:w-36">
-      <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3.5">
-        <div className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-300">
+      <div className="rounded-md border border-line bg-panel p-3.5">
+        <div className="mb-3 flex items-center justify-between border-b border-line pb-2">
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink">
             {label}
           </span>
-          <span className="font-mono text-[9px] text-zinc-600">{index}</span>
+          <span className="font-mono text-[9px] text-dim">{index}</span>
         </div>
         {children}
       </div>
@@ -246,10 +246,10 @@ export function Hero() {
       className="relative flex min-h-[100dvh] flex-col overflow-hidden pt-20 [perspective:1400px] md:pt-24"
     >
       {/* vertical meta rails */}
-      <span className="hero-meta pointer-events-none absolute left-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600 [writing-mode:vertical-rl] lg:block">
+      <span className="hero-meta pointer-events-none absolute left-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block">
         v1.0.0 · React 19 · TypeScript 5
       </span>
-      <span className="hero-meta pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600 [writing-mode:vertical-rl] lg:block">
+      <span className="hero-meta pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block">
         Built for Next.js 16
       </span>
 
@@ -257,7 +257,7 @@ export function Hero() {
       {CHIPS.map((chip) => (
         <span
           key={chip.text}
-          className={`hero-chip pointer-events-none absolute hidden font-mono uppercase tracking-[0.24em] text-zinc-700 md:block ${chip.size}`}
+          className={`hero-chip pointer-events-none absolute hidden font-mono uppercase tracking-[0.24em] text-dim md:block ${chip.size}`}
           style={{
             left: chip.x,
             top: chip.y,
@@ -270,7 +270,7 @@ export function Hero() {
 
       <div className="hero-scene preserve-3d mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center px-6 md:px-10">
         {/* eyebrow */}
-        <p className="hero-eyebrow mb-5 font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-400">
+        <p className="hero-eyebrow mb-5 font-mono text-[11px] uppercase tracking-[0.3em] text-muted">
           React + TypeScript · For Next.js 16
         </p>
 
@@ -302,7 +302,7 @@ export function Hero() {
         </h1>
 
         {/* subtext */}
-        <p className="hero-sub mt-5 max-w-[34rem] text-balance text-center text-base leading-relaxed text-zinc-400 md:text-lg">
+        <p className="hero-sub mt-5 max-w-[34rem] text-balance text-center text-base leading-relaxed text-muted md:text-lg">
           Type-safe components that ship in one command. Zero config. Zero
           rework.
         </p>
@@ -321,7 +321,7 @@ export function Hero() {
           </Magnetic>
         </div>
 
-        <p className="hero-hint mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600">
+        <p className="hero-hint mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
           Drag the ring to spin · 08 components in orbit
         </p>
 
@@ -366,8 +366,8 @@ export function Hero() {
                         key={t}
                         className={`rounded-sm px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] ${
                           i === 0
-                            ? "bg-zinc-50 text-zinc-950"
-                            : "text-zinc-500"
+                            ? "bg-ink text-canvas"
+                            : "text-faint"
                         }`}
                       >
                         {t}
@@ -377,21 +377,21 @@ export function Hero() {
                 </RingCard>
                 <RingCard index="06" label="Skeleton">
                   <div className="flex flex-col gap-2">
-                    <div className="h-2 w-3/4 animate-pulse rounded-sm bg-zinc-800" />
-                    <div className="h-2 w-full animate-pulse rounded-sm bg-zinc-800" />
-                    <div className="h-2 w-1/2 animate-pulse rounded-sm bg-zinc-800" />
+                    <div className="h-2 w-3/4 animate-pulse rounded-sm bg-line-strong" />
+                    <div className="h-2 w-full animate-pulse rounded-sm bg-line-strong" />
+                    <div className="h-2 w-1/2 animate-pulse rounded-sm bg-line-strong" />
                   </div>
                 </RingCard>
                 <RingCard index="07" label="Toast">
-                  <div className="flex items-center gap-2 rounded-md border border-zinc-800 px-2.5 py-2">
-                    <span className="dot-pulse size-1.5 rounded-full bg-zinc-50" />
-                    <span className="font-mono text-[9px] text-zinc-300">
+                  <div className="flex items-center gap-2 rounded-md border border-line px-2.5 py-2">
+                    <span className="dot-pulse size-1.5 rounded-full bg-ink" />
+                    <span className="font-mono text-[9px] text-ink">
                       Component added
                     </span>
                   </div>
                 </RingCard>
                 <RingCard index="08" label="CLI">
-                  <p className="caret font-mono text-[10px] leading-5 text-zinc-300">
+                  <p className="caret font-mono text-[10px] leading-5 text-ink">
                     $ npx meroui add
                   </p>
                 </RingCard>
