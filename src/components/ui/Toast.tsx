@@ -115,14 +115,14 @@ function ToastCard({
 
   return (
     <div
-      className={`pointer-events-auto flex items-start justify-between gap-3 rounded-md border border-zinc-800 bg-zinc-900/90 px-4 py-3 backdrop-blur-sm transition-all duration-300 ease-out motion-reduce:transition-none ${
+      className={`pointer-events-auto flex items-start justify-between gap-3 rounded-md border border-line bg-panel/90 px-4 py-3 backdrop-blur-sm transition-all duration-300 ease-out motion-reduce:transition-none ${
         entered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
       <div className="min-w-0">
-        <p className="text-sm font-medium text-zinc-50">{toast.title}</p>
+        <p className="text-sm font-medium text-ink">{toast.title}</p>
         {toast.description ? (
-          <p className="mt-0.5 text-xs leading-5 text-zinc-400">
+          <p className="mt-0.5 text-xs leading-5 text-muted">
             {toast.description}
           </p>
         ) : null}
@@ -131,7 +131,7 @@ function ToastCard({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss notification"
-        className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 transition-colors hover:text-zinc-50"
+        className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink"
       >
         close
       </button>
