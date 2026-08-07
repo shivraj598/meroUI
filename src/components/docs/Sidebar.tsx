@@ -23,7 +23,7 @@ export function Sidebar() {
           if (e.isIntersecting) setActive(e.target.id);
         });
       },
-      { rootMargin: "-35% 0px -55% 0px", threshold: 0 }
+      { rootMargin: "-30% 0px -50% 0px", threshold: 0 }
     );
     SPY_IDS.forEach((id) => {
       const el = document.getElementById(id);
