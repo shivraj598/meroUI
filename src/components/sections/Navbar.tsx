@@ -31,7 +31,7 @@ export function Navbar() {
           ))}
         </div>
 
-        <Button href="#install" size="sm">
+        <Button href="/docs" size="sm">
           Get started
         </Button>
       </nav>
