@@ -116,7 +116,7 @@ export function Install() {
     <section
       ref={section}
       id="install"
-      className="relative overflow-hidden bg-zinc-950 px-6 pt-20 pb-28 [perspective:1200px] md:px-10 md:pt-28 md:pb-40"
+      className="relative overflow-hidden bg-canvas px-6 pt-20 pb-28 [perspective:1200px] md:px-10 md:pt-28 md:pb-40"
     >
       <div className="mx-auto w-full max-w-4xl [transform-style:preserve-3d]">
         <div className="mb-14 text-center">
@@ -125,21 +125,21 @@ export function Install() {
           </h2>
         </div>
 
-        <div className="install-scene rounded-md border border-zinc-800 bg-zinc-900/80 shadow-[0_60px_120px_-30px_rgba(0,0,0,0.9)] will-change-transform">
+        <div className="install-scene rounded-md border border-line bg-panel/80 shadow-[0_60px_120px_-30px_rgba(0,0,0,0.9)] will-change-transform">
           {/* title bar */}
-          <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3.5">
+          <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-zinc-700" />
-              <span className="size-2.5 rounded-full bg-zinc-700" />
-              <span className="size-2.5 rounded-full bg-zinc-700" />
+              <span className="size-2.5 rounded-full bg-line-strong" />
+              <span className="size-2.5 rounded-full bg-line-strong" />
+              <span className="size-2.5 rounded-full bg-line-strong" />
             </div>
-            <span className="font-mono text-[11px] text-zinc-500">
+            <span className="font-mono text-[11px] text-faint">
               ~/mero-ui - zsh
             </span>
             <button
               type="button"
               onClick={copy}
-              className="rounded border border-zinc-700 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300 transition-colors hover:border-zinc-50 hover:text-zinc-50"
+              className="rounded border border-line-strong px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink transition-colors hover:border-ink hover:text-ink"
             >
               {copied ? "copied" : "copy"}
             </button>
@@ -149,7 +149,7 @@ export function Install() {
           <div
             role="tablist"
             aria-label="Package manager"
-            className="flex gap-1 border-b border-zinc-800 px-5 pt-3"
+            className="flex gap-1 border-b border-line px-5 pt-3"
           >
             {PACKAGE_MANAGERS.map((p) => (
               <button
@@ -160,8 +160,8 @@ export function Install() {
                 onClick={() => setPm(p)}
                 className={`rounded-t border-b-2 px-3 py-2 font-mono text-xs transition-colors ${
                   pm === p
-                    ? "border-zinc-50 text-zinc-50"
-                    : "border-transparent text-zinc-500 hover:text-zinc-300"
+                    ? "border-ink text-ink"
+                    : "border-transparent text-faint hover:text-ink"
                 }`}
               >
                 {p}
@@ -172,7 +172,7 @@ export function Install() {
           {/* terminal body */}
           <div className="px-5 py-5 md:px-7 md:py-6">
             <div className="min-h-28 md:min-h-24">
-              <p className="font-mono text-sm text-zinc-500">
+              <p className="font-mono text-sm text-faint">
                 {TERMINAL_LINES.slice(0, 3).map((line) => (
                   <span key={line} className="block leading-6">
                     {line}
@@ -180,20 +180,20 @@ export function Install() {
                 ))}
               </p>
               <p className="font-mono text-sm leading-6">
-                <span className="text-zinc-50">$ </span>
-                <span className="text-zinc-300">
+                <span className="text-ink">$ </span>
+                <span className="text-ink">
                   {typed}
-                  <span className="caret inline-block h-4 w-2 translate-y-0.5 bg-zinc-50" />
+                  <span className="caret inline-block h-4 w-2 translate-y-0.5 bg-ink" />
                 </span>
               </p>
-              <p className="font-mono text-sm text-zinc-500">
+              <p className="font-mono text-sm text-faint">
                 {TERMINAL_LINES[3]}
               </p>
             </div>
           </div>
         </div>
 
-        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-faint">
           server components / client components / zero config
         </p>
       </div>
