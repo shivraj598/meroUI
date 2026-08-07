@@ -59,7 +59,7 @@ export function Preloader() {
     <div
       ref={ref}
       aria-hidden
-      className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-zinc-950"
+      className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-canvas"
     >
       <p className="preserve-3d flex gap-1 text-[clamp(2.5rem,8vw,5rem)] font-semibold tracking-[-0.04em] [perspective:600px]">
         {WORD.split("").map((ch, i) => (
@@ -68,7 +68,7 @@ export function Preloader() {
           </span>
         ))}
       </p>
-      <span className="pre-meta mt-4 font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500 opacity-0">
+      <span className="pre-meta mt-4 font-mono text-[10px] uppercase tracking-[0.3em] text-faint opacity-0">
         Loading the depth
       </span>
     </div>
