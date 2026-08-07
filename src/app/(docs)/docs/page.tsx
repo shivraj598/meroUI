@@ -1,66 +1,55 @@
+import Link from "next/link";
 import {
   ALL_COMPONENTS,
   COMPONENT_GROUPS,
-  type ComponentMeta,
 } from "@/components/docs/nav";
 import { CopyLine } from "@/components/docs/CopyLine";
-import { ComponentPreview } from "@/components/docs/ComponentPreview";
 
-function Row({ item, index }: { item: ComponentMeta; index: number }) {
-  const n = String(index).padStart(2, "0");
+function ComponentLink({
+  name,
+  slug,
+  blurb,
+  index,
+}: {
+  name: string;
+  slug: string;
+  blurb: string;
+  index: number;
+}) {
   return (
-    <li
-      id={`c-${item.slug}`}
-      className="group grid scroll-mt-24 grid-cols-1 items-center gap-4 py-6 transition-colors duration-200 hover:bg-zinc-900/40 sm:gap-5 md:grid-cols-[3.25rem_minmax(0,1fr)_auto] md:gap-8 md:px-4"
-    >
-      {/* glyph + number */}
-      <span
-        aria-hidden
-        className="hidden select-none items-baseline gap-2 font-mono md:flex"
+    <li>
+      <Link
+        href={`/components/${slug}`}
+        className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-4 transition-colors sm:gap-6 md:px-2"
       >
-        <span className="text-sm text-zinc-700 transition-colors group-hover:text-zinc-400">
-          {n}
-        </span>
-        <span className="text-lg text-zinc-500 transition-colors group-hover:text-zinc-300">
-          {item.glyph}
-        </span>
-      </span>
-
-      {/* name block */}
-      <div className="min-w-0">
-        <a
-          href={`#c-${item.slug}`}
-          className="inline-flex items-baseline gap-2.5 text-2xl font-semibold tracking-tight text-zinc-100 transition-colors group-hover:text-zinc-50 sm:text-3xl"
+        <span
+          aria-hidden
+          className="hidden select-none font-mono text-sm text-zinc-700 transition-colors group-hover:text-zinc-400 md:block"
         >
-          {item.name}
-        </a>
-        <p className="mt-1.5 max-w-xl text-sm leading-6 text-zinc-400">
-          {item.blurb}
-        </p>
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-          <span className={item.built ? "text-zinc-300" : "text-zinc-600"}>
-            {item.built ? "ready" : "soon"}
-          </span>
-          <span aria-hidden className="text-zinc-700">
-            {" / "}
-          </span>
-          <span className="text-zinc-500">src/components/ui/{item.name}.tsx</span>
-        </p>
-      </div>
+          {String(index).padStart(2, "0")}
+        </span>
 
-      {/* live preview cell */}
-      <div className="flex h-28 items-center justify-center overflow-hidden rounded-md border border-zinc-800 bg-zinc-950/40 p-4 transition-colors duration-200 group-hover:border-zinc-600 sm:h-32 md:w-64">
-        <ComponentPreview slug={item.slug} />
-      </div>
+        <span className="min-w-0">
+          <span className="block text-2xl font-semibold tracking-tight text-zinc-100 transition-colors group-hover:text-zinc-50 sm:text-3xl">
+            {name}
+          </span>
+          <span className="mt-1.5 block max-w-xl text-sm leading-6 text-zinc-400">
+            {blurb}
+          </span>
+        </span>
+
+        <span className="flex items-center font-mono text-sm text-zinc-600 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-300">
+          └/components/{slug}
+        </span>
+      </Link>
     </li>
   );
 }
 
 /**
- * Library collection page. This is the page "Get started" links to: a compact
- * header band, the install flow, and an editorial catalog of every component
- * as a type-driven index with a live preview docked on each row. Detail routes
- * come next; each row stays an in-page anchor for the sidebar index.
+ * Library index. This is what "Get started" links to: an overview, the
+ * install flow, and the grouped index of every component. Each component
+ * lives on its own page at /components/[slug]; this page links to them.
  */
 export default function DocsPage() {
   return (
@@ -69,7 +58,7 @@ export default function DocsPage() {
       <section
         id="overview"
         aria-labelledby="title"
-        className="scroll-mt-24 border-b border-zinc-800 py-14 md:py-20"
+        className="scroll-mt-24 border-b border-zinc-800 py-12 md:py-16"
       >
         <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-500">
           mero-ui
@@ -78,13 +67,12 @@ export default function DocsPage() {
         </p>
         <h1
           id="title"
-          className="mt-8 text-6xl font-semibold tracking-tight md:text-8xl"
+          className="mt-7 text-5xl font-semibold tracking-tight md:text-7xl"
         >
           Library.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 md:text-lg">
-          Type-safe, accessible, zero-config React components for Next.js 16 and
-          React 19. Black by default. Copy one file, keep full ownership.
+          One page per component. Copy a single file, keep full ownership.
         </p>
         <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500">
           <span className="text-zinc-300">{ALL_COMPONENTS.length} components</span>
@@ -99,54 +87,41 @@ export default function DocsPage() {
       <section
         id="installation"
         aria-labelledby="installation-title"
-        className="scroll-mt-24 border-b border-zinc-800 py-12 md:py-16"
+        className="scroll-mt-24 border-b border-zinc-800 py-10 md:py-14"
       >
-        <div className="grid gap-10 md:grid-cols-2 md:gap-16">
-          <div>
-            <h2
-              id="installation-title"
-              className="text-2xl font-semibold tracking-tight md:text-3xl"
-            >
-              Install everything.
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
-              One package, zero runtime deps, quiet audit.
-            </p>
-            <div className="mt-6">
-              <CopyLine command="npm install mero-ui" />
-            </div>
-          </div>
-          <div className="md:border-l md:border-zinc-800 md:pl-16">
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              One file at a time.
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
-              Grab a single component, keep full ownership.
-            </p>
-            <div className="mt-6">
-              <CopyLine command="npx meroui add button" />
-            </div>
-          </div>
+        <h2
+          id="installation-title"
+          className="text-2xl font-semibold tracking-tight md:text-3xl"
+        >
+          Install everything.
+        </h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
+          One package, zero runtime deps, quiet audit.
+        </p>
+        <div className="mt-6 max-w-md">
+          <CopyLine command="npm install mero-ui" />
+        </div>
+        <div className="mt-6 max-w-md">
+          <CopyLine command="npx meroui add button" />
         </div>
       </section>
 
-      {/* ------------------------------------------- catalog */}
+      {/* ------------------------------------------- index */}
       <section
         id="components"
         aria-labelledby="components-title"
-        className="scroll-mt-24 py-12 md:py-20"
+        className="scroll-mt-24 py-10 md:py-14"
       >
         <h2
           id="components-title"
-          className="text-3xl font-semibold tracking-tight md:text-4xl"
+          className="text-2xl font-semibold tracking-tight md:text-3xl"
         >
-          Index.
+          Components.
         </h2>
 
         {COMPONENT_GROUPS.map((group, gi) => (
           <div key={group.title}>
-            {/* group divider */}
-            <div className="mt-12 flex items-baseline gap-4 border-b border-zinc-800 pb-3">
+            <div className="mt-8 flex items-baseline gap-4 border-b border-zinc-800 pb-3">
               <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-500">
                 {String(gi + 1).padStart(2, "0")}
                 <span className="text-zinc-700">{" / "}</span>
@@ -154,13 +129,19 @@ export default function DocsPage() {
               </span>
               <span aria-hidden className="h-px flex-1 self-center bg-zinc-800" />
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
-                {group.items.length} items
+                {group.items.length}
               </span>
             </div>
 
             <ul className="divide-y divide-zinc-800">
               {group.items.map((item, i) => (
-                <Row key={item.slug} item={item} index={i + 1} />
+                <ComponentLink
+                  key={item.slug}
+                  name={item.name}
+                  slug={item.slug}
+                  blurb={item.blurb}
+                  index={i + 1}
+                />
               ))}
             </ul>
           </div>
