@@ -27,7 +27,7 @@ function Column({
 }) {
   return (
     <div className={className}>
-      <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600">
+      <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
         {title}
       </p>
       <ul className="mt-4 flex flex-col gap-3">
@@ -37,7 +37,7 @@ function Column({
               href={l.href}
               target={l.external ? "_blank" : undefined}
               rel={l.external ? "noreferrer noopener" : undefined}
-              className="text-sm text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-50 hover:underline"
+              className="text-sm text-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
             >
               {l.label}
             </a>
@@ -94,7 +94,7 @@ export function Footer() {
   return (
     <footer
       ref={footer}
-      className="relative overflow-hidden bg-zinc-950 px-6 pt-24 pb-10 md:px-10 md:pt-32"
+      className="relative overflow-hidden bg-canvas px-6 pt-24 pb-10 md:px-10 md:pt-32"
     >
       {/* ghosted outline word, fully visible behind the footer */}
       <span
@@ -106,17 +106,17 @@ export function Footer() {
 
       <div className="relative mx-auto w-full max-w-6xl">
         {/* header: brand + premium CTA */}
-        <div className="footer-reveal flex flex-col gap-8 border-b border-zinc-800 pb-12 md:flex-row md:items-end md:justify-between">
+        <div className="footer-reveal flex flex-col gap-8 border-b border-line pb-12 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-faint">
               meroUI · a UI library
             </p>
-            <h2 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-zinc-50 md:text-6xl">
+            <h2 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-ink md:text-6xl">
               Have a project in mind?
               <br />
               Ship it with meroUI.
             </h2>
-            <p className="mt-4 max-w-md text-sm leading-6 text-zinc-400">
+            <p className="mt-4 max-w-md text-sm leading-6 text-muted">
               Open-source library, plus select premium builds. Careers, install,
               and everything else, below.
             </p>
@@ -141,12 +141,12 @@ export function Footer() {
           />
           {/* dev credit */}
           <div className="md:col-span-1">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600">
+            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
               Built by
             </p>
-            <p className="mt-4 text-sm text-zinc-400">
+            <p className="mt-4 text-sm text-muted">
               Shivraj Timilsena
-              <span className="mt-1 block text-zinc-600">
+              <span className="mt-1 block text-dim">
                 Kathmandu, Nepal
               </span>
             </p>
@@ -154,7 +154,7 @@ export function Footer() {
         </div>
 
         {/* meta row */}
-        <div className="footer-reveal relative z-10 flex flex-col gap-2 border-t border-zinc-800 pt-6 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600 md:flex-row md:items-center md:justify-between">
+        <div className="footer-reveal relative z-10 flex flex-col gap-2 border-t border-line pt-6 font-mono text-[10px] uppercase tracking-[0.24em] text-dim md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} meroUI · Shivraj Timilsena</p>
           <p>Next.js 16 / React 19 / TypeScript 5</p>
         </div>
