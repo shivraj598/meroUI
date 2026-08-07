@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { gsap } from "@/lib/gsap";
 
 const WORD = "meroUI";
 
 export function Preloader() {
   const ref = useRef<HTMLDivElement>(null);
-  const [gone, setGone] = useState(false);
+  const pathname = usePathname();
+  const [gone, setGone] = useState(() => pathname !== "/");
 
   useEffect(() => {
+    /* the preloader is a landing-page moment; other routes skip it entirely */
+    if (pathname !== "/") return;
     const el = ref.current;
     if (!el) return;
     const reduced = window.matchMedia(
@@ -47,7 +51,7 @@ export function Preloader() {
     }, el);
 
     return () => ctx.revert();
-  }, []);
+  }, [pathname]);
 
   if (gone) return null;
 
