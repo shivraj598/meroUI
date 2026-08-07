@@ -1,7 +1,7 @@
 const variants = {
-  solid: "bg-zinc-50 text-zinc-950",
-  outline: "border border-zinc-700 text-zinc-300",
-  dot: "border border-zinc-800 bg-zinc-900 text-zinc-400",
+  solid: "bg-ink text-canvas",
+  outline: "border border-line-strong text-ink",
+  dot: "border border-line bg-panel text-muted",
 };
 
 export function Badge({
@@ -20,7 +20,7 @@ export function Badge({
       {pulse ? (
         <span
           aria-hidden
-          className="dot-pulse size-1.5 rounded-full bg-zinc-50"
+          className="dot-pulse size-1.5 rounded-full bg-ink"
         />
       ) : null}
       {children}
