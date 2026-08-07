@@ -72,7 +72,7 @@ export function Tooltip({
         <span
           id={id}
           role="tooltip"
-          className={`pointer-events-none absolute z-[80] max-w-[16rem] rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-center font-mono text-[10px] leading-4 text-zinc-300 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] ${SIDES[side]}`}
+          className={`pointer-events-none absolute z-[80] max-w-[16rem] rounded-md border border-line bg-panel px-2.5 py-1.5 text-center font-mono text-[10px] leading-4 text-ink shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] ${SIDES[side]}`}
         >
           {label}
         </span>
