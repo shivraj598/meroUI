@@ -34,7 +34,7 @@ function buildGroups(): Group[] {
       children: DOC_SECTIONS.map((s) => ({
         id: s.id,
         label: s.label,
-        href: `#${s.id}`,
+        href: `/docs#${s.id}`,
       })),
     },
     ...COMPONENT_GROUPS.map((g) => ({
