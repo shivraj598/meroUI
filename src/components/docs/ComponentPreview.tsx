@@ -62,7 +62,7 @@ function ModalDemo() {
         title="Dialog"
         description="A focus-trapped surface."
       >
-        <p className="text-sm leading-6 text-zinc-400">
+        <p className="text-sm leading-6 text-muted">
           Escape closes it, the backdrop closes it, Tab stays inside, and focus
           returns to the trigger when it closes.
         </p>
@@ -110,19 +110,19 @@ const DEMOS: Record<string, React.ReactNode> = {
         {
           label: "App",
           content: (
-            <span className="font-mono text-[10px] text-zinc-400">rsc by default</span>
+            <span className="font-mono text-[10px] text-muted">rsc by default</span>
           ),
         },
         {
           label: "Page",
           content: (
-            <span className="font-mono text-[10px] text-zinc-400">streamed</span>
+            <span className="font-mono text-[10px] text-muted">streamed</span>
           ),
         },
         {
           label: "Data",
           content: (
-            <span className="font-mono text-[10px] text-zinc-400">server action</span>
+            <span className="font-mono text-[10px] text-muted">server action</span>
           ),
         },
       ]}
@@ -134,7 +134,7 @@ const DEMOS: Record<string, React.ReactNode> = {
         <CardTitle>Ship it</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-xs leading-5 text-zinc-400">One file at a time.</p>
+        <p className="text-xs leading-5 text-muted">One file at a time.</p>
       </CardContent>
     </Card>
   ),
