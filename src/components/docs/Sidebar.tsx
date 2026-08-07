@@ -298,6 +298,29 @@ export function Sidebar() {
                 meroUI / docs
               </span>
             </header>
+            <nav aria-label="Site" className="flex items-center gap-1 border-b border-line px-3 py-2">
+              <Link
+                href="/docs"
+                onClick={() => setOpen(false)}
+                className="rounded-full px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.16em] bg-ink text-canvas"
+              >
+                Docs
+              </Link>
+              <Link
+                href="/templates"
+                onClick={() => setOpen(false)}
+                className="rounded-full px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-ink"
+              >
+                Templates
+              </Link>
+              <Link
+                href="/"
+                onClick={() => setOpen(false)}
+                className="ml-auto rounded-full px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-ink"
+              >
+                Home
+              </Link>
+            </nav>
             <div className="px-3 pt-4">{renderNav}</div>
           </aside>
         </div>
