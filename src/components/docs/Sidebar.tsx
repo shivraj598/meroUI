@@ -19,9 +19,20 @@ export function Sidebar() {
   useEffect(() => {
     const obs = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) setActive(e.target.id);
-        });
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length === 0) return;
+        /* score by distance from the reading band's center so the card the
+           user is actually looking at wins ties between grid rows */
+        const bandCenter = innerHeight * 0.4;
+        const scored = visible
+          .map((e) => {
+            const r = e.target.getBoundingClientRect();
+            return { e, d: Math.abs(r.top + r.height / 2 - bandCenter) };
+          })
+          .sort((a, b) => a.d - b.d);
+        /* a component card beats its container section on equal footing */
+        const card = scored.find((s) => s.e.target.id.startsWith("c-"));
+        setActive((card ?? scored[0]).e.target.id);
       },
       { rootMargin: "-30% 0px -50% 0px", threshold: 0 }
     );
