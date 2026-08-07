@@ -41,7 +41,7 @@ export function TableRow({
   className?: string;
 }) {
   return (
-    <tr className={`border-b border-zinc-800 last:border-0 ${className}`}>
+    <tr className={`border-b border-line last:border-0 ${className}`}>
       {children}
     </tr>
   );
@@ -57,7 +57,7 @@ export function TableHead({
   return (
     <th
       scope="col"
-      className={`sticky top-0 z-10 whitespace-nowrap bg-zinc-900 px-4 py-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 ${className}`}
+      className={`sticky top-0 z-10 whitespace-nowrap bg-panel px-4 py-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted ${className}`}
     >
       {children}
     </th>
@@ -75,7 +75,7 @@ export function TableCell({
 }) {
   return (
     <td
-      className={`px-4 py-3 align-middle text-zinc-300 ${
+      className={`px-4 py-3 align-middle text-ink ${
         mono ? "font-mono text-xs" : ""
       } ${className}`}
     >
