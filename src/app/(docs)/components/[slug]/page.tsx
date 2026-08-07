@@ -38,22 +38,22 @@ export default async function ComponentPage({ params }: PageProps) {
     <div className="flex max-w-[56rem] flex-col">
       <Link
         href="/docs"
-        className="font-mono text-[11px] uppercase tracking-[0.24em] text-zinc-500 transition-colors hover:text-zinc-300"
+        className="font-mono text-[11px] uppercase tracking-[0.24em] text-faint transition-colors hover:text-ink"
       >
-        <span className="text-zinc-700">/</span>components
-        <span className="text-zinc-700">/</span>
-        <span className="text-zinc-400">{item.slug}</span>
+        <span className="text-dim">/</span>components
+        <span className="text-dim">/</span>
+        <span className="text-muted">{item.slug}</span>
       </Link>
 
       <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">
         {item.name}.
       </h1>
-      <p className="mt-3 max-w-xl text-base leading-7 text-zinc-400">
+      <p className="mt-3 max-w-xl text-base leading-7 text-muted">
         {item.blurb}
       </p>
 
       {/* live preview */}
-      <div className="mt-8 flex h-56 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950/40 p-8">
+      <div className="mt-8 flex h-56 items-center justify-center rounded-md border border-line bg-canvas/40 p-8">
         <ComponentPreview slug={item.slug} />
       </div>
 
@@ -71,17 +71,17 @@ export default async function ComponentPage({ params }: PageProps) {
 
       {/* props */}
       <h2 className="mt-12 text-2xl font-semibold tracking-tight">Props.</h2>
-      <div className="mt-4 overflow-hidden rounded-md border border-zinc-800">
+      <div className="mt-4 overflow-hidden rounded-md border border-line">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-900/60">
-              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+            <tr className="border-b border-line bg-panel/60">
+              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
                 name
               </th>
-              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
                 type
               </th>
-              <th className="hidden px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 sm:table-cell">
+              <th className="hidden px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint sm:table-cell">
                 description
               </th>
             </tr>
@@ -90,15 +90,15 @@ export default async function ComponentPage({ params }: PageProps) {
             {doc.props.map((p) => (
               <tr
                 key={p.name}
-                className="border-b border-zinc-800/60 last:border-0"
+                className="border-b border-line/60 last:border-0"
               >
-                <td className="px-4 py-3 font-mono text-sm text-zinc-50">
+                <td className="px-4 py-3 font-mono text-sm text-ink">
                   {p.name}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-zinc-500">
+                <td className="px-4 py-3 font-mono text-xs text-faint">
                   {p.type}
                 </td>
-                <td className="hidden px-4 py-3 text-sm text-zinc-400 sm:table-cell">
+                <td className="hidden px-4 py-3 text-sm text-muted sm:table-cell">
                   {p.desc}
                 </td>
               </tr>
