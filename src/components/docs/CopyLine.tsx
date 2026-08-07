@@ -27,25 +27,25 @@ export function CopyLine({
   };
 
   return (
-    <div className="rounded-md border border-line bg-scrim/70 px-4 py-3">
+    <div className="rounded-md border border-code-border bg-code px-4 py-3">
       <div className="flex items-center justify-between gap-4">
         <p className="font-mono text-sm leading-6">
-          <span className="text-ink">$ </span>
-          <span className="text-ink">{command}</span>
-          <span className="caret inline-block h-4 w-2 translate-y-0.5 bg-ink" />
+          <span className="text-code-muted">$ </span>
+          <span className="text-code-ink">{command}</span>
+          <span className="caret inline-block h-4 w-2 translate-y-0.5 bg-code-ink" />
         </p>
         <button
           type="button"
           onClick={copy}
-          className="shrink-0 rounded-md border border-line-strong px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink transition-colors hover:border-ink hover:text-ink"
+          className="shrink-0 rounded-md border border-code-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-code-muted transition-colors hover:border-code-ink/70 hover:text-code-ink"
         >
           {copied ? "copied" : "copy"}
         </button>
       </div>
       {output && output.length > 0 && (
-        <div className="mt-2 border-t border-line/70 pt-2">
+        <div className="mt-2 border-t border-code-border pt-2">
           {output.map((line) => (
-            <p key={line} className="font-mono text-sm leading-6 text-faint">
+            <p key={line} className="font-mono text-sm leading-6 text-code-muted">
               {line}
             </p>
           ))}
