@@ -1,67 +1,13 @@
-import type { ReactNode } from "react";
-import { ALL_COMPONENTS, BUILT_COUNT, COMPONENT_GROUPS } from "@/components/docs/nav";
+import { ALL_COMPONENTS, COMPONENT_GROUPS } from "@/components/docs/nav";
 import { CopyLine } from "@/components/docs/CopyLine";
+import { ComponentPreview } from "@/components/docs/ComponentPreview";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Progress } from "@/components/ui/Progress";
-import { Tabs } from "@/components/ui/Tabs";
-import { Toggle } from "@/components/ui/Toggle";
 
-/* Live demos for the components that already ship. Real components only:
-   no div-built fake previews. Roadmap cards keep an explicit placeholder. */
-const PREVIEWS: Record<string, ReactNode> = {
-  button: (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <Button size="sm">Deploy</Button>
-      <Button size="sm" variant="ghost">
-        Cancel
-      </Button>
-    </div>
-  ),
-  badge: (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <Badge variant="dot" pulse>
-        v1.0.0
-      </Badge>
-      <Badge>stable</Badge>
-    </div>
-  ),
-  progress: (
-    <div className="w-full max-w-[11rem]">
-      <Progress value={72} label="Shipped" />
-    </div>
-  ),
-  toggle: (
-    <div className="flex flex-col items-center gap-3">
-      <Toggle defaultOn label="Autoplay" />
-      <Toggle label="Haptics" />
-    </div>
-  ),
-  input: (
-    <div className="w-full max-w-[11rem]">
-      <Input label="Email" placeholder="you@ship.dev" />
-    </div>
-  ),
-  tabs: (
-    <Tabs
-      items={[
-        {
-          label: "App",
-          content: <span className="font-mono text-[10px] text-zinc-400">rsc by default</span>,
-        },
-        {
-          label: "Page",
-          content: <span className="font-mono text-[10px] text-zinc-400">streamed</span>,
-        },
-        {
-          label: "Data",
-          content: <span className="font-mono text-[10px] text-zinc-400">server action</span>,
-        },
-      ]}
-    />
-  ),
-};
+const TERMINAL = [
+  "mero-ui@latest",
+  "✓ added 1 package in 1.2s",
+  "no dependencies. that's the whole install.",
+];
 
 /**
  * Library collection page. This is the page "Get started" links to: a docs
@@ -91,15 +37,15 @@ export default function DocsPage() {
 
         {/* stat strip */}
         <div className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-3 border-y border-zinc-800 py-5 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-          <span>{ALL_COMPONENTS.length} components indexed</span>
-          <span aria-hidden className="text-zinc-700">
-            /
-          </span>
-          <span>{BUILT_COUNT} ready to copy</span>
+          <span>{ALL_COMPONENTS.length} components shipping</span>
           <span aria-hidden className="text-zinc-700">
             /
           </span>
           <span>zero runtime deps</span>
+          <span aria-hidden className="text-zinc-700">
+            /
+          </span>
+          <span>keyboard-first</span>
         </div>
       </section>
 
@@ -178,34 +124,10 @@ export default function DocsPage() {
                   id={`c-${item.slug}`}
                   className="flex scroll-mt-20 flex-col rounded-md border border-zinc-800 bg-zinc-900/60 p-5 transition-colors duration-200 hover:border-zinc-600"
                 >
-                  {/* preview slot: live component when it ships, otherwise an
-                      explicit roadmap placeholder */}
-                  <div
-                    className={`flex h-32 items-center justify-center rounded-md border p-4 ${
-                      item.built
-                        ? "border-zinc-800 bg-zinc-950/40"
-                        : "border-dashed border-zinc-800 bg-zinc-950/50"
-                    }`}
-                  >
-                    {item.built ? (
-                      PREVIEWS[item.slug] ?? (
-                        <span className="font-mono text-3xl text-zinc-700">
-                          {item.glyph}
-                        </span>
-                      )
-                    ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <span
-                          aria-hidden
-                          className="select-none font-mono text-3xl text-zinc-700"
-                        >
-                          {item.glyph}
-                        </span>
-                        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-600">
-                          ships with the build
-                        </span>
-                      </div>
-                    )}
+                  {/* live preview stage: the real component, interactive
+                      where the primitive is interactive */}
+                  <div className="flex h-32 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950/40 p-4">
+                    <ComponentPreview slug={item.slug} />
                   </div>
 
                   <div className="mt-5 flex items-center justify-between gap-3">
