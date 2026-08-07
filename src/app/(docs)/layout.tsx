@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Sidebar } from "@/components/docs/Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
   title: "Library - meroUI",
@@ -33,11 +34,19 @@ export default function DocsLayout({
             </span>
           </Link>
           <div className="flex items-center gap-5">
+            <div className="flex items-center gap-2">
+              <Button href="/docs" variant="ghost" size="sm">
+                Docs
+              </Button>
+              <Button href="/templates" variant="ghost" size="sm">
+                Templates
+              </Button>
+            </div>
             <ThemeToggle />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-faint sm:block">
               docs
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-dim">
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-dim md:block">
               v0.1.0
             </span>
           </div>
