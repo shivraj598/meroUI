@@ -49,7 +49,7 @@ function Row({ item, index }: { item: ComponentMeta; index: number }) {
       </div>
 
       {/* live preview cell */}
-      <div className="flex h-28 items-center justify-center overflow-hidden rounded-md border border-zinc-800 bg-zinc-950/40 p-4 transition-colors duration-200 group-hover:border-zinc-600 sm:h-32 md:w-72">
+      <div className="flex h-28 items-center justify-center overflow-hidden rounded-md border border-zinc-800 bg-zinc-950/40 p-4 transition-colors duration-200 group-hover:border-zinc-600 sm:h-32 md:w-64">
         <ComponentPreview slug={item.slug} />
       </div>
     </li>
@@ -64,7 +64,7 @@ function Row({ item, index }: { item: ComponentMeta; index: number }) {
  */
 export default function DocsPage() {
   return (
-    <div className="flex flex-col">
+    <div className="flex max-w-[56rem] flex-col">
       {/* ------------------------------------------------ header */}
       <section
         id="overview"
