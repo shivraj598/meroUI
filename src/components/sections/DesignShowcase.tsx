@@ -120,9 +120,9 @@ function DesignCard({
         </div>
 
         {/* floating chips (highest depth) */}
-        <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full border border-line-strong bg-scrim/70 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-ink [transform:translateZ(64px)] backdrop-blur-sm transition-colors group-hover:border-ink group-hover:text-ink">
+        <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full border border-code-border bg-code px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-code-ink [transform:translateZ(64px)] backdrop-blur-sm transition-colors group-hover:border-code-ink/70">
           view live
-          <span aria-hidden className="text-muted group-hover:text-ink">
+          <span aria-hidden className="text-code-muted">
             &#8599;
           </span>
         </span>
