@@ -95,7 +95,7 @@ export function Modal({
       <div
         aria-hidden
         onClick={() => onCloseRef.current()}
-        className="absolute inset-0 bg-zinc-950/80"
+        className="absolute inset-0 bg-scrim/80"
       />
       <div
         ref={panelRef}
@@ -103,22 +103,22 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className={`relative w-full max-w-md rounded-md border border-zinc-800 bg-zinc-900 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-300 ease-out motion-reduce:transition-none ${
+        className={`relative w-full max-w-md rounded-md border border-line bg-panel shadow-[0_40px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-300 ease-out motion-reduce:transition-none ${
           entered
             ? "translate-y-0 scale-100 opacity-100"
             : "translate-y-3 scale-[0.98] opacity-0"
         }`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-zinc-800 px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
           <div>
             <h2
               id={titleId}
-              className="text-xl font-semibold tracking-tight text-zinc-50"
+              className="text-xl font-semibold tracking-tight text-ink"
             >
               {title}
             </h2>
             {description ? (
-              <p id={descId} className="mt-1 text-sm leading-6 text-zinc-400">
+              <p id={descId} className="mt-1 text-sm leading-6 text-muted">
                 {description}
               </p>
             ) : null}
@@ -127,14 +127,14 @@ export function Modal({
             type="button"
             onClick={() => onCloseRef.current()}
             aria-label="Close dialog"
-            className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 transition-colors hover:text-zinc-50"
+            className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink"
           >
             close
           </button>
         </div>
         <div className="max-h-[60vh] overflow-y-auto px-6 py-5">{children}</div>
         {footer ? (
-          <div className="flex items-center justify-end gap-3 border-t border-zinc-800 px-6 py-4">
+          <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
             {footer}
           </div>
         ) : null}
