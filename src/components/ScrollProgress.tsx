@@ -36,7 +36,7 @@ export function ScrollProgress() {
     <div
       ref={bar}
       aria-hidden
-      className="fixed inset-x-0 top-0 z-50 h-[2px] bg-zinc-50"
+      className="fixed inset-x-0 top-0 z-50 h-[2px] bg-ink"
     />
   );
 }
