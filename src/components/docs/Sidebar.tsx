@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { COMPONENT_GROUPS, DOC_SECTIONS } from "./nav";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 /* Scrollspy targets: the three /docs sections. Component pages highlight by
    path instead, so no component anchors are tracked here. */
@@ -61,7 +62,7 @@ function Chevron({ open }: { open: boolean }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      className={`size-3.5 shrink-0 text-zinc-500 transition-transform duration-200 ${
+      className={`size-3.5 shrink-0 text-faint transition-transform duration-200 ${
         open ? "rotate-180" : ""
       }`}
     >
@@ -180,8 +181,8 @@ export function Sidebar() {
   const linkCls = (item: NavItem) =>
     `relative z-10 flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
       current === item.id
-        ? "bg-zinc-50 font-medium text-zinc-950"
-        : "text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-50"
+        ? "bg-ink font-medium text-canvas"
+        : "text-muted hover:bg-panel/60 hover:text-ink"
     }`;
 
   const renderNav = (
@@ -192,9 +193,9 @@ export function Sidebar() {
             type="button"
             onClick={() => toggleGroup(g.id)}
             aria-expanded={!!openGroups[g.id]}
-            className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm font-medium text-zinc-200 transition-colors hover:text-zinc-50"
+            className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm font-medium text-ink transition-colors hover:text-ink"
           >
-            <span aria-hidden className="w-4 text-center text-zinc-500">
+            <span aria-hidden className="w-4 text-center text-faint">
               {g.icon}
             </span>
             <span className="min-w-0 flex-1 truncate">{g.title}</span>
@@ -202,7 +203,7 @@ export function Sidebar() {
           </button>
 
           {openGroups[g.id] && (
-            <div className="mt-1 ml-4 flex flex-col space-y-0.5 border-l border-zinc-800 pl-2">
+            <div className="mt-1 ml-4 flex flex-col space-y-0.5 border-l border-line pl-2">
               {g.children.map((item) => (
                 <div key={item.id} className="relative">
                   <a
@@ -215,7 +216,7 @@ export function Sidebar() {
                     {typeof item.built === "boolean" && (
                       <span
                         aria-hidden
-                        className="ml-2 shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-600"
+                        className="ml-2 shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-dim"
                       >
                         {item.built ? "rdy" : "soon"}
                       </span>
@@ -233,26 +234,28 @@ export function Sidebar() {
   return (
     <>
       {/* mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-800 bg-zinc-950/90 px-4 backdrop-blur-sm lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-canvas/90 px-4 backdrop-blur-sm lg:hidden">
         <Link href="/" aria-label="meroUI home" className="flex items-center gap-2.5">
-          <span className="flex size-6 items-center justify-center bg-zinc-50 text-[11px] font-bold leading-none text-zinc-950">
+          <span className="flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas">
             m
           </span>
-          <span className="font-mono text-sm font-semibold tracking-tight text-zinc-50">
+          <span className="font-mono text-sm font-semibold tracking-tight text-ink">
             meroUI
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-400">
+          <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted">
             / docs
           </span>
         </Link>
-        <button
-          ref={toggleRef}
-          type="button"
+        <div className="flex items-center gap-2">
+          <ThemeToggle label={false} />
+          <button
+            ref={toggleRef}
+            type="button"
           aria-expanded={open}
           aria-controls="docs-drawer"
           aria-label={open ? "Close documentation menu" : "Open documentation menu"}
           onClick={() => setOpen((v) => !v)}
-          className="flex size-8 flex-col items-center justify-center gap-1 rounded-md border border-zinc-800 text-zinc-300 transition-colors hover:border-zinc-50 hover:text-zinc-50"
+          className="flex size-8 flex-col items-center justify-center gap-1 rounded-md border border-line text-ink transition-colors hover:border-ink hover:text-ink"
         >
           <span
             className={`h-px w-4 bg-current transition-transform duration-200 ${
@@ -265,6 +268,7 @@ export function Sidebar() {
             }`}
           />
         </button>
+        </div>
       </div>
 
       {/* desktop sticky sidebar */}
@@ -281,16 +285,16 @@ export function Sidebar() {
             type="button"
             aria-label="Close menu"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-zinc-950/70"
+            className="absolute inset-0 bg-scrim/70"
           />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label="Documentation menu"
-            className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950"
+            className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto border-r border-line bg-canvas"
           >
-            <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center border-b border-zinc-800 bg-zinc-950 px-4">
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">
+            <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center border-b border-line bg-canvas px-4">
+              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted">
                 meroUI / docs
               </span>
             </header>
