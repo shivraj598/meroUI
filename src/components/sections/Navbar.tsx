@@ -34,6 +34,14 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          <div className="hidden items-center gap-2 md:flex">
+            <Button href="/docs" variant="ghost" size="sm">
+              Docs
+            </Button>
+            <Button href="/templates" variant="ghost" size="sm">
+              Templates
+            </Button>
+          </div>
           <Button href="/docs" size="sm">
             Get started
           </Button>
