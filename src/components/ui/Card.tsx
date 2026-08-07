@@ -2,7 +2,7 @@
    Server-safe primitives in the shadcn style: one file, full ownership. */
 
 const CARD_BASE =
-  "rounded-md border border-zinc-800 bg-zinc-900/60";
+  "rounded-md border border-line bg-panel/60";
 
 export function Card({
   className = "",
@@ -34,7 +34,7 @@ export function CardTitle({
   children: React.ReactNode;
 }) {
   return (
-    <h3 className={`text-lg font-semibold tracking-tight text-zinc-50 ${className}`}>
+    <h3 className={`text-lg font-semibold tracking-tight text-ink ${className}`}>
       {children}
     </h3>
   );
@@ -48,7 +48,7 @@ export function CardDescription({
   children: React.ReactNode;
 }) {
   return (
-    <p className={`text-sm leading-6 text-zinc-400 ${className}`}>{children}</p>
+    <p className={`text-sm leading-6 text-muted ${className}`}>{children}</p>
   );
 }
 
