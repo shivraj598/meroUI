@@ -125,21 +125,21 @@ export function Install() {
           </h2>
         </div>
 
-        <div className="install-scene rounded-md border border-line bg-panel/80 shadow-[0_60px_120px_-30px_rgba(0,0,0,0.9)] will-change-transform">
+        <div className="install-scene rounded-md border border-code-border bg-code shadow-[0_60px_120px_-30px_rgba(0,0,0,0.55)] will-change-transform">
           {/* title bar */}
-          <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <div className="flex items-center justify-between border-b border-code-border px-5 py-3.5">
             <div className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-line-strong" />
               <span className="size-2.5 rounded-full bg-line-strong" />
               <span className="size-2.5 rounded-full bg-line-strong" />
             </div>
-            <span className="font-mono text-[11px] text-faint">
+            <span className="font-mono text-[11px] text-code-muted">
               ~/mero-ui - zsh
             </span>
             <button
               type="button"
               onClick={copy}
-              className="rounded border border-line-strong px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink transition-colors hover:border-ink hover:text-ink"
+              className="rounded border border-code-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-code-muted transition-colors hover:border-code-ink/70 hover:text-code-ink"
             >
               {copied ? "copied" : "copy"}
             </button>
@@ -149,7 +149,7 @@ export function Install() {
           <div
             role="tablist"
             aria-label="Package manager"
-            className="flex gap-1 border-b border-line px-5 pt-3"
+            className="flex gap-1 border-b border-code-border px-5 pt-3"
           >
             {PACKAGE_MANAGERS.map((p) => (
               <button
@@ -160,8 +160,8 @@ export function Install() {
                 onClick={() => setPm(p)}
                 className={`rounded-t border-b-2 px-3 py-2 font-mono text-xs transition-colors ${
                   pm === p
-                    ? "border-ink text-ink"
-                    : "border-transparent text-faint hover:text-ink"
+                    ? "border-code-ink text-code-ink"
+                    : "border-transparent text-code-muted hover:text-code-ink"
                 }`}
               >
                 {p}
@@ -172,7 +172,7 @@ export function Install() {
           {/* terminal body */}
           <div className="px-5 py-5 md:px-7 md:py-6">
             <div className="min-h-28 md:min-h-24">
-              <p className="font-mono text-sm text-faint">
+              <p className="font-mono text-sm text-code-muted">
                 {TERMINAL_LINES.slice(0, 3).map((line) => (
                   <span key={line} className="block leading-6">
                     {line}
@@ -180,13 +180,13 @@ export function Install() {
                 ))}
               </p>
               <p className="font-mono text-sm leading-6">
-                <span className="text-ink">$ </span>
-                <span className="text-ink">
+                <span className="text-code-muted">$ </span>
+                <span className="text-code-ink">
                   {typed}
-                  <span className="caret inline-block h-4 w-2 translate-y-0.5 bg-ink" />
+                  <span className="caret inline-block h-4 w-2 translate-y-0.5 bg-code-ink" />
                 </span>
               </p>
-              <p className="font-mono text-sm text-faint">
+              <p className="font-mono text-sm text-code-muted">
                 {TERMINAL_LINES[3]}
               </p>
             </div>
