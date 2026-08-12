@@ -5,6 +5,22 @@
    (canvas / ink / line / panel / muted / faint / dim). utilities are:
    bg-canvas, bg-panel, border-line, border-line-strong, text-ink, text-muted,
    text-faint, text-dim, bg-ink (inverted fill), bg-scrim (overlay). */
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-dim: var(--dim);
+  --color-scrim: var(--scrim);
+  /* code surfaces follow the theme — soft panel in light, deep ink in dark */
+  --color-code: var(--code);
+  --color-code-ink: var(--code-ink);
+  --color-code-muted: var(--code-muted);
+  --color-code-border: var(--code-border);
   /* sidebar / workspace surfaces */
   --color-surface: var(--surface);
   --color-hover: var(--hover);
@@ -35,11 +51,11 @@
   --faint: #6d6d76;
   --dim: #8f8f97;
   --scrim: rgb(9 9 11);
-  /* code panels: fixed near-black + light type in both themes */
-  --code: #0b0b0e;
-  --code-ink: #f4f4f5;
-  --code-muted: #a1a1aa;
-  --code-border: #2e2e33;
+  /* code panels: soft gray-blue surface in light; deep near-black in dark */
+  --code: #f3f4f6;
+  --code-ink: #27272a;
+  --code-muted: #85858e;
+  --code-border: #dcdce0;
   /* sidebar surfaces */
   --surface: #ffffff;
   --hover: #f4f4f5;
@@ -70,7 +86,7 @@
   --muted: #a1a1aa;
   --faint: #71717a;
   --dim: #52525b;
-  /* code panels: stays dark (slightly lifted above the page canvas) */
+  /* code panels: deep near-black lifted above the page canvas */
   --code: #0b0b0e;
   --code-ink: #f2f2f3;
   --code-muted: #a1a1aa;
@@ -191,6 +207,46 @@ body {
 @keyframes eq-bounce {
   0%, 100% { transform: scaleY(0.35); }
   50% { transform: scaleY(1); }
+}
+
+/* ── code syntax tinting ───────────────────────────────
+   Prism tokens mapped onto the semantic palette (accent = keywords/tags,
+   green = strings, muted = comments), so it reads in both themes. */
+.code-syntax .token.comment,
+.code-syntax .token.prolog,
+.code-syntax .token.doctype,
+.code-syntax .token.cdata {
+  color: var(--code-muted);
+  font-style: italic;
+}
+.code-syntax .token.keyword,
+.code-syntax .token.important,
+.code-syntax .token.tag,
+.code-syntax .token.attr-name {
+  color: var(--accent-ink);
+}
+.code-syntax .token.string,
+.code-syntax .token.char,
+.code-syntax .token.attr-value,
+.code-syntax .token.template-string,
+.code-syntax .token.regex {
+  color: var(--green);
+}
+.code-syntax .token.function,
+.code-syntax .token.class-name,
+.code-syntax .token.number,
+.code-syntax .token.boolean {
+  color: var(--code-ink);
+  font-weight: 500;
+}
+.code-syntax .token.punctuation,
+.code-syntax .token.operator {
+  color: var(--code-muted);
+}
+.code-syntax .token.builtin,
+.code-syntax .token.constant,
+.code-syntax .token.property {
+  color: var(--accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
