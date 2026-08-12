@@ -70,13 +70,13 @@ export default async function ComponentPage({ params }: PageProps) {
       {/* install */}
       <h2 className="mt-14 text-2xl font-semibold tracking-tight">Install.</h2>
       <div className="mt-4">
-        <CopyBlock code={`npx meroui add ${item.slug}`} />
+        <CopyBlock code={`npx meroui add ${item.slug}`} lang="bash" />
       </div>
 
       {/* usage */}
       <h2 className="mt-12 text-2xl font-semibold tracking-tight">Usage.</h2>
       <div className="mt-4">
-        <CopyBlock code={doc.usage} />
+        <CopyBlock code={doc.usage} lang="tsx" />
       </div>
 
       {/* props */}
