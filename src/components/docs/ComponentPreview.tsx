@@ -31,6 +31,7 @@ import {
 import { ToastProvider, ToastViewport, useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Modal } from "@/components/ui/Modal";
+import PromptBar from "@/components/ui/PromptBar";
 
 function ToastDemo() {
   const { toast } = useToast();
@@ -184,6 +185,7 @@ const DEMOS: Record<string, React.ReactNode> = {
       </div>
     </ToastProvider>
   ),
+  "prompt-bar": <PromptBar />,
 };
 
 export function ComponentPreview({ slug }: { slug: string }) {
