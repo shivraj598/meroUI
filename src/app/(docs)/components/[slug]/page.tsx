@@ -5,6 +5,8 @@ import { ALL_COMPONENTS } from "@/components/docs/nav";
 import { COMPONENT_DOCS } from "@/components/docs/componentDocs";
 import { ComponentPreview } from "@/components/docs/ComponentPreview";
 import { CopyBlock } from "@/components/docs/CopyBlock";
+import { ComponentToolbar } from "@/components/docs/ComponentToolbar";
+import { getComponentSource } from "@/lib/componentSource";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -52,10 +54,18 @@ export default async function ComponentPage({ params }: PageProps) {
         {item.blurb}
       </p>
 
-      {/* live preview */}
-      <div className="mt-8 flex h-56 items-center justify-center rounded-md border border-line bg-canvas/40 p-8">
-        <ComponentPreview slug={item.slug} />
-      </div>
+      {/* live preview + source */}
+      <ComponentToolbar source={getComponentSource(slug) ?? ""}>
+        <div
+          className={
+            item.slug === "prompt-bar"
+              ? "flex min-h-[28rem] items-center justify-center rounded-md border border-line bg-canvas/40 p-8"
+              : "flex h-56 items-center justify-center rounded-md border border-line bg-canvas/40 p-8"
+          }
+        >
+          <ComponentPreview slug={item.slug} />
+        </div>
+      </ComponentToolbar>
 
       {/* install */}
       <h2 className="mt-14 text-2xl font-semibold tracking-tight">Install.</h2>
