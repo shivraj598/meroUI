@@ -47,9 +47,9 @@
   --line: #e4e4e7;
   --line-strong: #d4d4d8;
   --ink: #18181b;
-  --muted: #52525b;
-  --faint: #6d6d76;
-  --dim: #8f8f97;
+  --muted: #4b4b54;
+  --faint: #575761;
+  --dim: #6b6b76;
   --scrim: rgb(9 9 11);
   /* code panels: soft gray-blue surface in light; deep near-black in dark */
   --code: #f3f4f6;
@@ -61,7 +61,7 @@
   --hover: #f4f4f5;
   --inset: #f1f1f3;
   --ink-2: #4f4f58;
-  --ink-3: #8f8f97;
+  --ink-3: #6f6f78;
   --accent: #2563eb;
   --accent-tint: #eaf0fe;
   --accent-ink: #1d4ed8;
@@ -249,7 +249,38 @@ body {
   color: var(--accent);
 }
 
+/* ── hero entry + drift ──────────────────────────────────
+   Static component facade; the only continuous motion is a slow
+   drift on two floating tags. Entry runs once the preloader
+   signals mero:ready (the .is-ready class on the section). */
+.hero-anim {
+  opacity: 0;
+}
+.is-ready .hero-anim {
+  animation: hero-in 0.7s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hero-float {
+  animation: hero-float 6.5s ease-in-out infinite alternate;
+}
+@keyframes hero-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-9px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .hero-anim,
+  .hero-float {
+    animation: none !important;
+  }
+  .is-ready .hero-anim,
+  .hero-float {
+    opacity: 1;
+    transform: none;
+  }
   .caret::after,
   .progress-grow,
   .dot-pulse,
