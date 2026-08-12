@@ -83,6 +83,13 @@ export const COMPONENT_GROUPS: { title: string; items: ComponentMeta[] }[] = [
         built: true,
         glyph: "≣",
       },
+      {
+        slug: "prompt-bar",
+        name: "Prompt Bar",
+        blurb: "Composer with @ sources, / commands, dictation and a model picker.",
+        built: true,
+        glyph: "✎",
+      },
     ],
   },
   {
