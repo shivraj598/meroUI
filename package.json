@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "gen:components": "node scripts/generate-component-source.mjs",
+    "dev": "npm run gen:components && next dev",
+    "build": "npm run gen:components && next build",
     "start": "next start",
     "lint": "eslint",
-    "cf-build": "opennextjs-cloudflare build",
+    "cf-build": "npm run gen:components && opennextjs-cloudflare build && node scripts/copy-cache-assets.mjs",
     "cf-preview": "opennextjs-cloudflare preview",
     "cf-deploy": "opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types"
