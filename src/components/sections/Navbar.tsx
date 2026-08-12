@@ -9,7 +9,7 @@ const links = [
 
 export function Navbar() {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 mix-blend-difference">
+    <header className="fixed inset-x-0 top-0 z-40">
       <nav className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10">
         <a href="#top" className="flex items-center gap-2.5">
           <span className="flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas">
