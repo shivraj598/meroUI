@@ -193,4 +193,18 @@ function Dialog() {
       { name: "delayMs", type: "number", desc: "Show delay in ms. Defaults to 150." },
     ],
   },
+  "prompt-bar": {
+    usage: `npm i glimm
+
+import PromptBar from "mero-ui";
+
+<PromptBar variant="Rounded" />
+<PromptBar variant="Pill" />
+
+// Setup: the sweep effect needs a WebGL context, so the canvas
+// lives inside the composer and animates on model change.`,
+    props: [
+      { name: "variant", type: '"Rounded" | "Pill"', desc: "Composer corner shape. Defaults to Rounded." },
+    ],
+  },
 };
