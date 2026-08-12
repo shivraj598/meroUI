@@ -3,12 +3,12 @@
 // export dynamically through wrangler, or we can potentially let users directly
 // add them as a sort of "plugin" system.
 
-import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "/Users/shivrajtimilsena/projects/meroUI/.wrangler/tmp/bundle-xD5IBI/middleware-insertion-facade.js";
+import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "/Users/shivrajtimilsena/projects/meroUI/.wrangler/tmp/bundle-NFZuLQ/middleware-insertion-facade.js";
 import { __facade_invoke__, __facade_register__, Dispatcher } from "/Users/shivrajtimilsena/projects/meroUI/node_modules/wrangler/templates/middleware/common.ts";
-import type { WorkerEntrypointConstructor } from "/Users/shivrajtimilsena/projects/meroUI/.wrangler/tmp/bundle-xD5IBI/middleware-insertion-facade.js";
+import type { WorkerEntrypointConstructor } from "/Users/shivrajtimilsena/projects/meroUI/.wrangler/tmp/bundle-NFZuLQ/middleware-insertion-facade.js";
 
 // Preserve all the exports from the worker
-export * from "/Users/shivrajtimilsena/projects/meroUI/.wrangler/tmp/bundle-xD5IBI/middleware-insertion-facade.js";
+export * from "/Users/shivrajtimilsena/projects/meroUI/.wrangler/tmp/bundle-NFZuLQ/middleware-insertion-facade.js";
 
 class __Facade_ScheduledController__ implements ScheduledController {
 	readonly #noRetry: ScheduledController["noRetry"];

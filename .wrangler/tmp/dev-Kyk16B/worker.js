@@ -46,6 +46,7 @@ var open_next_config_exports = {};
 __export(open_next_config_exports, {
   default: () => open_next_config_default
 });
+import { createHash } from "node:crypto";
 function getCloudflareContext(options = { async: false }) {
   return options.async ? getCloudflareContextAsync() : getCloudflareContextSync();
 }
@@ -201,11 +202,61 @@ function resolveCdnInvalidation(value = "dummy") {
   }
   return typeof value === "function" ? value : () => value;
 }
-var cloudflareContextSymbol, initOpenNextCloudflareForDevErrorMsg, resolver, asset_resolver_default, open_next_config_default;
+function isOpenNextError2(e) {
+  try {
+    return "__openNextInternal" in e;
+  } catch {
+    return false;
+  }
+}
+function debug2(...args) {
+  if (globalThis.openNextDebug) {
+    console.log(...args);
+  }
+}
+function warn2(...args) {
+  console.warn(...args);
+}
+function error2(...args) {
+  if (args.some((arg) => isDownplayedErrorLog2(arg))) {
+    return debug2(...args);
+  }
+  if (args.some((arg) => isOpenNextError2(arg))) {
+    const error23 = args.find((arg) => isOpenNextError2(arg));
+    if (error23.logLevel < getOpenNextErrorLogLevel2()) {
+      return;
+    }
+    if (error23.logLevel === 0) {
+      return console.log(...args.map((arg) => isOpenNextError2(arg) ? `${arg.name}: ${arg.message}` : arg));
+    }
+    if (error23.logLevel === 1) {
+      return warn2(...args.map((arg) => isOpenNextError2(arg) ? `${arg.name}: ${arg.message}` : arg));
+    }
+    return console.error(...args);
+  }
+  console.error(...args);
+}
+function getOpenNextErrorLogLevel2() {
+  const strLevel = process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1";
+  switch (strLevel.toLowerCase()) {
+    case "debug":
+    case "0":
+      return 0;
+    case "error":
+    case "2":
+      return 2;
+    default:
+      return 1;
+  }
+}
+var __defProp2, __defNormalProp, __publicField, cloudflareContextSymbol, initOpenNextCloudflareForDevErrorMsg, resolver, asset_resolver_default, IgnorableError, DOWNPLAYED_ERROR_LOGS2, isDownplayedErrorLog2, debugCache, FALLBACK_BUILD_ID, CACHE_DIR, NAME, StaticAssetsIncrementalCache, static_assets_incremental_cache_default, open_next_config_default;
 var init_open_next_config = __esm({
   ".open-next/middleware/open-next.config.mjs"() {
     "use strict";
     init_modules_watch_stub();
+    __defProp2 = Object.defineProperty;
+    __defNormalProp = /* @__PURE__ */ __name((obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value, "__defNormalProp");
+    __publicField = /* @__PURE__ */ __name((obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value), "__publicField");
     cloudflareContextSymbol = /* @__PURE__ */ Symbol.for("__cloudflare-context__");
     __name(getCloudflareContext, "getCloudflareContext");
     __name(getCloudflareContextFromGlobalScope, "getCloudflareContextFromGlobalScope");
@@ -269,7 +320,86 @@ You should update your Next.js config file as shown below:
     __name(resolveTagCache, "resolveTagCache");
     __name(resolveQueue, "resolveQueue");
     __name(resolveCdnInvalidation, "resolveCdnInvalidation");
-    open_next_config_default = defineCloudflareConfig();
+    IgnorableError = class extends Error {
+      static {
+        __name(this, "IgnorableError");
+      }
+      constructor(message) {
+        super(message);
+        __publicField(this, "__openNextInternal", true);
+        __publicField(this, "canIgnore", true);
+        __publicField(this, "logLevel", 0);
+        this.name = "IgnorableError";
+      }
+    };
+    __name(isOpenNextError2, "isOpenNextError");
+    __name(debug2, "debug");
+    __name(warn2, "warn");
+    DOWNPLAYED_ERROR_LOGS2 = [
+      {
+        clientName: "S3Client",
+        commandName: "GetObjectCommand",
+        errorName: "NoSuchKey"
+      }
+    ];
+    isDownplayedErrorLog2 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS2.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
+    __name(error2, "error");
+    __name(getOpenNextErrorLogLevel2, "getOpenNextErrorLogLevel");
+    debugCache = /* @__PURE__ */ __name((name, ...args) => {
+      if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
+        console.log(`[${name}] `, ...args);
+      }
+    }, "debugCache");
+    FALLBACK_BUILD_ID = "no-build-id";
+    CACHE_DIR = "cdn-cgi/_next_cache";
+    NAME = "cf-static-assets-incremental-cache";
+    StaticAssetsIncrementalCache = class {
+      static {
+        __name(this, "StaticAssetsIncrementalCache");
+      }
+      constructor() {
+        __publicField(this, "name", NAME);
+      }
+      async get(key, cacheType) {
+        const assets = getCloudflareContext().env.ASSETS;
+        if (!assets)
+          throw new IgnorableError("No Static Assets");
+        debugCache("StaticAssetsIncrementalCache", `get ${key}`);
+        try {
+          const response = await assets.fetch(this.getAssetUrl(key, cacheType));
+          if (!response.ok) {
+            await response.body?.cancel();
+            return null;
+          }
+          return {
+            value: await response.json(),
+            lastModified: globalThis.__BUILD_TIMESTAMP_MS__
+          };
+        } catch (e) {
+          error2("Failed to get from cache", e);
+          return null;
+        }
+      }
+      async set(key, _value, cacheType) {
+        error2(`StaticAssetsIncrementalCache: Failed to set to read-only cache key=${key} type=${cacheType}`);
+      }
+      async delete() {
+        error2("StaticAssetsIncrementalCache: Failed to delete from read-only cache");
+      }
+      getAssetUrl(key, cacheType) {
+        if (cacheType === "composable") {
+          throw new Error("Composable cache is not supported in static assets incremental cache");
+        }
+        const buildId = process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+        const name = (cacheType === "fetch" ? `${CACHE_DIR}/__fetch/${buildId}/${key}` : `${CACHE_DIR}/${buildId}/${key}.cache`).replace(/\/+/g, "/");
+        return `http://assets.local/${name}`;
+      }
+    };
+    static_assets_incremental_cache_default = new StaticAssetsIncrementalCache();
+    open_next_config_default = defineCloudflareConfig({
+      enableCacheInterception: true,
+      incrementalCache: static_assets_incremental_cache_default
+    });
   }
 });
 
@@ -573,42 +703,75 @@ function isUserWorkerFirst2(runWorkerFirst, pathname) {
 }
 function defineCloudflareConfig2(config = {}) {
   let { incrementalCache, tagCache, queue, cachePurge, enableCacheInterception = false, routePreloadingBehavior = "none" } = config;
-  return { default: { override: { wrapper: "cloudflare-node", converter: "edge", proxyExternalRequest: "fetch", incrementalCache: resolveIncrementalCache2(incrementalCache), tagCache: resolveTagCache2(tagCache), queue: resolveQueue2(queue), cdnInvalidation: resolveCdnInvalidation2(cachePurge) }, routePreloadingBehavior }, edgeExternals: ["node:crypto"], cloudflare: { useWorkerdCondition: true }, dangerous: { enableCacheInterception }, middleware: { external: true, override: { wrapper: "cloudflare-edge", converter: "edge", proxyExternalRequest: "fetch", incrementalCache: resolveIncrementalCache2(incrementalCache), tagCache: resolveTagCache2(tagCache), queue: resolveQueue2(queue) }, assetResolver: /* @__PURE__ */ __name(() => asset_resolver_default2, "assetResolver") } };
+  return { default: { override: { wrapper: "cloudflare-node", converter: "edge", proxyExternalRequest: "fetch", incrementalCache: resolveIncrementalCache3(incrementalCache), tagCache: resolveTagCache3(tagCache), queue: resolveQueue3(queue), cdnInvalidation: resolveCdnInvalidation2(cachePurge) }, routePreloadingBehavior }, edgeExternals: ["node:crypto"], cloudflare: { useWorkerdCondition: true }, dangerous: { enableCacheInterception }, middleware: { external: true, override: { wrapper: "cloudflare-edge", converter: "edge", proxyExternalRequest: "fetch", incrementalCache: resolveIncrementalCache3(incrementalCache), tagCache: resolveTagCache3(tagCache), queue: resolveQueue3(queue) }, assetResolver: /* @__PURE__ */ __name(() => asset_resolver_default2, "assetResolver") } };
 }
-function resolveIncrementalCache2(value = "dummy") {
+function resolveIncrementalCache3(value = "dummy") {
   return typeof value == "string" || typeof value == "function" ? value : () => value;
 }
-function resolveTagCache2(value = "dummy") {
+function resolveTagCache3(value = "dummy") {
   return typeof value == "string" || typeof value == "function" ? value : () => value;
 }
-function resolveQueue2(value = "dummy") {
+function resolveQueue3(value = "dummy") {
   return typeof value == "string" || typeof value == "function" ? value : () => value;
 }
 function resolveCdnInvalidation2(value = "dummy") {
   return typeof value == "string" || typeof value == "function" ? value : () => value;
 }
-function isOpenNextError5(e) {
+function isOpenNextError6(e) {
   try {
     return "__openNextInternal" in e;
   } catch {
     return false;
   }
 }
-function debug5(...args) {
+function debug6(...args) {
   globalThis.openNextDebug && console.log(...args);
 }
-function warn5(...args) {
+function warn6(...args) {
   console.warn(...args);
 }
-function error5(...args) {
-  if (args.some((arg) => isDownplayedErrorLog5(arg))) return debug5(...args);
-  if (args.some((arg) => isOpenNextError5(arg))) {
-    let error22 = args.find((arg) => isOpenNextError5(arg));
-    return error22.logLevel < getOpenNextErrorLogLevel5() ? void 0 : error22.logLevel === 0 ? console.log(...args.map((arg) => isOpenNextError5(arg) ? `${arg.name}: ${arg.message}` : arg)) : error22.logLevel === 1 ? warn5(...args.map((arg) => isOpenNextError5(arg) ? `${arg.name}: ${arg.message}` : arg)) : console.error(...args);
+function error6(...args) {
+  if (args.some((arg) => isDownplayedErrorLog6(arg))) return debug6(...args);
+  if (args.some((arg) => isOpenNextError6(arg))) {
+    let error222 = args.find((arg) => isOpenNextError6(arg));
+    return error222.logLevel < getOpenNextErrorLogLevel6() ? void 0 : error222.logLevel === 0 ? console.log(...args.map((arg) => isOpenNextError6(arg) ? `${arg.name}: ${arg.message}` : arg)) : error222.logLevel === 1 ? warn6(...args.map((arg) => isOpenNextError6(arg) ? `${arg.name}: ${arg.message}` : arg)) : console.error(...args);
   }
   console.error(...args);
 }
-function getOpenNextErrorLogLevel5() {
+function getOpenNextErrorLogLevel6() {
+  switch ((process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1").toLowerCase()) {
+    case "debug":
+    case "0":
+      return 0;
+    case "error":
+    case "2":
+      return 2;
+    default:
+      return 1;
+  }
+}
+function isOpenNextError22(e) {
+  try {
+    return "__openNextInternal" in e;
+  } catch {
+    return false;
+  }
+}
+function debug22(...args) {
+  globalThis.openNextDebug && console.log(...args);
+}
+function warn22(...args) {
+  console.warn(...args);
+}
+function error22(...args) {
+  if (args.some((arg) => isDownplayedErrorLog22(arg))) return debug22(...args);
+  if (args.some((arg) => isOpenNextError22(arg))) {
+    let error222 = args.find((arg) => isOpenNextError22(arg));
+    return error222.logLevel < getOpenNextErrorLogLevel22() ? void 0 : error222.logLevel === 0 ? console.log(...args.map((arg) => isOpenNextError22(arg) ? `${arg.name}: ${arg.message}` : arg)) : error222.logLevel === 1 ? warn22(...args.map((arg) => isOpenNextError22(arg) ? `${arg.name}: ${arg.message}` : arg)) : console.error(...args);
+  }
+  console.error(...args);
+}
+function getOpenNextErrorLogLevel22() {
   switch ((process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1").toLowerCase()) {
     case "debug":
     case "0":
@@ -741,7 +904,7 @@ function detectLocale2(internalEvent, i18n) {
   let domainLocale = detectDomainLocale2({ hostname: internalEvent.headers.host });
   if (i18n.localeDetection === false) return domainLocale?.defaultLocale ?? i18n.defaultLocale;
   let cookiesLocale = getLocaleFromCookie2(internalEvent.cookies), preferredLocale = acceptLanguage2(internalEvent.headers["accept-language"], i18n?.locales);
-  return debug5({ cookiesLocale, preferredLocale, defaultLocale: i18n.defaultLocale, domainLocale }), domainLocale?.defaultLocale ?? cookiesLocale ?? preferredLocale ?? i18n.defaultLocale;
+  return debug22({ cookiesLocale, preferredLocale, defaultLocale: i18n.defaultLocale, domainLocale }), domainLocale?.defaultLocale ?? cookiesLocale ?? preferredLocale ?? i18n.defaultLocale;
 }
 function localizePath2(internalEvent) {
   let i18n = NextConfig2.i18n;
@@ -819,7 +982,7 @@ async function revalidateIfRequired(host, rawPath, headers, req) {
       let hash = /* @__PURE__ */ __name((str) => crypto22.createHash("md5").update(str).digest("hex"), "hash"), lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0, eTag = `${headers.etag ?? headers.ETag ?? ""}`;
       await globalThis.queue.send({ MessageBody: { host, url: revalidateUrl, eTag, lastModified }, MessageDeduplicationId: hash(`${rawPath}-${lastModified}-${eTag}`), MessageGroupId: generateMessageGroupId2(rawPath) });
     } catch (e) {
-      error5(`Failed to revalidate stale page ${rawPath}`, e);
+      error22(`Failed to revalidate stale page ${rawPath}`, e);
     }
   }
 }
@@ -831,7 +994,7 @@ function fixISRHeaders(headers) {
     return;
   }
   let _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;
-  if (headers[CommonHeaders2.NEXT_CACHE] === "HIT" && _lastModified > 0 && (debug5("cache-control", headers[CommonHeaders2.CACHE_CONTROL], _lastModified, Date.now()), sMaxAge && sMaxAge !== 31536e3)) {
+  if (headers[CommonHeaders2.NEXT_CACHE] === "HIT" && _lastModified > 0 && (debug22("cache-control", headers[CommonHeaders2.CACHE_CONTROL], _lastModified, Date.now()), sMaxAge && sMaxAge !== 31536e3)) {
     let age = Math.round((Date.now() - _lastModified) / 1e3), remainingTtl = Math.max(sMaxAge - age, 1);
     headers[CommonHeaders2.CACHE_CONTROL] = `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
   }
@@ -866,7 +1029,7 @@ function getStaticAPIRoutes2() {
 async function openNextHandler(internalEvent, options) {
   let initialHeaders = internalEvent.headers, requestId = globalThis.openNextConfig.middleware?.external ? internalEvent.headers[INTERNAL_EVENT_REQUEST_ID2] : Math.random().toString(36);
   return runWithOpenNextRequestContext2({ isISRRevalidation: initialHeaders["x-isr"] === "1", waitUntil: options?.waitUntil, requestId }, async () => {
-    await globalThis.__next_route_preloader("waitUntil"), initialHeaders["x-forwarded-host"] && (initialHeaders.host = initialHeaders["x-forwarded-host"]), debug5("internalEvent", internalEvent);
+    await globalThis.__next_route_preloader("waitUntil"), initialHeaders["x-forwarded-host"] && (initialHeaders.host = initialHeaders["x-forwarded-host"]), debug22("internalEvent", internalEvent);
     let internalHeaders = { initialPath: initialHeaders[INTERNAL_HEADER_INITIAL_URL2] ?? internalEvent.rawPath, resolvedRoutes: initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES2] ? JSON.parse(initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES2]) : [], rewriteStatusCode: Number.parseInt(initialHeaders[INTERNAL_HEADER_REWRITE_STATUS_CODE2]) }, routingResult = { internalEvent, isExternalRewrite: false, origin: false, isISR: false, initialURL: internalEvent.url, ...internalHeaders }, headers = "type" in routingResult ? routingResult.headers : routingResult.internalEvent.headers, overwrittenResponseHeaders = {};
     for (let [rawKey, value] of Object.entries(headers)) {
       if (!rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX2)) continue;
@@ -876,7 +1039,7 @@ async function openNextHandler(internalEvent, options) {
     if ("isExternalRewrite" in routingResult && routingResult.isExternalRewrite === true) try {
       routingResult = await globalThis.proxyExternalRequest.proxy(routingResult.internalEvent);
     } catch (e) {
-      error5("External request failed.", e), routingResult = { internalEvent: { type: "core", rawPath: "/500", method: "GET", headers: {}, url: constructNextUrl2(internalEvent.url, "/500"), query: {}, cookies: {}, remoteAddress: "" }, isExternalRewrite: false, isISR: false, origin: false, initialURL: internalEvent.url, resolvedRoutes: [{ route: "/500", type: "page" }] };
+      error22("External request failed.", e), routingResult = { internalEvent: { type: "core", rawPath: "/500", method: "GET", headers: {}, url: constructNextUrl2(internalEvent.url, "/500"), query: {}, cookies: {}, remoteAddress: "" }, isExternalRewrite: false, isISR: false, origin: false, initialURL: internalEvent.url, resolvedRoutes: [{ route: "/500", type: "page" }] };
     }
     if ("type" in routingResult) {
       if (options?.streamCreator) {
@@ -889,7 +1052,7 @@ async function openNextHandler(internalEvent, options) {
       return routingResult;
     }
     let preprocessedEvent = routingResult.internalEvent;
-    debug5("preprocessedEvent", preprocessedEvent);
+    debug22("preprocessedEvent", preprocessedEvent);
     let { search, pathname, hash } = new URL(preprocessedEvent.url), reqProps = { method: preprocessedEvent.method, url: `${pathname}${search}${hash}`, headers: { ...headers }, body: preprocessedEvent.body, remoteAddress: preprocessedEvent.remoteAddress }, mergeHeadersPriority = globalThis.openNextConfig.dangerous?.headersAndCookiesPriority ? globalThis.openNextConfig.dangerous.headersAndCookiesPriority(preprocessedEvent) : "middleware", store = globalThis.__openNextAls.getStore();
     store && (store.mergeHeadersPriority = mergeHeadersPriority);
     let req = new IncomingMessage(reqProps), res = createServerResponse(routingResult, overwrittenResponseHeaders, options?.streamCreator);
@@ -906,7 +1069,7 @@ async function processRequest(req, res, routingResult) {
   try {
     req.url = initialURL.pathname + convertToQueryString2(routingResult.internalEvent.query), await requestHandler(requestMetadata)(req, res);
   } catch (e) {
-    e.constructor.name === "NoFallbackError" ? await handleNoFallbackError(req, res, routingResult, requestMetadata) : (error5("NextJS request failed.", e), await tryRenderError("500", res, routingResult.internalEvent));
+    e.constructor.name === "NoFallbackError" ? await handleNoFallbackError(req, res, routingResult, requestMetadata) : (error22("NextJS request failed.", e), await tryRenderError("500", res, routingResult.internalEvent));
   }
 }
 async function handleNoFallbackError(req, res, routingResult, metadata, index = 1) {
@@ -921,7 +1084,7 @@ async function handleNoFallbackError(req, res, routingResult, metadata, index = 
   try {
     await requestHandler({ ...routingResult, invokeOutput: routingResult.resolvedRoutes[index].route, ...metadata })(req, res);
   } catch (e) {
-    e.constructor.name === "NoFallbackError" ? await handleNoFallbackError(req, res, routingResult, metadata, index + 1) : (error5("NextJS request failed.", e), await tryRenderError("500", res, routingResult.internalEvent));
+    e.constructor.name === "NoFallbackError" ? await handleNoFallbackError(req, res, routingResult, metadata, index + 1) : (error22("NextJS request failed.", e), await tryRenderError("500", res, routingResult.internalEvent));
   }
 }
 async function tryRenderError(type, res, internalEvent) {
@@ -929,7 +1092,7 @@ async function tryRenderError(type, res, internalEvent) {
     let _req = new IncomingMessage({ method: "GET", url: `/${type}`, headers: internalEvent.headers, body: internalEvent.body, remoteAddress: internalEvent.remoteAddress });
     await requestHandler({ invokePath: type === "404" ? "/404" : "/500", invokeStatus: type === "404" ? 404 : 500, middlewareInvoke: false })(_req, res);
   } catch (e) {
-    error5("NextJS request failed.", e), res.statusCode = 500, res.setHeader("Content-Type", "application/json"), res.end(JSON.stringify({ message: "Server failed to respond.", details: e }, null, 2));
+    error22("NextJS request failed.", e), res.statusCode = 500, res.setHeader("Content-Type", "application/json"), res.end(JSON.stringify({ message: "Server failed to respond.", details: e }, null, 2));
   }
 }
 async function resolveConverter2(converter22) {
@@ -939,36 +1102,36 @@ async function resolveWrapper2(wrapper) {
   return typeof wrapper == "function" ? wrapper() : (await Promise.resolve().then(() => (init_cloudflare_node(), cloudflare_node_exports))).default;
 }
 async function resolveTagCache22(tagCache) {
-  return typeof tagCache == "function" ? tagCache() : (await Promise.resolve().then(() => (init_dummy2(), dummy_exports2))).default;
+  return typeof tagCache == "function" ? tagCache() : (await Promise.resolve().then(() => (init_dummy5(), dummy_exports5))).default;
 }
 async function resolveQueue22(queue) {
   return typeof queue == "function" ? queue() : (await Promise.resolve().then(() => (init_dummy22(), dummy_exports22))).default;
 }
 async function resolveIncrementalCache22(incrementalCache) {
-  return typeof incrementalCache == "function" ? incrementalCache() : (await Promise.resolve().then(() => (init_dummy3(), dummy_exports3))).default;
+  return typeof incrementalCache == "function" ? incrementalCache() : (await Promise.resolve().then(() => (init_dummy32(), dummy_exports32))).default;
 }
 async function resolveAssetResolver2(assetResolver) {
-  return typeof assetResolver == "function" ? assetResolver() : (await Promise.resolve().then(() => (init_dummy4(), dummy_exports4))).default;
+  return typeof assetResolver == "function" ? assetResolver() : (await Promise.resolve().then(() => (init_dummy42(), dummy_exports42))).default;
 }
 async function resolveProxyRequest2(proxyRequest) {
   return typeof proxyRequest == "function" ? proxyRequest() : (await Promise.resolve().then(() => (init_fetch2(), fetch_exports2))).default;
 }
 async function resolveCdnInvalidation22(cdnInvalidation) {
-  return typeof cdnInvalidation == "function" ? cdnInvalidation() : (await Promise.resolve().then(() => (init_dummy5(), dummy_exports5))).default;
+  return typeof cdnInvalidation == "function" ? cdnInvalidation() : (await Promise.resolve().then(() => (init_dummy52(), dummy_exports52))).default;
 }
 async function createMainHandler() {
   let config = await Promise.resolve().then(() => (init_open_next_config2(), open_next_config_exports2)).then((m) => m.default), thisFunction = globalThis.fnName ? config.functions[globalThis.fnName] : config.default;
   globalThis.serverId = generateUniqueId(), globalThis.openNextConfig = config, await globalThis.__next_route_preloader("start"), globalThis.queue = await resolveQueue22(thisFunction.override?.queue), globalThis.incrementalCache = await resolveIncrementalCache22(thisFunction.override?.incrementalCache), globalThis.tagCache = await resolveTagCache22(thisFunction.override?.tagCache), config.middleware?.external !== true && (globalThis.assetResolver = await resolveAssetResolver2(globalThis.openNextConfig.middleware?.assetResolver)), globalThis.proxyExternalRequest = await resolveProxyRequest2(thisFunction.override?.proxyExternalRequest), globalThis.cdnInvalidationHandler = await resolveCdnInvalidation22(thisFunction.override?.cdnInvalidation);
   let converter22 = await resolveConverter2(thisFunction.override?.converter), { wrapper, name } = await resolveWrapper2(thisFunction.override?.wrapper);
-  return debug5("Using wrapper", name), wrapper(openNextHandler, converter22);
+  return debug22("Using wrapper", name), wrapper(openNextHandler, converter22);
 }
-var __create2, __defProp3, __getOwnPropDesc2, __getOwnPropNames3, __getProtoOf2, __hasOwnProp2, __require2, __esm3, __commonJS3, __export22, __copyProps2, __toESM2, __toCommonJS, empty_exports, empty_default, init_empty, require_node_environment_baseline, require_async_local_storage, require_console_async_storage_instance, require_console_async_storage_external, require_file_logger, require_interop_require_default, require_is_plain_object, require_is_error, require_console, require_console_file, require_work_unit_async_storage_instance, require_app_router_headers, require_invariant_error, require_promise_with_resolvers, require_staged_rendering, require_work_unit_async_storage_external, require_console_exit, require_picocolors, require_runtime_reacts_external, require_console_dim_external, require_unhandled_rejection_external, require_work_async_storage_instance, require_work_async_storage_external, require_react_production, require_react, require_hooks_server_context, require_static_generation_bailout, require_dynamic_rendering_utils, require_boundary_constants, require_scheduler, require_bailout_to_csr, require_boundary_constants2, require_dynamic_rendering, require_io_utils, require_random, require_date, require_web_crypto, require_node_crypto2, require_fast_set_immediate_external, require_node_environment, require_node_polyfill_crypto, require_utils, require_path_to_regexp, require_route_pattern_normalizer, require_route_match_utils, require_route_matcher, require_request_meta, require_modern_browserslist_target, require_entry_constants, require_constants, require_find_pages_dir, require_reflect, require_headers, require_constants2, require_constants3, require_is_thenable, require_api, require_tracer, require_cookie, require_api_utils, require_redirect_status_code, require_get_cookie_parser, require_base_http, require_node, require_etag, require_fresh, require_cache_control, require_send_payload, require_querystring, require_parse_relative_url, require_parse_url, require_lru_cache, require_log, require_image_config, require_canary_only_config_error, require_bytes, require_size_limit, require_config_shared, require_is_ipv6, require_format_hostname, require_is_rsc_request, require_sorted_routes, require_ensure_leading_slash, require_segment, require_app_paths, require_interception_routes, require_is_dynamic, require_utils2, require_utils3, require_html_bots, require_is_bot, require_detached_promise, require_encoded_tags, require_uint8array_helpers, require_constants4, require_hash, require_cache_busting_search_param, require_node_web_streams_helper, require_utils4, require_detect_domain_locale, require_remove_trailing_slash, require_parse_path, require_add_path_prefix, require_add_path_suffix, require_path_has_prefix, require_add_locale, require_format_next_pathname_info, require_get_hostname, require_normalize_locale_path, require_remove_path_prefix, require_get_next_pathname_info, require_next_url, require_error, require_cookies, require_cookies2, require_request, require_helpers, require_next_request, require_client_component_renderer_logger, require_pipe_readable, require_render_result, require_normalize_path_sep, require_denormalize_page_path, require_path_match, require_escape_regexp, require_parse_loader_tree, require_get_segment_param, require_app, require_interception_prefix_from_param_type, require_resolve_param_value, require_get_dynamic_param, require_route_regex, require_prepare_destination, require_decode_query_path_parameter, require_url2, require_interop_require_wildcard, require_format_url, require_server_utils, require_locale_route_normalizer, require_route_matcher2, require_locale_route_matcher, require_default_route_matcher_manager, require_is_app_page_route, require_normalizers, require_path2, require_prefixing_normalizer, require_normalize_page_path, require_underscore_normalizer, require_app_bundle_path_normalizer, require_app_filename_normalizer, require_page_types, require_remove_page_path_tail, require_is_app_route_route, require_is_metadata_route, require_get_metadata_route, require_absolute_path_to_page, require_absolute_filename_normalizer, require_app_page_normalizer, require_wrap_normalizer_fn, require_app_pathname_normalizer, require_app2, require_route_kind, require_app_page_route_matcher, require_cached_route_matcher_provider, require_manifest_route_matcher_provider, require_app_page_route_matcher_provider, require_app_route_route_matcher, require_app_route_route_matcher_provider, require_is_api_route, require_pages_api_route_matcher, require_pages_bundle_path_normalizer, require_pages_filename_normalizer, require_pages_page_normalizer, require_pages_pathname_normalizer, require_pages, require_pages_api_route_matcher_provider, require_pages_route_matcher, require_pages_route_matcher_provider, require_server_manifest_loader, require_i18n_provider, require_send_response, require_match_next_data_pathname, require_get_route_from_asset_path, require_suffix, require_rsc, require_strip_flight_headers, require_checks, require_prefix, require_next_data, require_server_action_request_meta, require_to_route, require_patch_set_header, require_ppr, require_builtin_request_context, require_fetch_event, require_response, require_relativize_url, require_internal_utils, require_globals, require_action_revalidation_kind, require_request_cookies, require_draft_mode_provider, require_request_store, require_p_queue, require_tags_manifest_external, require_default, require_handlers, require_revalidation_utils, require_after_task_async_storage_instance, require_after_task_async_storage_external, require_after_context, require_lazy_result, require_work_store, require_web_on_close, require_get_edge_preview_props, require_encode_cache_tag, require_implicit_tags, require_context, require_fetch, require_server_edge, require_adapter, require_fallback, require_segment_prefix_rsc, require_streaming_metadata, require_no_fallback_error_external, require_fix_mojibake, require_set_cache_busting_search_param, require_extract_pathname_route_param_segments_from_loader_tree, require_utils5, require_get_short_dynamic_param_type, require_fallback_params, require_postponed_request_body, require_base_server, require_deep_freeze, require_load_manifest_external, throw_exports, throw_default, init_throw, require_action_async_storage_instance, require_action_async_storage_external, require_interop_default, require_server_reference_info, require_client_and_server_references, require_instrumentation_node_extensions, require_instrumentation_globals_external, require_semver_noop, require_jsonwebtoken, require_cache_signal, require_track_module_loading_instance, require_track_module_loading_external, require_require_hook, require_setup_node_env_external, require_types, require_memory_cache_external, require_shared_cache_controls_external, require_composable_cache, require_cache, require_app_page_turbo_runtime_prod, require_dynamic_access_async_storage_instance, require_dynamic_access_async_storage_external, require_root_of_the_server_0_0c8y, require_root_of_the_server_09g1a9y, require_root_of_the_server_0kl59ms, require_root_of_the_server_1k7i5r, require_root_of_the_server_1qd0jbu, require_next_internal_server_app_not_found_page_actions_0pt47yr, require_node_modules_0h91jdk, require_node_modules_next_1iemwhs, require_node_modules_next_dist_0gqiype, require_node_modules_next_dist_0uboya6, require_node_modules_next_dist_client_components_0wpq8j3, require_node_modules_next_dist_client_components_builtin_forbidden_0symwr9, require_node_modules_next_dist_client_components_builtin_unauthorized_0l_sp0x, require_node_modules_next_dist_esm_build_templates_app_page_18uzvmz, require_src_lib_gsap_ts_1_gaps3, require_root_of_the_server_021_9y7, require_t0wyzn, require_next_internal_server_app_docs_components_slug_page_actions_11glm31, require_node_modules_next_dist_1enzot, require_node_modules_next_dist_1ypm6fc, require_node_modules_next_dist_client_components_builtin_global_error_0_o_goa, require_node_modules_next_dist_esm_build_templates_app_page_0mdkioj, require_src_components_1xhgq9l, require_src_components_1xqkxja, require_root_of_the_server_0_zvk4v, require_next_internal_server_app_docs_components_page_actions_15l1dpx, require_node_modules_next_dist_esm_build_templates_app_page_02ijuid, require_root_of_the_server_0ub0a32, require_next_internal_server_app_docs_docs_page_actions_16_3uxx, require_node_modules_next_dist_esm_build_templates_app_page_07ne_f3, require_src_components_docs_CopyLine_tsx_0olxzx, require_root_of_the_server_1jdxkrx, require_root_of_the_server_1s8rlz2, require_next_internal_server_app_global_error_page_actions_0zi5s8, require_node_modules_next_dist_esm_build_templates_app_page_06zp_1r, require_externals_next_dist_0iuj5m, require_app_route_turbo_runtime_prod, require_root_of_the_server_1doahrz, require_next_internal_server_app_favicon_ico_route_actions_0g2jjls, require_root_of_the_server_14sulkj, require_next_internal_server_app_page_actions_0hhsz1j, require_node_modules_next_dist_esm_build_templates_app_page_0dq5iwc, require_src_components_1qz_9jm, require_src_components_sections_1ta2tx8, require_root_of_the_server_0qmyssd, require_next_internal_server_app_templates_page_actions_12unq6l, require_node_modules_next_dist_esm_build_templates_app_page_1s8qa_c, require_src_components_0_h66el, require_turbopack_runtime, require_turbopack_runtime2, require_page, require_page2, require_page3, require_route, require_page4, require_page5, require_page6, require_page7, require_require, require_wait, require_reflect_utils, require_manifests_singleton, require_load_components, require_middleware_route_matcher, env_exports, init_env, require_body_streams, require_batcher, require_utils6, require_response_cache, require_multi_file_writer, require_file_system_cache, require_incremental_cache, require_setup_http_agent_env, require_pages_api_route_match, require_node_fs_methods, require_mock_request, require_module_compiled, require_module_render, require_critters, require_server_browser, require_react_dom_production, require_react_dom, require_react_dom_server_edge_production, require_server_edge2, require_react_jsx_runtime_production, require_jsx_runtime, require_client_only, require_index, require_styled_jsx, require_pages_turbo_runtime_prod, require_module_compiled2, require_module_render2, require_format_dynamic_import_path, require_is_interception_route_rewrite, require_awaiter, require_async_callback_set, require_static_env, require_node_module_loader, require_router_server_context, require_global_behaviors, require_is_postpone, require_process_error_handlers, require_format_server_error, require_ClientRequest, require_httpget, require_server, require_next_server, open_next_config_exports2, cloudflareContextSymbol2, initOpenNextCloudflareForDevErrorMsg2, resolver3, asset_resolver_default2, open_next_config_default2, init_open_next_config2, import_next_server, __create22, __defProp22, __getOwnPropDesc22, __getOwnPropNames22, __getProtoOf22, __hasOwnProp22, __esm22, __commonJS22, __export3, __copyProps22, __reExport, __toESM22, __toCommonJS2, IgnorableError2, FatalError2, init_error2, DOWNPLAYED_ERROR_LOGS5, isDownplayedErrorLog5, init_logger2, parseHeaders, convertHeader, init_util2, node_module_exports, init_node_module, maybeSomethingBuffer2, init_stream2, init_utils2, require_dist2, edge_exports2, import_cookie2, NULL_BODY_STATUSES2, converter2, edge_default2, init_edge2, cloudflare_node_exports, NULL_BODY_STATUSES22, handler3, cloudflare_node_default, init_cloudflare_node, dummy_exports2, dummyTagCache, dummy_default2, init_dummy2, dummy_exports22, dummyQueue, dummy_default22, init_dummy22, dummy_exports3, dummyIncrementalCache, dummy_default3, init_dummy3, dummy_exports4, resolver22, dummy_default4, init_dummy4, fetch_exports2, fetchProxy2, fetch_default2, init_fetch2, dummy_exports5, dummy_default5, init_dummy5, SET_COOKIE_HEADER, CANNOT_BE_USED, OpenNextNodeResponse, IncomingMessage, RequestCache2, DetachedPromise2, DetachedPromiseRunner2, NEXT_DIR2, OPEN_NEXT_DIR2, NextConfig2, BuildId2, HtmlPages, RoutesManifest2, PrerenderManifest2, MiddlewareManifest2, AppPathRoutesManifest2, FunctionsConfigManifest2, PagesManifest2, mod, resolveFilename, commonBinaryMimeTypes2, CommonHeaders2, CACHE_ONE_YEAR2, CACHE_ONE_MONTH2, optionalLocalePrefixRegex2, optionalBasepathPrefixRegex2, optionalPrefix2, staticRouteMatcher2, dynamicRouteMatcher2, middlewareManifest2, functionsConfigManifest2, middleMatch2, MIDDLEWARE_HEADER_PREFIX2, MIDDLEWARE_HEADER_PREFIX_LEN2, INTERNAL_HEADER_PREFIX2, INTERNAL_HEADER_INITIAL_URL2, INTERNAL_HEADER_LOCALE2, INTERNAL_HEADER_RESOLVED_ROUTES2, INTERNAL_HEADER_REWRITE_STATUS_CODE2, INTERNAL_EVENT_REQUEST_ID2, mod2, resolveFilename2, cacheHandlerPath, composableCacheHandlerPath, nextServer, routesLoaded, requestHandler, handler22;
+var __create2, __defProp4, __getOwnPropDesc2, __getOwnPropNames3, __getProtoOf2, __hasOwnProp2, __require2, __esm3, __commonJS3, __export22, __copyProps2, __toESM2, __toCommonJS, empty_exports, empty_default, init_empty, require_node_environment_baseline, require_async_local_storage, require_console_async_storage_instance, require_console_async_storage_external, require_file_logger, require_interop_require_default, require_is_plain_object, require_is_error, require_console, require_console_file, require_work_unit_async_storage_instance, require_app_router_headers, require_invariant_error, require_promise_with_resolvers, require_staged_rendering, require_work_unit_async_storage_external, require_console_exit, require_picocolors, require_runtime_reacts_external, require_console_dim_external, require_unhandled_rejection_external, require_work_async_storage_instance, require_work_async_storage_external, require_react_production, require_react, require_hooks_server_context, require_static_generation_bailout, require_dynamic_rendering_utils, require_boundary_constants, require_scheduler, require_bailout_to_csr, require_boundary_constants2, require_dynamic_rendering, require_io_utils, require_random, require_date, require_web_crypto, require_node_crypto2, require_fast_set_immediate_external, require_node_environment, require_node_polyfill_crypto, require_utils, require_path_to_regexp, require_route_pattern_normalizer, require_route_match_utils, require_route_matcher, require_request_meta, require_modern_browserslist_target, require_entry_constants, require_constants, require_find_pages_dir, require_reflect, require_headers, require_constants2, require_constants3, require_is_thenable, require_api, require_tracer, require_cookie, require_api_utils, require_redirect_status_code, require_get_cookie_parser, require_base_http, require_node, require_etag, require_fresh, require_cache_control, require_send_payload, require_querystring, require_parse_relative_url, require_parse_url, require_lru_cache, require_log, require_image_config, require_canary_only_config_error, require_bytes, require_size_limit, require_config_shared, require_is_ipv6, require_format_hostname, require_is_rsc_request, require_sorted_routes, require_ensure_leading_slash, require_segment, require_app_paths, require_interception_routes, require_is_dynamic, require_utils2, require_utils3, require_html_bots, require_is_bot, require_detached_promise, require_encoded_tags, require_uint8array_helpers, require_constants4, require_hash, require_cache_busting_search_param, require_node_web_streams_helper, require_utils4, require_detect_domain_locale, require_remove_trailing_slash, require_parse_path, require_add_path_prefix, require_add_path_suffix, require_path_has_prefix, require_add_locale, require_format_next_pathname_info, require_get_hostname, require_normalize_locale_path, require_remove_path_prefix, require_get_next_pathname_info, require_next_url, require_error, require_cookies, require_cookies2, require_request, require_helpers, require_next_request, require_client_component_renderer_logger, require_pipe_readable, require_render_result, require_normalize_path_sep, require_denormalize_page_path, require_path_match, require_escape_regexp, require_parse_loader_tree, require_get_segment_param, require_app, require_interception_prefix_from_param_type, require_resolve_param_value, require_get_dynamic_param, require_route_regex, require_prepare_destination, require_decode_query_path_parameter, require_url2, require_interop_require_wildcard, require_format_url, require_server_utils, require_locale_route_normalizer, require_route_matcher2, require_locale_route_matcher, require_default_route_matcher_manager, require_is_app_page_route, require_normalizers, require_path2, require_prefixing_normalizer, require_normalize_page_path, require_underscore_normalizer, require_app_bundle_path_normalizer, require_app_filename_normalizer, require_page_types, require_remove_page_path_tail, require_is_app_route_route, require_is_metadata_route, require_get_metadata_route, require_absolute_path_to_page, require_absolute_filename_normalizer, require_app_page_normalizer, require_wrap_normalizer_fn, require_app_pathname_normalizer, require_app2, require_route_kind, require_app_page_route_matcher, require_cached_route_matcher_provider, require_manifest_route_matcher_provider, require_app_page_route_matcher_provider, require_app_route_route_matcher, require_app_route_route_matcher_provider, require_is_api_route, require_pages_api_route_matcher, require_pages_bundle_path_normalizer, require_pages_filename_normalizer, require_pages_page_normalizer, require_pages_pathname_normalizer, require_pages, require_pages_api_route_matcher_provider, require_pages_route_matcher, require_pages_route_matcher_provider, require_server_manifest_loader, require_i18n_provider, require_send_response, require_match_next_data_pathname, require_get_route_from_asset_path, require_suffix, require_rsc, require_strip_flight_headers, require_checks, require_prefix, require_next_data, require_server_action_request_meta, require_to_route, require_patch_set_header, require_ppr, require_builtin_request_context, require_fetch_event, require_response, require_relativize_url, require_internal_utils, require_globals, require_action_revalidation_kind, require_request_cookies, require_draft_mode_provider, require_request_store, require_p_queue, require_tags_manifest_external, require_default, require_handlers, require_revalidation_utils, require_after_task_async_storage_instance, require_after_task_async_storage_external, require_after_context, require_lazy_result, require_work_store, require_web_on_close, require_get_edge_preview_props, require_encode_cache_tag, require_implicit_tags, require_context, require_fetch, require_server_edge, require_adapter, require_fallback, require_segment_prefix_rsc, require_streaming_metadata, require_no_fallback_error_external, require_fix_mojibake, require_set_cache_busting_search_param, require_extract_pathname_route_param_segments_from_loader_tree, require_utils5, require_get_short_dynamic_param_type, require_fallback_params, require_postponed_request_body, require_base_server, require_deep_freeze, require_load_manifest_external, throw_exports, throw_default, init_throw, require_action_async_storage_instance, require_action_async_storage_external, require_interop_default, require_server_reference_info, require_client_and_server_references, require_instrumentation_node_extensions, require_instrumentation_globals_external, require_semver_noop, require_jsonwebtoken, require_cache_signal, require_track_module_loading_instance, require_track_module_loading_external, require_require_hook, require_setup_node_env_external, require_types, require_memory_cache_external, require_shared_cache_controls_external, require_composable_cache, require_cache, require_app_page_turbo_runtime_prod, require_dynamic_access_async_storage_instance, require_dynamic_access_async_storage_external, require_root_of_the_server_0_0c8y, require_root_of_the_server_09g1a9y, require_root_of_the_server_0kl59ms, require_root_of_the_server_1k7i5r, require_root_of_the_server_1qd0jbu, require_next_internal_server_app_not_found_page_actions_0pt47yr, require_node_modules_0h91jdk, require_node_modules_next_1iemwhs, require_node_modules_next_dist_0gqiype, require_node_modules_next_dist_0uboya6, require_node_modules_next_dist_client_components_0wpq8j3, require_node_modules_next_dist_client_components_builtin_forbidden_0symwr9, require_node_modules_next_dist_client_components_builtin_unauthorized_0l_sp0x, require_node_modules_next_dist_esm_build_templates_app_page_18uzvmz, require_src_lib_gsap_ts_1_gaps3, require_root_of_the_server_059qs8j, require_t0wyzn, require_e5ewtu, require_next_internal_server_app_docs_components_slug_page_actions_11glm31, require_node_modules_next_dist_1enzot, require_node_modules_next_dist_1ypm6fc, require_node_modules_next_dist_client_components_builtin_global_error_0_o_goa, require_node_modules_next_dist_esm_build_templates_app_page_0mdkioj, require_src_1lsw0x, require_src_components_1xhgq9l, require_src_components_ui_1ga4d_c, require_root_of_the_server_0_zvk4v, require_next_internal_server_app_docs_components_page_actions_15l1dpx, require_node_modules_next_dist_esm_build_templates_app_page_02ijuid, require_root_of_the_server_0ub0a32, require_next_internal_server_app_docs_docs_page_actions_16_3uxx, require_node_modules_next_dist_esm_build_templates_app_page_07ne_f3, require_src_components_docs_CopyLine_tsx_0olxzx, require_root_of_the_server_1jdxkrx, require_root_of_the_server_1s8rlz2, require_next_internal_server_app_global_error_page_actions_0zi5s8, require_node_modules_next_dist_esm_build_templates_app_page_06zp_1r, require_externals_next_dist_0iuj5m, require_app_route_turbo_runtime_prod, require_root_of_the_server_1doahrz, require_next_internal_server_app_favicon_ico_route_actions_0g2jjls, require_root_of_the_server_14sulkj, require_next_internal_server_app_page_actions_0hhsz1j, require_node_modules_next_dist_esm_build_templates_app_page_0dq5iwc, require_src_components_0khwjt7, require_src_components_sections_1ta2tx8, require_root_of_the_server_0qmyssd, require_next_internal_server_app_templates_page_actions_12unq6l, require_node_modules_next_dist_esm_build_templates_app_page_1s8qa_c, require_src_components_0_h66el, require_turbopack_runtime, require_turbopack_runtime2, require_page, require_page2, require_page3, require_route, require_page4, require_page5, require_page6, require_page7, require_require, require_wait, require_reflect_utils, require_manifests_singleton, require_load_components, require_middleware_route_matcher, env_exports, init_env, require_body_streams, require_batcher, require_utils6, require_response_cache, require_multi_file_writer, require_file_system_cache, require_incremental_cache, require_setup_http_agent_env, require_pages_api_route_match, require_node_fs_methods, require_mock_request, require_module_compiled, require_module_render, require_critters, require_server_browser, require_react_dom_production, require_react_dom, require_react_dom_server_edge_production, require_server_edge2, require_react_jsx_runtime_production, require_jsx_runtime, require_client_only, require_index, require_styled_jsx, require_pages_turbo_runtime_prod, require_module_compiled2, require_module_render2, require_format_dynamic_import_path, require_is_interception_route_rewrite, require_awaiter, require_async_callback_set, require_static_env, require_node_module_loader, require_router_server_context, require_global_behaviors, require_is_postpone, require_process_error_handlers, require_format_server_error, require_ClientRequest, require_httpget, require_server, require_next_server, open_next_config_exports2, __defProp22, __defNormalProp2, __publicField2, cloudflareContextSymbol2, initOpenNextCloudflareForDevErrorMsg2, resolver3, asset_resolver_default2, IgnorableError4, DOWNPLAYED_ERROR_LOGS6, isDownplayedErrorLog6, debugCache4, FALLBACK_BUILD_ID2, CACHE_DIR2, NAME2, StaticAssetsIncrementalCache2, static_assets_incremental_cache_default2, open_next_config_default2, init_open_next_config2, import_next_server, __create22, __defProp32, __getOwnPropDesc22, __getOwnPropNames22, __getProtoOf22, __hasOwnProp22, __esm22, __commonJS22, __export3, __copyProps22, __reExport, __toESM22, __toCommonJS2, IgnorableError22, FatalError3, init_error2, DOWNPLAYED_ERROR_LOGS22, isDownplayedErrorLog22, init_logger2, parseHeaders, convertHeader, init_util2, node_module_exports, init_node_module, maybeSomethingBuffer2, init_stream2, init_utils2, require_dist2, edge_exports2, import_cookie2, NULL_BODY_STATUSES2, converter2, edge_default2, init_edge2, cloudflare_node_exports, NULL_BODY_STATUSES22, handler3, cloudflare_node_default, init_cloudflare_node, dummy_exports5, dummyTagCache2, dummy_default5, init_dummy5, dummy_exports22, dummyQueue2, dummy_default22, init_dummy22, dummy_exports32, dummyIncrementalCache2, dummy_default32, init_dummy32, dummy_exports42, resolver22, dummy_default42, init_dummy42, fetch_exports2, fetchProxy2, fetch_default2, init_fetch2, dummy_exports52, dummy_default52, init_dummy52, SET_COOKIE_HEADER, CANNOT_BE_USED, OpenNextNodeResponse, IncomingMessage, RequestCache2, DetachedPromise2, DetachedPromiseRunner2, NEXT_DIR2, OPEN_NEXT_DIR2, NextConfig2, BuildId2, HtmlPages, RoutesManifest2, PrerenderManifest2, MiddlewareManifest2, AppPathRoutesManifest2, FunctionsConfigManifest2, PagesManifest2, mod, resolveFilename, commonBinaryMimeTypes2, CommonHeaders2, CACHE_ONE_YEAR2, CACHE_ONE_MONTH2, optionalLocalePrefixRegex2, optionalBasepathPrefixRegex2, optionalPrefix2, staticRouteMatcher2, dynamicRouteMatcher2, middlewareManifest2, functionsConfigManifest2, middleMatch2, MIDDLEWARE_HEADER_PREFIX2, MIDDLEWARE_HEADER_PREFIX_LEN2, INTERNAL_HEADER_PREFIX2, INTERNAL_HEADER_INITIAL_URL2, INTERNAL_HEADER_LOCALE2, INTERNAL_HEADER_RESOLVED_ROUTES2, INTERNAL_HEADER_REWRITE_STATUS_CODE2, INTERNAL_EVENT_REQUEST_ID2, mod2, resolveFilename2, cacheHandlerPath, composableCacheHandlerPath, nextServer, routesLoaded, requestHandler, handler22;
 var init_handler = __esm({
   async ".open-next/server-functions/default/handler.mjs"() {
     "use strict";
     init_modules_watch_stub();
     __create2 = Object.create;
-    __defProp3 = Object.defineProperty;
+    __defProp4 = Object.defineProperty;
     __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
     __getOwnPropNames3 = Object.getOwnPropertyNames;
     __getProtoOf2 = Object.getPrototypeOf;
@@ -984,14 +1147,14 @@ var init_handler = __esm({
       return mod3 || (0, cb[__getOwnPropNames3(cb)[0]])((mod3 = { exports: {} }).exports, mod3), mod3.exports;
     }, "__commonJS");
     __export22 = /* @__PURE__ */ __name((target, all) => {
-      for (var name in all) __defProp3(target, name, { get: all[name], enumerable: true });
+      for (var name in all) __defProp4(target, name, { get: all[name], enumerable: true });
     }, "__export2");
     __copyProps2 = /* @__PURE__ */ __name((to, from, except, desc) => {
-      if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames3(from)) !__hasOwnProp2.call(to, key) && key !== except && __defProp3(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc2(from, key)) || desc.enumerable });
+      if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames3(from)) !__hasOwnProp2.call(to, key) && key !== except && __defProp4(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc2(from, key)) || desc.enumerable });
       return to;
     }, "__copyProps");
-    __toESM2 = /* @__PURE__ */ __name((mod3, isNodeMode, target) => (target = mod3 != null ? __create2(__getProtoOf2(mod3)) : {}, __copyProps2(isNodeMode || !mod3 || !mod3.__esModule ? __defProp3(target, "default", { value: mod3, enumerable: true }) : target, mod3)), "__toESM");
-    __toCommonJS = /* @__PURE__ */ __name((mod3) => __copyProps2(__defProp3({}, "__esModule", { value: true }), mod3), "__toCommonJS");
+    __toESM2 = /* @__PURE__ */ __name((mod3, isNodeMode, target) => (target = mod3 != null ? __create2(__getProtoOf2(mod3)) : {}, __copyProps2(isNodeMode || !mod3 || !mod3.__esModule ? __defProp4(target, "default", { value: mod3, enumerable: true }) : target, mod3)), "__toESM");
+    __toCommonJS = /* @__PURE__ */ __name((mod3) => __copyProps2(__defProp4({}, "__esModule", { value: true }), mod3), "__toCommonJS");
     empty_exports = {};
     __export22(empty_exports, { default: /* @__PURE__ */ __name(() => empty_default, "default") });
     init_empty = __esm3({ ".open-next/cloudflare-templates/shims/empty.js"() {
@@ -1102,8 +1265,8 @@ var init_handler = __esm({
         initialize(distDir, mcpServerEnabled) {
           if (this.logFilePath = _path.default.join(distDir, "logs", "next-development.log"), this.mcpServerEnabled = mcpServerEnabled, !this.isInitialized && this.mcpServerEnabled) try {
             _fs.default.mkdirSync(_path.default.dirname(this.logFilePath), { recursive: true }), _fs.default.writeFileSync(this.logFilePath, ""), this.isInitialized = true;
-          } catch (error22) {
-            console.error(error22);
+          } catch (error32) {
+            console.error(error32);
           }
         }
         formatTimestamp() {
@@ -1134,8 +1297,8 @@ var init_handler = __esm({
               _fs.default.existsSync(logDir) || _fs.default.mkdirSync(logDir, { recursive: true });
               let logsToWrite = this.logQueue.join("");
               _fs.default.appendFileSync(this.logFilePath, logsToWrite), this.logQueue.length = 0;
-            } catch (error22) {
-              console.error("Failed to flush logs to file:", error22);
+            } catch (error32) {
+              console.error("Failed to flush logs to file:", error32);
             } finally {
               this.flushTimer = null;
             }
@@ -2134,16 +2297,16 @@ var init_handler = __esm({
         default:
           typeof MODE == "string" && console.error(`NEXT_UNHANDLED_REJECTION_FILTER has an unrecognized value: ${JSON.stringify(MODE)}. Use "enabled", "disabled", "silent", or "debug", or omit the environment variable altogether`);
       }
-      var debug22, debugWithTrace, warn22, warnWithTrace;
+      var debug32, debugWithTrace, warn32, warnWithTrace;
       switch (UHR_FILTER_LOG_LEVEL) {
         case "debug":
-          debug22 = /* @__PURE__ */ __name((message) => console.log("[Next.js Unhandled Rejection Filter]: " + message), "debug2"), debugWithTrace = /* @__PURE__ */ __name((message) => {
+          debug32 = /* @__PURE__ */ __name((message) => console.log("[Next.js Unhandled Rejection Filter]: " + message), "debug3"), debugWithTrace = /* @__PURE__ */ __name((message) => {
             console.log(new DebugWithStack(message));
           }, "debugWithTrace");
         case "warn":
-          warn22 = /* @__PURE__ */ __name((message) => {
+          warn32 = /* @__PURE__ */ __name((message) => {
             console.warn("[Next.js Unhandled Rejection Filter]: " + message);
-          }, "warn2"), warnWithTrace = /* @__PURE__ */ __name((message) => {
+          }, "warn3"), warnWithTrace = /* @__PURE__ */ __name((message) => {
             console.warn(new WarnWithStack(message));
           }, "warnWithTrace");
           break;
@@ -2164,8 +2327,8 @@ var init_handler = __esm({
         constructor(message) {
           super(message), this.name = "[Next.js Unhandled Rejection Filter]";
         }
-      }, didWarnUninstalled = false, warnUninstalledOnce = warn22 ? function(...args) {
-        didWarnUninstalled || (didWarnUninstalled = true, warn22(...args));
+      }, didWarnUninstalled = false, warnUninstalledOnce = warn32 ? function(...args) {
+        didWarnUninstalled || (didWarnUninstalled = true, warn32(...args));
       } : void 0, FILTER_INSTALLED_KEY = /* @__PURE__ */ Symbol.for("next.unhandledRejectionFilter"), filterInstalled = false, underlyingListeners = [], listenerMetadata = [], originalProcessAddListener, originalProcessRemoveListener, originalProcessOn, originalProcessOff, originalProcessPrependListener, originalProcessOnce, originalProcessPrependOnceListener, originalProcessRemoveAllListeners, originalProcessListeners, bypassPatch = false;
       function patchWithoutReentrancy(original, patchedImpl) {
         let patched = { [original.name]: function(...args) {
@@ -2183,7 +2346,7 @@ var init_handler = __esm({
       __name(patchWithoutReentrancy, "patchWithoutReentrancy");
       var MACGUFFIN_EVENT = "Next.UnhandledRejectionFilter.MacguffinEvent";
       function installUnhandledRejectionFilter() {
-        globalThis[FILTER_INSTALLED_KEY] || filterInstalled || (debug22?.("Installing Filter"), underlyingListeners = Array.from(process.listeners("unhandledRejection")), listenerMetadata = underlyingListeners.map((l) => ({ listener: l, once: false })), process.removeAllListeners("unhandledRejection"), process.addListener("unhandledRejection", filteringUnhandledRejectionHandler), originalProcessAddListener = process.addListener, originalProcessRemoveListener = process.removeListener, originalProcessOn = process.on, originalProcessOff = process.off, originalProcessPrependListener = process.prependListener, originalProcessOnce = process.once, originalProcessPrependOnceListener = process.prependOnceListener, originalProcessRemoveAllListeners = process.removeAllListeners, originalProcessListeners = process.listeners, process.addListener = patchWithoutReentrancy(originalProcessAddListener, function(event, listener) {
+        globalThis[FILTER_INSTALLED_KEY] || filterInstalled || (debug32?.("Installing Filter"), underlyingListeners = Array.from(process.listeners("unhandledRejection")), listenerMetadata = underlyingListeners.map((l) => ({ listener: l, once: false })), process.removeAllListeners("unhandledRejection"), process.addListener("unhandledRejection", filteringUnhandledRejectionHandler), originalProcessAddListener = process.addListener, originalProcessRemoveListener = process.removeListener, originalProcessOn = process.on, originalProcessOff = process.off, originalProcessPrependListener = process.prependListener, originalProcessOnce = process.once, originalProcessPrependOnceListener = process.prependOnceListener, originalProcessRemoveAllListeners = process.removeAllListeners, originalProcessListeners = process.listeners, process.addListener = patchWithoutReentrancy(originalProcessAddListener, function(event, listener) {
           if (event === "unhandledRejection") {
             debugWithTrace?.(`Appending 'unhandledRejection' listener with name \`${listener.name}\`.`);
             try {
@@ -2199,7 +2362,7 @@ var init_handler = __esm({
             if (listener === filteringUnhandledRejectionHandler) return warnUninstalledOnce?.("Uninstalling filter because `process.removeListener('unhandledRejection', listener)` was called with the filter listener. Uninstalling this filter is not recommended and will cause you to observe 'unhandledRejection' events related to intentionally aborted prerenders.\n\nYou can silence warnings related to this behavior by running Next.js with `NEXT_UNHANDLED_REJECTION_FILTER=silent` environment variable.\n\nYou can debug event listener operations by running Next.js with `NEXT_UNHANDLED_REJECTION_FILTER=debug` environment variable."), uninstallUnhandledRejectionFilter(), process;
             debugWithTrace?.(`Removing 'unhandledRejection' listener with name \`${listener.name}\`.`), originalProcessRemoveListener.call(process, MACGUFFIN_EVENT, listener);
             let index = underlyingListeners.lastIndexOf(listener);
-            return index > -1 ? (debug22?.(`listener found index ${index} and removed.`), underlyingListeners.splice(index, 1), listenerMetadata.splice(index, 1)) : debug22?.("listener not found."), process;
+            return index > -1 ? (debug32?.(`listener found index ${index} and removed.`), underlyingListeners.splice(index, 1), listenerMetadata.splice(index, 1)) : debug32?.("listener not found."), process;
           }
           return originalProcessRemoveListener.call(process, event, listener);
         }), originalProcessOn === originalProcessAddListener ? process.on = process.addListener : process.on = patchWithoutReentrancy(originalProcessOn, function(event, listener) {
@@ -2218,7 +2381,7 @@ var init_handler = __esm({
             if (listener === filteringUnhandledRejectionHandler) return warnUninstalledOnce?.("Uninstalling filter because `process.off('unhandledRejection', listener)` was called with the filter listener. Uninstalling this filter is not recommended and will cause you to observe 'unhandledRejection' events related to intentionally aborted prerenders.\n\nYou can silence warnings related to this behavior by running Next.js with `NEXT_UNHANDLED_REJECTION_FILTER=silent` environment variable.\n\nYou can debug event listener operations by running Next.js with `NEXT_UNHANDLED_REJECTION_FILTER=debug` environment variable."), uninstallUnhandledRejectionFilter(), process;
             debugWithTrace?.(`Removing 'unhandledRejection' listener with name \`${listener.name}\`.`), originalProcessOff.call(process, MACGUFFIN_EVENT, listener);
             let index = underlyingListeners.lastIndexOf(listener);
-            return index > -1 ? (debug22?.(`listener found index ${index} and removed.`), underlyingListeners.splice(index, 1), listenerMetadata.splice(index, 1)) : debug22?.("listener not found."), process;
+            return index > -1 ? (debug32?.(`listener found index ${index} and removed.`), underlyingListeners.splice(index, 1), listenerMetadata.splice(index, 1)) : debug32?.("listener not found."), process;
           }
           return originalProcessOff.call(process, event, listener);
         }), process.prependListener = patchWithoutReentrancy(originalProcessPrependListener, function(event, listener) {
@@ -2266,7 +2429,7 @@ var init_handler = __esm({
           warnWithTrace?.("Unexpected subsequent filter uninstallation. This is a bug in Next.js");
           return;
         }
-        debug22?.("Uninstalling Filter"), process.on = originalProcessOn, process.addListener = originalProcessAddListener, process.once = originalProcessOnce, process.prependListener = originalProcessPrependListener, process.prependOnceListener = originalProcessPrependOnceListener, process.removeListener = originalProcessRemoveListener, process.off = originalProcessOff, process.removeAllListeners = originalProcessRemoveAllListeners, process.listeners = originalProcessListeners, process.removeListener("unhandledRejection", filteringUnhandledRejectionHandler);
+        debug32?.("Uninstalling Filter"), process.on = originalProcessOn, process.addListener = originalProcessAddListener, process.once = originalProcessOnce, process.prependListener = originalProcessPrependListener, process.prependOnceListener = originalProcessPrependOnceListener, process.removeListener = originalProcessRemoveListener, process.off = originalProcessOff, process.removeAllListeners = originalProcessRemoveAllListeners, process.listeners = originalProcessListeners, process.removeListener("unhandledRejection", filteringUnhandledRejectionHandler);
         for (let meta of listenerMetadata) meta.once ? process.once("unhandledRejection", meta.listener) : process.addListener("unhandledRejection", meta.listener);
         filterInstalled = false, underlyingListeners.length = 0, listenerMetadata.length = 0;
       }
@@ -2305,9 +2468,9 @@ var init_handler = __esm({
               let listener = meta.listener;
               listener(reason, promise);
             }
-          } catch (error22) {
+          } catch (error32) {
             setImmediate(() => {
-              throw error22;
+              throw error32;
             });
           } finally {
             handlingRejection = false;
@@ -2409,8 +2572,8 @@ var init_handler = __esm({
           default:
             switch (typeof thenable.status == "string" ? thenable.then(noop, noop) : (thenable.status = "pending", thenable.then(function(fulfilledValue) {
               thenable.status === "pending" && (thenable.status = "fulfilled", thenable.value = fulfilledValue);
-            }, function(error22) {
-              thenable.status === "pending" && (thenable.status = "rejected", thenable.reason = error22);
+            }, function(error32) {
+              thenable.status === "pending" && (thenable.status = "rejected", thenable.reason = error32);
             })), thenable.status) {
               case "fulfilled":
                 return thenable.value;
@@ -2469,23 +2632,23 @@ var init_handler = __esm({
           var ctor = payload._result;
           ctor = ctor(), ctor.then(function(moduleObject) {
             (payload._status === 0 || payload._status === -1) && (payload._status = 1, payload._result = moduleObject);
-          }, function(error22) {
-            (payload._status === 0 || payload._status === -1) && (payload._status = 2, payload._result = error22);
+          }, function(error32) {
+            (payload._status === 0 || payload._status === -1) && (payload._status = 2, payload._result = error32);
           }), payload._status === -1 && (payload._status = 0, payload._result = ctor);
         }
         if (payload._status === 1) return payload._result.default;
         throw payload._result;
       }
       __name(lazyInitializer, "lazyInitializer");
-      var reportGlobalError = typeof reportError == "function" ? reportError : function(error22) {
+      var reportGlobalError = typeof reportError == "function" ? reportError : function(error32) {
         if (typeof window == "object" && typeof window.ErrorEvent == "function") {
-          var event = new window.ErrorEvent("error", { bubbles: true, cancelable: true, message: typeof error22 == "object" && error22 !== null && typeof error22.message == "string" ? String(error22.message) : String(error22), error: error22 });
+          var event = new window.ErrorEvent("error", { bubbles: true, cancelable: true, message: typeof error32 == "object" && error32 !== null && typeof error32.message == "string" ? String(error32.message) : String(error32), error: error32 });
           if (!window.dispatchEvent(event)) return;
         } else if (typeof process == "object" && typeof process.emit == "function") {
-          process.emit("uncaughtException", error22);
+          process.emit("uncaughtException", error32);
           return;
         }
-        console.error(error22);
+        console.error(error32);
       }, Children = { map: mapChildren, forEach: /* @__PURE__ */ __name(function(children, forEachFunc, forEachContext) {
         mapChildren(children, function() {
           forEachFunc.apply(this, arguments);
@@ -2569,8 +2732,8 @@ var init_handler = __esm({
         try {
           var returnValue = scope(), onStartTransitionFinish = ReactSharedInternals.S;
           onStartTransitionFinish !== null && onStartTransitionFinish(currentTransition, returnValue), typeof returnValue == "object" && returnValue !== null && typeof returnValue.then == "function" && returnValue.then(noop, reportGlobalError);
-        } catch (error22) {
-          reportGlobalError(error22);
+        } catch (error32) {
+          reportGlobalError(error32);
         } finally {
           prevTransition !== null && currentTransition.types !== null && (prevTransition.types = currentTransition.types), ReactSharedInternals.T = prevTransition;
         }
@@ -2686,8 +2849,8 @@ var init_handler = __esm({
           super(...args), this.code = NEXT_STATIC_GEN_BAILOUT;
         }
       };
-      function isStaticGenBailoutError(error22) {
-        return typeof error22 != "object" || error22 === null || !("code" in error22) ? false : error22.code === NEXT_STATIC_GEN_BAILOUT;
+      function isStaticGenBailoutError(error32) {
+        return typeof error32 != "object" || error32 === null || !("code" in error32) ? false : error32.code === NEXT_STATIC_GEN_BAILOUT;
       }
       __name(isStaticGenBailoutError, "isStaticGenBailoutError");
       (typeof exports.default == "function" || typeof exports.default == "object" && exports.default !== null) && typeof exports.default.__esModule > "u" && (Object.defineProperty(exports.default, "__esModule", { value: true }), Object.assign(exports.default, exports), module.exports = exports.default);
@@ -2994,8 +3157,8 @@ var init_handler = __esm({
       }
       __name(trackDynamicDataInDynamicRender, "trackDynamicDataInDynamicRender");
       function abortOnSynchronousDynamicDataAccess(route, expression, prerenderStore) {
-        let reason = `Route ${route} needs to bail out of prerendering at this point because it used ${expression}.`, error22 = createPrerenderInterruptedError(reason);
-        prerenderStore.controller.abort(error22);
+        let reason = `Route ${route} needs to bail out of prerendering at this point because it used ${expression}.`, error32 = createPrerenderInterruptedError(reason);
+        prerenderStore.controller.abort(error32);
         let dynamicTracking = prerenderStore.dynamicTracking;
         dynamicTracking && dynamicTracking.dynamicAccesses.push({ stack: dynamicTracking.isDebugDynamicAccesses ? new Error().stack : void 0, expression });
       }
@@ -3038,12 +3201,12 @@ var init_handler = __esm({
       if (isDynamicPostponeReason(createPostponeReason("%%%", "^^^")) === false) throw Object.defineProperty(new Error("Invariant: isDynamicPostpone misidentified a postpone reason. This is a bug in Next.js"), "__NEXT_ERROR_CODE", { value: "E296", enumerable: false, configurable: true });
       var NEXT_PRERENDER_INTERRUPTED = "NEXT_PRERENDER_INTERRUPTED";
       function createPrerenderInterruptedError(message) {
-        let error22 = Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E394", enumerable: false, configurable: true });
-        return error22.digest = NEXT_PRERENDER_INTERRUPTED, error22;
+        let error32 = Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E394", enumerable: false, configurable: true });
+        return error32.digest = NEXT_PRERENDER_INTERRUPTED, error32;
       }
       __name(createPrerenderInterruptedError, "createPrerenderInterruptedError");
-      function isPrerenderInterruptedError(error22) {
-        return typeof error22 == "object" && error22 !== null && error22.digest === NEXT_PRERENDER_INTERRUPTED && "name" in error22 && "message" in error22 && error22 instanceof Error;
+      function isPrerenderInterruptedError(error32) {
+        return typeof error32 == "object" && error32 !== null && error32.digest === NEXT_PRERENDER_INTERRUPTED && "name" in error32 && "message" in error32 && error32 instanceof Error;
       }
       __name(isPrerenderInterruptedError, "isPrerenderInterruptedError");
       function accessedDynamicData(dynamicAccesses) {
@@ -3180,8 +3343,8 @@ ${stack}`));
           dynamicValidation.dynamicErrors.push(clientDynamic.syncDynamicErrorWithStack);
           return;
         } else {
-          let message = `Route "${workStore.route}": Uncached data was accessed outside of <Suspense>. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error22 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1079", enumerable: false, configurable: true }), componentStack, null);
-          dynamicValidation.dynamicErrors.push(error22);
+          let message = `Route "${workStore.route}": Uncached data was accessed outside of <Suspense>. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error32 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1079", enumerable: false, configurable: true }), componentStack, null);
+          dynamicValidation.dynamicErrors.push(error32);
           return;
         }
       }
@@ -3196,13 +3359,13 @@ ${stack}`));
       function trackDynamicHoleInNavigation(workStore, componentStack, dynamicValidation, clientDynamic, kind, boundaryState) {
         if (hasOutletRegex.test(componentStack)) return;
         if (hasMetadataRegex.test(componentStack)) {
-          let usageDescription2 = kind === 1 ? "Runtime data such as `cookies()`, `headers()`, `params`, or `searchParams` was accessed inside `generateMetadata` or you have file-based metadata such as icons that depend on dynamic params segments." : "Uncached data or `connection()` was accessed inside `generateMetadata`.", message2 = `Route "${workStore.route}": ${usageDescription2} Except for this instance, the page would have been entirely prerenderable which may have been the intended behavior. See more info here: https://nextjs.org/docs/messages/next-prerender-dynamic-metadata`, error32 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1076", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
-          dynamicValidation.dynamicMetadata = error32;
+          let usageDescription2 = kind === 1 ? "Runtime data such as `cookies()`, `headers()`, `params`, or `searchParams` was accessed inside `generateMetadata` or you have file-based metadata such as icons that depend on dynamic params segments." : "Uncached data or `connection()` was accessed inside `generateMetadata`.", message2 = `Route "${workStore.route}": ${usageDescription2} Except for this instance, the page would have been entirely prerenderable which may have been the intended behavior. See more info here: https://nextjs.org/docs/messages/next-prerender-dynamic-metadata`, error42 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1076", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
+          dynamicValidation.dynamicMetadata = error42;
           return;
         }
         if (hasViewportRegex.test(componentStack)) {
-          let usageDescription2 = kind === 1 ? "Runtime data such as `cookies()`, `headers()`, `params`, or `searchParams` was accessed inside `generateViewport`." : "Uncached data or `connection()` was accessed inside `generateViewport`.", message2 = `Route "${workStore.route}": ${usageDescription2} This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/next-prerender-dynamic-viewport`, error32 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1086", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
-          dynamicValidation.dynamicErrors.push(error32);
+          let usageDescription2 = kind === 1 ? "Runtime data such as `cookies()`, `headers()`, `params`, or `searchParams` was accessed inside `generateViewport`." : "Uncached data or `connection()` was accessed inside `generateViewport`.", message2 = `Route "${workStore.route}": ${usageDescription2} This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/next-prerender-dynamic-viewport`, error42 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1086", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
+          dynamicValidation.dynamicErrors.push(error42);
           return;
         }
         let boundaryLocation = hasInstantValidationBoundaryRegex.exec(componentStack);
@@ -3216,8 +3379,8 @@ ${stack}`));
           dynamicValidation.hasAllowedClientDynamicAboveBoundary = true, dynamicValidation.hasAllowedDynamic = true;
           return;
         } else {
-          let message2 = `Route "${workStore.route}": Could not validate \`unstable_instant\` because a Client Component in a parent segment prevented the page from rendering.`, error32 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1082", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
-          dynamicValidation.validationPreventingErrors.push(error32);
+          let message2 = `Route "${workStore.route}": Could not validate \`unstable_instant\` because a Client Component in a parent segment prevented the page from rendering.`, error42 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1082", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
+          dynamicValidation.validationPreventingErrors.push(error42);
           return;
         }
         if (clientDynamic.syncDynamicErrorWithStack) {
@@ -3225,8 +3388,8 @@ ${stack}`));
           dynamicValidation.createInstantStack !== null && syncError.cause === void 0 && (syncError.cause = dynamicValidation.createInstantStack()), dynamicValidation.dynamicErrors.push(syncError);
           return;
         }
-        let usageDescription = kind === 1 ? "Runtime data such as `cookies()`, `headers()`, `params`, or `searchParams` was accessed outside of `<Suspense>`." : "Uncached data or `connection()` was accessed outside of `<Suspense>`.", message = `Route "${workStore.route}": ${usageDescription} This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error22 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1078", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
-        dynamicValidation.dynamicErrors.push(error22);
+        let usageDescription = kind === 1 ? "Runtime data such as `cookies()`, `headers()`, `params`, or `searchParams` was accessed outside of `<Suspense>`." : "Uncached data or `connection()` was accessed outside of `<Suspense>`.", message = `Route "${workStore.route}": ${usageDescription} This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error32 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1078", enumerable: false, configurable: true }), componentStack, dynamicValidation.createInstantStack);
+        dynamicValidation.dynamicErrors.push(error32);
       }
       __name(trackDynamicHoleInNavigation, "trackDynamicHoleInNavigation");
       function trackThrownErrorInNavigation(workStore, dynamicValidation, thrownValue, componentStack) {
@@ -3234,22 +3397,45 @@ ${stack}`));
         if (boundaryLocation) {
           let suspenseLocation = hasSuspenseRegex.exec(componentStack);
           if (suspenseLocation && suspenseLocation.index < boundaryLocation.index) return;
-          let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because an error prevented the target segment from rendering.`, error22 = addErrorContext(Object.defineProperty(new Error(message, { cause: thrownValue }), "__NEXT_ERROR_CODE", { value: "E1112", enumerable: false, configurable: true }), componentStack, null);
-          dynamicValidation.validationPreventingErrors.push(error22);
+          let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because an error prevented the target segment from rendering.`, error32 = addErrorContext(Object.defineProperty(new Error(message, { cause: thrownValue }), "__NEXT_ERROR_CODE", { value: "E1112", enumerable: false, configurable: true }), componentStack, null);
+          dynamicValidation.validationPreventingErrors.push(error32);
         } else {
-          let error22 = addErrorContext(Object.defineProperty(new Error("An error occurred while attempting to validate instant UI. This error may be preventing the validation from completing.", { cause: thrownValue }), "__NEXT_ERROR_CODE", { value: "E1118", enumerable: false, configurable: true }), componentStack, null);
-          dynamicValidation.thrownErrorsOutsideBoundary.push(error22);
+          let error32 = addErrorContext(Object.defineProperty(new Error("An error occurred while attempting to validate instant UI. This error may be preventing the validation from completing.", { cause: thrownValue }), "__NEXT_ERROR_CODE", { value: "E1118", enumerable: false, configurable: true }), componentStack, null);
+          dynamicValidation.thrownErrorsOutsideBoundary.push(error32);
         }
       }
       __name(trackThrownErrorInNavigation, "trackThrownErrorInNavigation");
       function trackDynamicHoleInRuntimeShell(workStore, componentStack, dynamicValidation, clientDynamic) {
         if (hasOutletRegex.test(componentStack)) return;
         if (hasMetadataRegex.test(componentStack)) {
-          let message2 = `Route "${workStore.route}": Uncached data or \`connection()\` was accessed inside \`generateMetadata\`. Except for this instance, the page would have been entirely prerenderable which may have been the intended behavior. See more info here: https://nextjs.org/docs/messages/next-prerender-dynamic-metadata`, error32 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1080", enumerable: false, configurable: true }), componentStack, null);
+          let message2 = `Route "${workStore.route}": Uncached data or \`connection()\` was accessed inside \`generateMetadata\`. Except for this instance, the page would have been entirely prerenderable which may have been the intended behavior. See more info here: https://nextjs.org/docs/messages/next-prerender-dynamic-metadata`, error42 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1080", enumerable: false, configurable: true }), componentStack, null);
+          dynamicValidation.dynamicMetadata = error42;
+          return;
+        } else if (hasViewportRegex.test(componentStack)) {
+          let message2 = `Route "${workStore.route}": Uncached data or \`connection()\` was accessed inside \`generateViewport\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/next-prerender-dynamic-viewport`, error42 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1077", enumerable: false, configurable: true }), componentStack, null);
+          dynamicValidation.dynamicErrors.push(error42);
+          return;
+        } else if (hasSuspenseBeforeRootLayoutWithoutBodyOrImplicitBodyRegex.test(componentStack)) {
+          dynamicValidation.hasAllowedDynamic = true, dynamicValidation.hasSuspenseAboveBody = true;
+          return;
+        } else if (hasSuspenseRegex.test(componentStack)) {
+          dynamicValidation.hasAllowedDynamic = true;
+          return;
+        } else if (clientDynamic.syncDynamicErrorWithStack) {
+          dynamicValidation.dynamicErrors.push(clientDynamic.syncDynamicErrorWithStack);
+          return;
+        }
+        let message = `Route "${workStore.route}": Uncached data or \`connection()\` was accessed outside of \`<Suspense>\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error32 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1084", enumerable: false, configurable: true }), componentStack, null);
+        dynamicValidation.dynamicErrors.push(error32);
+      }
+      __name(trackDynamicHoleInRuntimeShell, "trackDynamicHoleInRuntimeShell");
+      function trackDynamicHoleInStaticShell(workStore, componentStack, dynamicValidation, clientDynamic) {
+        if (!hasOutletRegex.test(componentStack)) if (hasMetadataRegex.test(componentStack)) {
+          let message = `Route "${workStore.route}": Runtime data such as \`cookies()\`, \`headers()\`, \`params\`, or \`searchParams\` was accessed inside \`generateMetadata\` or you have file-based metadata such as icons that depend on dynamic params segments. Except for this instance, the page would have been entirely prerenderable which may have been the intended behavior. See more info here: https://nextjs.org/docs/messages/next-prerender-dynamic-metadata`, error32 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1085", enumerable: false, configurable: true }), componentStack, null);
           dynamicValidation.dynamicMetadata = error32;
           return;
         } else if (hasViewportRegex.test(componentStack)) {
-          let message2 = `Route "${workStore.route}": Uncached data or \`connection()\` was accessed inside \`generateViewport\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/next-prerender-dynamic-viewport`, error32 = addErrorContext(Object.defineProperty(new Error(message2), "__NEXT_ERROR_CODE", { value: "E1077", enumerable: false, configurable: true }), componentStack, null);
+          let message = `Route "${workStore.route}": Runtime data such as \`cookies()\`, \`headers()\`, \`params\`, or \`searchParams\` was accessed inside \`generateViewport\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/next-prerender-dynamic-viewport`, error32 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1081", enumerable: false, configurable: true }), componentStack, null);
           dynamicValidation.dynamicErrors.push(error32);
           return;
         } else if (hasSuspenseBeforeRootLayoutWithoutBodyOrImplicitBodyRegex.test(componentStack)) {
@@ -3261,45 +3447,22 @@ ${stack}`));
         } else if (clientDynamic.syncDynamicErrorWithStack) {
           dynamicValidation.dynamicErrors.push(clientDynamic.syncDynamicErrorWithStack);
           return;
-        }
-        let message = `Route "${workStore.route}": Uncached data or \`connection()\` was accessed outside of \`<Suspense>\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error22 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1084", enumerable: false, configurable: true }), componentStack, null);
-        dynamicValidation.dynamicErrors.push(error22);
-      }
-      __name(trackDynamicHoleInRuntimeShell, "trackDynamicHoleInRuntimeShell");
-      function trackDynamicHoleInStaticShell(workStore, componentStack, dynamicValidation, clientDynamic) {
-        if (!hasOutletRegex.test(componentStack)) if (hasMetadataRegex.test(componentStack)) {
-          let message = `Route "${workStore.route}": Runtime data such as \`cookies()\`, \`headers()\`, \`params\`, or \`searchParams\` was accessed inside \`generateMetadata\` or you have file-based metadata such as icons that depend on dynamic params segments. Except for this instance, the page would have been entirely prerenderable which may have been the intended behavior. See more info here: https://nextjs.org/docs/messages/next-prerender-dynamic-metadata`, error22 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1085", enumerable: false, configurable: true }), componentStack, null);
-          dynamicValidation.dynamicMetadata = error22;
-          return;
-        } else if (hasViewportRegex.test(componentStack)) {
-          let message = `Route "${workStore.route}": Runtime data such as \`cookies()\`, \`headers()\`, \`params\`, or \`searchParams\` was accessed inside \`generateViewport\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/next-prerender-dynamic-viewport`, error22 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1081", enumerable: false, configurable: true }), componentStack, null);
-          dynamicValidation.dynamicErrors.push(error22);
-          return;
-        } else if (hasSuspenseBeforeRootLayoutWithoutBodyOrImplicitBodyRegex.test(componentStack)) {
-          dynamicValidation.hasAllowedDynamic = true, dynamicValidation.hasSuspenseAboveBody = true;
-          return;
-        } else if (hasSuspenseRegex.test(componentStack)) {
-          dynamicValidation.hasAllowedDynamic = true;
-          return;
-        } else if (clientDynamic.syncDynamicErrorWithStack) {
-          dynamicValidation.dynamicErrors.push(clientDynamic.syncDynamicErrorWithStack);
-          return;
         } else {
-          let message = `Route "${workStore.route}": Runtime data such as \`cookies()\`, \`headers()\`, \`params\`, or \`searchParams\` was accessed outside of \`<Suspense>\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error22 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1083", enumerable: false, configurable: true }), componentStack, null);
-          dynamicValidation.dynamicErrors.push(error22);
+          let message = `Route "${workStore.route}": Runtime data such as \`cookies()\`, \`headers()\`, \`params\`, or \`searchParams\` was accessed outside of \`<Suspense>\`. This delays the entire page from rendering, resulting in a slow user experience. Learn more: https://nextjs.org/docs/messages/blocking-route`, error32 = addErrorContext(Object.defineProperty(new Error(message), "__NEXT_ERROR_CODE", { value: "E1083", enumerable: false, configurable: true }), componentStack, null);
+          dynamicValidation.dynamicErrors.push(error32);
           return;
         }
       }
       __name(trackDynamicHoleInStaticShell, "trackDynamicHoleInStaticShell");
-      function addErrorContext(error22, componentStack, createInstantStack) {
-        return createInstantStack !== null && (error22.cause = createInstantStack()), error22.stack = error22.name + ": " + error22.message + componentStack, error22;
+      function addErrorContext(error32, componentStack, createInstantStack) {
+        return createInstantStack !== null && (error32.cause = createInstantStack()), error32.stack = error32.name + ": " + error32.message + componentStack, error32;
       }
       __name(addErrorContext, "addErrorContext");
       var PreludeState = (function(PreludeState2) {
         return PreludeState2[PreludeState2.Full = 0] = "Full", PreludeState2[PreludeState2.Empty = 1] = "Empty", PreludeState2[PreludeState2.Errored = 2] = "Errored", PreludeState2;
       })({});
-      function logDisallowedDynamicError(workStore, error22) {
-        console.error(error22), console.error(`To get a more detailed stack trace and pinpoint the issue, try one of the following:
+      function logDisallowedDynamicError(workStore, error32) {
+        console.error(error32), console.error(`To get a more detailed stack trace and pinpoint the issue, try one of the following:
   - Start the app in development mode by running \`next dev\`, then open "${workStore.route}" in your browser to investigate the error.
   - Rerun the production build with \`next build --debug-prerender\` to generate better stack traces.`);
       }
@@ -3338,14 +3501,14 @@ ${stack}`));
         if (boundaryState.renderedIds.size < boundaryState.expectedIds.size) {
           let { thrownErrorsOutsideBoundary, createInstantStack } = dynamicValidation;
           if (thrownErrorsOutsideBoundary.length === 0) {
-            let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because the target segment was prevented from rendering for an unknown reason.`, error22 = createInstantStack !== null ? createInstantStack() : new Error();
-            return error22.name = "Error", error22.message = message, [error22];
+            let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because the target segment was prevented from rendering for an unknown reason.`, error32 = createInstantStack !== null ? createInstantStack() : new Error();
+            return error32.name = "Error", error32.message = message, [error32];
           } else if (thrownErrorsOutsideBoundary.length === 1) {
-            let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because the target segment was prevented from rendering, likely due to the following error.`, error22 = createInstantStack !== null ? createInstantStack() : new Error();
-            return error22.name = "Error", error22.message = message, [error22, thrownErrorsOutsideBoundary[0]];
+            let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because the target segment was prevented from rendering, likely due to the following error.`, error32 = createInstantStack !== null ? createInstantStack() : new Error();
+            return error32.name = "Error", error32.message = message, [error32, thrownErrorsOutsideBoundary[0]];
           } else {
-            let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because the target segment was prevented from rendering, likely due to one of the following errors.`, error22 = createInstantStack !== null ? createInstantStack() : new Error();
-            return error22.name = "Error", error22.message = message, [error22, ...thrownErrorsOutsideBoundary];
+            let message = `Route "${workStore.route}": Could not validate \`unstable_instant\` because the target segment was prevented from rendering, likely due to one of the following errors.`, error32 = createInstantStack !== null ? createInstantStack() : new Error();
+            return error32.name = "Error", error32.message = message, [error32, ...thrownErrorsOutsideBoundary];
           }
         }
         if (prelude !== 0) {
@@ -3463,9 +3626,9 @@ ${stack}`));
         }
       }
       __name(io, "io");
-      function applyOwnerStack(error22) {
+      function applyOwnerStack(error32) {
         if (0) var _getClientReact_captureOwnerStack, _getClientReact, _getServerReact_captureOwnerStack, _getServerReact;
-        return error22;
+        return error32;
       }
       __name(applyOwnerStack, "applyOwnerStack");
     } });
@@ -3620,7 +3783,7 @@ ${stack}`));
       })(ExecutionState || {}), FAST_SET_IMMEDIATE_ORIGINALS_KEY = /* @__PURE__ */ Symbol.for("next.fast-set-immediate.originals"), originals = globalThis[FAST_SET_IMMEDIATE_ORIGINALS_KEY] ?? (globalThis[FAST_SET_IMMEDIATE_ORIGINALS_KEY] = { setImmediate: globalThis.setImmediate, clearImmediate: globalThis.clearImmediate, nextTick: process.nextTick }), wasEnabledAtLeastOnce = false, pendingNextTicks = 0, currentExecution = null, originalSetImmediate = originals.setImmediate, originalClearImmediate = originals.clearImmediate, originalNextTick = originals.nextTick, originalSetImmediatePromisify = typeof originalSetImmediate == "function" ? originalSetImmediate[_nodeutil.promisify.custom] : void 0;
       function install() {
         {
-          debug22?.("installing fast setImmediate patch");
+          debug32?.("installing fast setImmediate patch");
           let nodeTimers = require_node_timers();
           globalThis.setImmediate = nodeTimers.setImmediate = patchedSetImmediate, globalThis.clearImmediate = nodeTimers.clearImmediate = patchedClearImmediate;
           let nodeTimersPromises = require_promises();
@@ -3650,10 +3813,10 @@ ${stack}`));
           originalNextTick(() => {
             try {
               if (execution.state === 4 || currentExecution !== execution) {
-                debug22?.("scheduler :: the execution was abandoned");
+                debug32?.("scheduler :: the execution was abandoned");
                 return;
               }
-              return pendingNextTicks > 0 ? (debug22?.(`scheduler :: yielding to ${pendingNextTicks} nextTicks`), scheduleWorkAfterNextTicksAndMicrotasks(execution)) : performWork(execution);
+              return pendingNextTicks > 0 ? (debug32?.(`scheduler :: yielding to ${pendingNextTicks} nextTicks`), scheduleWorkAfterNextTicksAndMicrotasks(execution)) : performWork(execution);
             } catch (err) {
               if (execution.state === 4) throw err;
               queueMicrotask(() => {
@@ -3666,19 +3829,19 @@ ${stack}`));
       __name(scheduleWorkAfterNextTicksAndMicrotasks, "scheduleWorkAfterNextTicksAndMicrotasks");
       function performWork(execution) {
         if (execution.state === 4) return;
-        if (debug22?.("scheduler :: performing work"), execution.state !== 1) throw Object.defineProperty(new _invarianterror.InvariantError(`performWork can only be called while waiting (state: ${ExecutionState[execution.state]})`), "__NEXT_ERROR_CODE", { value: "E956", enumerable: false, configurable: true });
+        if (debug32?.("scheduler :: performing work"), execution.state !== 1) throw Object.defineProperty(new _invarianterror.InvariantError(`performWork can only be called while waiting (state: ${ExecutionState[execution.state]})`), "__NEXT_ERROR_CODE", { value: "E956", enumerable: false, configurable: true });
         execution.state = 2;
         let queueItem = takeNextActiveQueueItem(execution);
         if (queueItem === null) {
-          debug22?.("scheduler :: no immediates queued, exiting"), stopCapturingImmediates(execution);
+          debug32?.("scheduler :: no immediates queued, exiting"), stopCapturingImmediates(execution);
           return;
         }
-        debug22?.("scheduler :: executing queued immediate");
+        debug32?.("scheduler :: executing queued immediate");
         let { immediateObject, callback, args } = queueItem;
         immediateObject[INTERNALS].queueItem = null, clearQueueItem(queueItem);
         let didThrow = false, thrownValue;
         queueMicrotask(() => {
-          if (didThrow) throw debug22?.("scheduler :: rethrowing sync error from immediate in microtask"), thrownValue;
+          if (didThrow) throw debug32?.("scheduler :: rethrowing sync error from immediate in microtask"), thrownValue;
         });
         try {
           args !== null ? callback.apply(null, args) : callback();
@@ -3713,10 +3876,10 @@ ${stack}`));
         }
       }
       __name(stopCapturingImmediates, "stopCapturingImmediates");
-      function bail(execution, error22) {
+      function bail(execution, error32) {
         currentExecution === execution && (currentExecution = null), execution.state = 4;
         for (let queueItem of execution.queuedImmediates) queueItem.isCleared || scheduleQueuedImmediateAsNativeImmediate(queueItem);
-        throw execution.queuedImmediates.length = 0, error22;
+        throw execution.queuedImmediates.length = 0, error32;
       }
       __name(bail, "bail");
       function scheduleQueuedImmediateAsNativeImmediate(queueItem) {
@@ -3733,18 +3896,18 @@ ${stack}`));
       __name(clearQueueItem, "clearQueueItem");
       function patchedNextTick() {
         if (currentExecution === null) return originalNextTick.apply(null, arguments);
-        (arguments.length === 0 || typeof arguments[0] != "function") && (originalNextTick.apply(null, arguments), bail(currentExecution, Object.defineProperty(new _invarianterror.InvariantError("Expected process.nextTick to reject invalid arguments"), "__NEXT_ERROR_CODE", { value: "E966", enumerable: false, configurable: true }))), debug22?.(`scheduler :: process.nextTick called (previous pending: ${pendingNextTicks})`);
+        (arguments.length === 0 || typeof arguments[0] != "function") && (originalNextTick.apply(null, arguments), bail(currentExecution, Object.defineProperty(new _invarianterror.InvariantError("Expected process.nextTick to reject invalid arguments"), "__NEXT_ERROR_CODE", { value: "E966", enumerable: false, configurable: true }))), debug32?.(`scheduler :: process.nextTick called (previous pending: ${pendingNextTicks})`);
         let callback = arguments[0], args = arguments.length > 1 ? Array.prototype.slice.call(arguments, 1) : null;
         return pendingNextTicks += 1, originalNextTick(safelyRunNextTickCallback, callback, args);
       }
       __name(patchedNextTick, "patchedNextTick");
       function safelyRunNextTickCallback(callback, args) {
-        pendingNextTicks -= 1, debug22?.(`scheduler :: process.nextTick executing (still pending: ${pendingNextTicks})`);
+        pendingNextTicks -= 1, debug32?.(`scheduler :: process.nextTick executing (still pending: ${pendingNextTicks})`);
         try {
           args !== null ? callback.apply(null, args) : callback();
         } catch (err) {
           queueMicrotask(() => {
-            throw debug22?.("scheduler :: rethrowing sync error from nextTick in a microtask"), err;
+            throw debug32?.("scheduler :: rethrowing sync error from nextTick in a microtask"), err;
           });
         }
       }
@@ -3803,7 +3966,7 @@ ${stack}`));
         constructor() {
           this[INTERNALS] = { queueItem: null, hasRef: true, nativeImmediate: null };
         }
-      }, debug22 = process.env.NEXT_DEBUG_IMMEDIATES !== "1" ? void 0 : (...args) => {
+      }, debug32 = process.env.NEXT_DEBUG_IMMEDIATES !== "1" ? void 0 : (...args) => {
         {
           let { inspect } = require_node_util(), { writeFileSync } = require_node_fs(), logLine = args.map((arg) => typeof arg == "string" ? arg : inspect(arg, { colors: true })).join(" ") + `
 `;
@@ -3951,8 +4114,8 @@ ${stack}`));
           super(), this.code = "ENOENT", this.message = "Cannot find the middleware module";
         }
       };
-      function stringifyError(error22) {
-        return JSON.stringify({ message: error22.message, stack: error22.stack });
+      function stringifyError(error32) {
+        return JSON.stringify({ message: error32.message, stack: error32.stack });
       }
       __name(stringifyError, "stringifyError");
     } });
@@ -4273,14 +4436,14 @@ ${stack}`));
         let needsNormalization = (0, _routepatternnormalizer.hasAdjacentParameterIssues)(route), routeToUse = needsNormalization ? (0, _routepatternnormalizer.normalizeAdjacentParameters)(route) : route;
         try {
           return (0, _pathtoregexp.pathToRegexp)(routeToUse, keys, options);
-        } catch (error22) {
+        } catch (error32) {
           if (!needsNormalization) try {
             let normalizedRoute = (0, _routepatternnormalizer.normalizeAdjacentParameters)(route);
             return (0, _pathtoregexp.pathToRegexp)(normalizedRoute, keys, options);
           } catch {
-            throw error22;
+            throw error32;
           }
-          throw error22;
+          throw error32;
         }
       }
       __name(safePathToRegexp, "safePathToRegexp");
@@ -4289,14 +4452,14 @@ ${stack}`));
         try {
           let compiler = (0, _pathtoregexp.compile)(routeToUse, options);
           return needsNormalization ? (params) => (0, _routepatternnormalizer.stripNormalizedSeparators)(compiler(params)) : compiler;
-        } catch (error22) {
+        } catch (error32) {
           if (!needsNormalization) try {
             let normalizedRoute = (0, _routepatternnormalizer.normalizeAdjacentParameters)(route), compiler = (0, _pathtoregexp.compile)(normalizedRoute, options);
             return (params) => (0, _routepatternnormalizer.stripNormalizedSeparators)(compiler(params));
           } catch {
-            throw error22;
+            throw error32;
           }
-          throw error22;
+          throw error32;
         }
       }
       __name(safeCompile, "safeCompile");
@@ -5939,12 +6102,12 @@ ${stack}`));
           super(), this.bubble = bubble, this.result = result;
         }
       };
-      function isBubbledError(error22) {
-        return typeof error22 != "object" || error22 === null ? false : error22 instanceof BubbledError;
+      function isBubbledError(error32) {
+        return typeof error32 != "object" || error32 === null ? false : error32 instanceof BubbledError;
       }
       __name(isBubbledError, "isBubbledError");
-      var closeSpanWithError = /* @__PURE__ */ __name((span, error22) => {
-        isBubbledError(error22) && error22.bubble ? span.setAttribute("next.bubble", true) : (error22 && (span.recordException(error22), span.setAttribute("error.type", error22.name)), span.setStatus({ code: SpanStatusCode.ERROR, message: error22?.message })), span.end();
+      var closeSpanWithError = /* @__PURE__ */ __name((span, error32) => {
+        isBubbledError(error32) && error32.bubble ? span.setAttribute("next.bubble", true) : (error32 && (span.recordException(error32), span.setAttribute("error.type", error32.name)), span.setStatus({ code: SpanStatusCode.ERROR, message: error32?.message })), span.end();
       }, "closeSpanWithError"), rootSpanAttributesStore = /* @__PURE__ */ new Map(), rootSpanIdKey = api.createContextKey("next.rootSpanId"), lastSpanId = 0, getSpanId = /* @__PURE__ */ __name(() => lastSpanId++, "getSpanId"), clientTraceDataSetter = { set(carrier, key, value) {
         carrier.push({ key, value });
       } }, NextTracerImpl = class {
@@ -6667,7 +6830,7 @@ ${stack}`));
       _export(exports, { bootstrap: /* @__PURE__ */ __name(function() {
         return bootstrap;
       }, "bootstrap"), error: /* @__PURE__ */ __name(function() {
-        return error22;
+        return error32;
       }, "error"), errorOnce: /* @__PURE__ */ __name(function() {
         return errorOnce;
       }, "errorOnce"), event: /* @__PURE__ */ __name(function() {
@@ -6683,7 +6846,7 @@ ${stack}`));
       }, "trace"), wait: /* @__PURE__ */ __name(function() {
         return wait;
       }, "wait"), warn: /* @__PURE__ */ __name(function() {
-        return warn22;
+        return warn32;
       }, "warn"), warnOnce: /* @__PURE__ */ __name(function() {
         return warnOnce;
       }, "warnOnce") });
@@ -6702,14 +6865,14 @@ ${stack}`));
         prefixedLog("wait", ...message);
       }
       __name(wait, "wait");
-      function error22(...message) {
+      function error32(...message) {
         prefixedLog("error", ...message);
       }
-      __name(error22, "error2");
-      function warn22(...message) {
+      __name(error32, "error3");
+      function warn32(...message) {
         prefixedLog("warn", ...message);
       }
-      __name(warn22, "warn2");
+      __name(warn32, "warn3");
       function ready(...message) {
         prefixedLog("ready", ...message);
       }
@@ -6729,13 +6892,13 @@ ${stack}`));
       var warnOnceCache = new _lrucache.LRUCache(1e4, (value) => value.length);
       function warnOnce(...message) {
         let key = message.join(" ");
-        warnOnceCache.has(key) || (warnOnceCache.set(key, key), warn22(...message));
+        warnOnceCache.has(key) || (warnOnceCache.set(key, key), warn32(...message));
       }
       __name(warnOnce, "warnOnce");
       var errorOnceCache = new _lrucache.LRUCache(1e4, (value) => value.length);
       function errorOnce(...message) {
         let key = message.join(" ");
-        errorOnceCache.has(key) || (errorOnceCache.set(key, key), error22(...message));
+        errorOnceCache.has(key) || (errorOnceCache.set(key, key), error32(...message));
       }
       __name(errorOnce, "errorOnce");
     } });
@@ -7893,8 +8056,8 @@ Read more at https://nextjs.org/docs/messages/missing-root-layout-tags"
       function validateURL(url) {
         try {
           return String(new URL(String(url)));
-        } catch (error22) {
-          throw Object.defineProperty(new Error(`URL is malformed "${String(url)}". Please use only absolute URLs - https://nextjs.org/docs/messages/middleware-relative-urls`, { cause: error22 }), "__NEXT_ERROR_CODE", { value: "E61", enumerable: false, configurable: true });
+        } catch (error32) {
+          throw Object.defineProperty(new Error(`URL is malformed "${String(url)}". Please use only absolute URLs - https://nextjs.org/docs/messages/middleware-relative-urls`, { cause: error32 }), "__NEXT_ERROR_CODE", { value: "E61", enumerable: false, configurable: true });
         }
       }
       __name(validateURL, "validateURL");
@@ -8270,12 +8433,12 @@ Read more at https://nextjs.org/docs/messages/missing-root-layout-tags"
     } });
     require_cookies = __commonJS3({ ".open-next/server-functions/default/node_modules/next/dist/compiled/@edge-runtime/cookies/index.js"(exports, module) {
       "use strict";
-      var __defProp32 = Object.defineProperty, __getOwnPropDesc3 = Object.getOwnPropertyDescriptor, __getOwnPropNames32 = Object.getOwnPropertyNames, __hasOwnProp3 = Object.prototype.hasOwnProperty, __export4 = /* @__PURE__ */ __name((target, all) => {
-        for (var name in all) __defProp32(target, name, { get: all[name], enumerable: true });
+      var __defProp42 = Object.defineProperty, __getOwnPropDesc3 = Object.getOwnPropertyDescriptor, __getOwnPropNames32 = Object.getOwnPropertyNames, __hasOwnProp3 = Object.prototype.hasOwnProperty, __export4 = /* @__PURE__ */ __name((target, all) => {
+        for (var name in all) __defProp42(target, name, { get: all[name], enumerable: true });
       }, "__export4"), __copyProps3 = /* @__PURE__ */ __name((to, from, except, desc) => {
-        if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames32(from)) !__hasOwnProp3.call(to, key) && key !== except && __defProp32(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc3(from, key)) || desc.enumerable });
+        if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames32(from)) !__hasOwnProp3.call(to, key) && key !== except && __defProp42(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc3(from, key)) || desc.enumerable });
         return to;
-      }, "__copyProps3"), __toCommonJS3 = /* @__PURE__ */ __name((mod3) => __copyProps3(__defProp32({}, "__esModule", { value: true }), mod3), "__toCommonJS3"), src_exports = {};
+      }, "__copyProps3"), __toCommonJS3 = /* @__PURE__ */ __name((mod3) => __copyProps3(__defProp42({}, "__esModule", { value: true }), mod3), "__toCommonJS3"), src_exports = {};
       __export4(src_exports, { RequestCookies: /* @__PURE__ */ __name(() => RequestCookies, "RequestCookies"), ResponseCookies: /* @__PURE__ */ __name(() => ResponseCookies, "ResponseCookies"), parseCookie: /* @__PURE__ */ __name(() => parseCookie, "parseCookie"), parseSetCookie: /* @__PURE__ */ __name(() => parseSetCookie, "parseSetCookie"), stringifyCookie: /* @__PURE__ */ __name(() => stringifyCookie, "stringifyCookie") });
       module.exports = __toCommonJS3(src_exports);
       function stringifyCookie(c) {
@@ -11712,30 +11875,30 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
       var _lrucache = require_lru_cache(), _tagsmanifestexternal = require_tags_manifest_external();
       function createDefaultCacheHandler(maxSize) {
         if (maxSize === 0) return { get: /* @__PURE__ */ __name(() => Promise.resolve(void 0), "get"), set: /* @__PURE__ */ __name(() => Promise.resolve(), "set"), refreshTags: /* @__PURE__ */ __name(() => Promise.resolve(), "refreshTags"), getExpiration: /* @__PURE__ */ __name(() => Promise.resolve(0), "getExpiration"), updateTags: /* @__PURE__ */ __name(() => Promise.resolve(), "updateTags") };
-        let memoryCache = new _lrucache.LRUCache(maxSize, (entry) => entry.size), pendingSets = /* @__PURE__ */ new Map(), debug22 = process.env.NEXT_PRIVATE_DEBUG_CACHE ? console.debug.bind(console, "DefaultCacheHandler:") : void 0;
+        let memoryCache = new _lrucache.LRUCache(maxSize, (entry) => entry.size), pendingSets = /* @__PURE__ */ new Map(), debug32 = process.env.NEXT_PRIVATE_DEBUG_CACHE ? console.debug.bind(console, "DefaultCacheHandler:") : void 0;
         return { async get(cacheKey) {
           let pendingPromise = pendingSets.get(cacheKey);
-          pendingPromise && (debug22?.("get", cacheKey, "pending"), await pendingPromise);
+          pendingPromise && (debug32?.("get", cacheKey, "pending"), await pendingPromise);
           let privateEntry = memoryCache.get(cacheKey);
           if (!privateEntry) {
-            debug22?.("get", cacheKey, "not found");
+            debug32?.("get", cacheKey, "not found");
             return;
           }
           let entry = privateEntry.entry;
           if (performance.timeOrigin + performance.now() > entry.timestamp + entry.revalidate * 1e3) {
-            debug22?.("get", cacheKey, "expired");
+            debug32?.("get", cacheKey, "expired");
             return;
           }
           let revalidate = entry.revalidate;
           if ((0, _tagsmanifestexternal.areTagsExpired)(entry.tags, entry.timestamp)) {
-            debug22?.("get", cacheKey, "had expired tag");
+            debug32?.("get", cacheKey, "had expired tag");
             return;
           }
-          (0, _tagsmanifestexternal.areTagsStale)(entry.tags, entry.timestamp) && (debug22?.("get", cacheKey, "had stale tag"), revalidate = -1);
+          (0, _tagsmanifestexternal.areTagsStale)(entry.tags, entry.timestamp) && (debug32?.("get", cacheKey, "had stale tag"), revalidate = -1);
           let [returnStream, newSaved] = entry.value.tee();
-          return entry.value = newSaved, debug22?.("get", cacheKey, "found", { tags: entry.tags, timestamp: entry.timestamp, expire: entry.expire, revalidate }), { ...entry, revalidate, value: returnStream };
+          return entry.value = newSaved, debug32?.("get", cacheKey, "found", { tags: entry.tags, timestamp: entry.timestamp, expire: entry.expire, revalidate }), { ...entry, revalidate, value: returnStream };
         }, async set(cacheKey, pendingEntry) {
-          debug22?.("set", cacheKey, "start");
+          debug32?.("set", cacheKey, "start");
           let resolvePending = /* @__PURE__ */ __name(() => {
           }, "resolvePending"), pendingPromise = new Promise((resolve) => {
             resolvePending = resolve;
@@ -11747,9 +11910,9 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
             entry.value = value;
             let reader = clonedValue.getReader();
             for (let chunk; !(chunk = await reader.read()).done; ) size += Buffer.from(chunk.value).byteLength;
-            memoryCache.set(cacheKey, { entry, isErrored: false, errorRetryCount: 0, size }), debug22?.("set", cacheKey, "done");
+            memoryCache.set(cacheKey, { entry, isErrored: false, errorRetryCount: 0, size }), debug32?.("set", cacheKey, "done");
           } catch (err) {
-            debug22?.("set", cacheKey, "failed", err);
+            debug32?.("set", cacheKey, "failed", err);
           } finally {
             resolvePending(), pendingSets.delete(cacheKey);
           }
@@ -11759,10 +11922,10 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
             let entry = _tagsmanifestexternal.tagsManifest.get(tag);
             return entry && entry.expired || 0;
           }), expiration = Math.max(...expirations, 0);
-          return debug22?.("getExpiration", { tags, expiration }), expiration;
+          return debug32?.("getExpiration", { tags, expiration }), expiration;
         }, async updateTags(tags, durations) {
           let now = Math.round(performance.timeOrigin + performance.now());
-          debug22?.("updateTags", { tags, timestamp: now });
+          debug32?.("updateTags", { tags, timestamp: now });
           for (let tag of tags) {
             let existingEntry = _tagsmanifestexternal.tagsManifest.get(tag) || {};
             if (durations) {
@@ -11792,17 +11955,17 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
       }, "initializeCacheHandlers"), setCacheHandler: /* @__PURE__ */ __name(function() {
         return setCacheHandler;
       }, "setCacheHandler") });
-      var _default = require_default(), debug22 = process.env.NEXT_PRIVATE_DEBUG_CACHE ? (message, ...args) => {
+      var _default = require_default(), debug32 = process.env.NEXT_PRIVATE_DEBUG_CACHE ? (message, ...args) => {
         console.log(`use-cache: ${message}`, ...args);
       } : void 0, handlersSymbol = /* @__PURE__ */ Symbol.for("@next/cache-handlers"), handlersMapSymbol = /* @__PURE__ */ Symbol.for("@next/cache-handlers-map"), handlersSetSymbol = /* @__PURE__ */ Symbol.for("@next/cache-handlers-set"), reference = globalThis;
       function initializeCacheHandlers(cacheMaxMemorySize2) {
-        if (reference[handlersMapSymbol]) return debug22?.("cache handlers already initialized"), false;
-        if (debug22?.("initializing cache handlers"), reference[handlersMapSymbol] = /* @__PURE__ */ new Map(), reference[handlersSymbol]) {
+        if (reference[handlersMapSymbol]) return debug32?.("cache handlers already initialized"), false;
+        if (debug32?.("initializing cache handlers"), reference[handlersMapSymbol] = /* @__PURE__ */ new Map(), reference[handlersSymbol]) {
           let fallback;
-          reference[handlersSymbol].DefaultCache ? (debug22?.('setting "default" cache handler from symbol'), fallback = reference[handlersSymbol].DefaultCache) : (debug22?.('setting "default" cache handler from default'), fallback = (0, _default.createDefaultCacheHandler)(cacheMaxMemorySize2)), reference[handlersMapSymbol].set("default", fallback), reference[handlersSymbol].RemoteCache ? (debug22?.('setting "remote" cache handler from symbol'), reference[handlersMapSymbol].set("remote", reference[handlersSymbol].RemoteCache)) : (debug22?.('setting "remote" cache handler from default'), reference[handlersMapSymbol].set("remote", fallback));
+          reference[handlersSymbol].DefaultCache ? (debug32?.('setting "default" cache handler from symbol'), fallback = reference[handlersSymbol].DefaultCache) : (debug32?.('setting "default" cache handler from default'), fallback = (0, _default.createDefaultCacheHandler)(cacheMaxMemorySize2)), reference[handlersMapSymbol].set("default", fallback), reference[handlersSymbol].RemoteCache ? (debug32?.('setting "remote" cache handler from symbol'), reference[handlersMapSymbol].set("remote", reference[handlersSymbol].RemoteCache)) : (debug32?.('setting "remote" cache handler from default'), reference[handlersMapSymbol].set("remote", fallback));
         } else {
           let handler32 = (0, _default.createDefaultCacheHandler)(cacheMaxMemorySize2);
-          debug22?.('setting "default" cache handler from default'), reference[handlersMapSymbol].set("default", handler32), debug22?.('setting "remote" cache handler from default'), reference[handlersMapSymbol].set("remote", handler32);
+          debug32?.('setting "default" cache handler from default'), reference[handlersMapSymbol].set("default", handler32), debug32?.('setting "remote" cache handler from default'), reference[handlersMapSymbol].set("remote", handler32);
         }
         return reference[handlersSetSymbol] = new Set(reference[handlersMapSymbol].values()), true;
       }
@@ -11822,7 +11985,7 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
       __name(getCacheHandlerEntries, "getCacheHandlerEntries");
       function setCacheHandler(kind, cacheHandler) {
         if (!reference[handlersMapSymbol] || !reference[handlersSetSymbol]) throw Object.defineProperty(new Error("Cache handlers not initialized"), "__NEXT_ERROR_CODE", { value: "E649", enumerable: false, configurable: true });
-        debug22?.('setting cache handler for "%s"', kind), reference[handlersMapSymbol].set(kind, cacheHandler), reference[handlersSetSymbol].add(cacheHandler);
+        debug32?.('setting cache handler for "%s"', kind), reference[handlersMapSymbol].set(kind, cacheHandler), reference[handlersSetSymbol].add(cacheHandler);
       }
       __name(setCacheHandler, "setCacheHandler");
     } });
@@ -11950,7 +12113,7 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
           this.workUnitStores = /* @__PURE__ */ new Set(), this.waitUntil = waitUntil, this.onClose = onClose, this.onTaskError = onTaskError, this.callbackQueue = new _pqueue.default(), this.callbackQueue.pause();
         }
         after(task) {
-          if ((0, _isthenable.isThenable)(task)) this.waitUntil || errorWaitUntilNotAvailable(), this.waitUntil(task.catch((error22) => this.reportTaskError("promise", error22)));
+          if ((0, _isthenable.isThenable)(task)) this.waitUntil || errorWaitUntilNotAvailable(), this.waitUntil(task.catch((error32) => this.reportTaskError("promise", error32)));
           else if (typeof task == "function") this.addCallback(task);
           else throw Object.defineProperty(new Error("`after()`: Argument must be a promise or a function"), "__NEXT_ERROR_CODE", { value: "E50", enumerable: false, configurable: true });
         }
@@ -11963,8 +12126,8 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
           let wrappedCallback = (0, _asynclocalstorage.bindSnapshot)(async () => {
             try {
               await _aftertaskasyncstorageexternal.afterTaskAsyncStorage.run({ rootTaskSpawnPhase }, () => callback());
-            } catch (error22) {
-              this.reportTaskError("function", error22);
+            } catch (error32) {
+              this.reportTaskError("function", error32);
             }
           });
           this.callbackQueue.add(wrappedCallback);
@@ -11979,9 +12142,9 @@ Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`;
           if (!workStore) throw Object.defineProperty(new _invarianterror.InvariantError("Missing workStore in AfterContext.runCallbacks"), "__NEXT_ERROR_CODE", { value: "E547", enumerable: false, configurable: true });
           return (0, _revalidationutils.withExecuteRevalidates)(workStore, () => (this.callbackQueue.start(), this.callbackQueue.onIdle()));
         }
-        reportTaskError(taskKind, error22) {
-          if (console.error(taskKind === "promise" ? "A promise passed to `after()` rejected:" : "An error occurred in a function passed to `after()`:", error22), this.onTaskError) try {
-            this.onTaskError == null || this.onTaskError.call(this, error22);
+        reportTaskError(taskKind, error32) {
+          if (console.error(taskKind === "promise" ? "A promise passed to `after()` rejected:" : "An error occurred in a function passed to `after()`:", error32), this.onTaskError) try {
+            this.onTaskError == null || this.onTaskError.call(this, error32);
           } catch (handlerError) {
             console.error(Object.defineProperty(new _invarianterror.InvariantError("`onTaskError` threw while handling an error thrown from an `after` task", { cause: handlerError }), "__NEXT_ERROR_CODE", { value: "E569", enumerable: false, configurable: true }));
           }
@@ -13200,9 +13363,9 @@ See here for info: https://nextjs.org/docs/messages/custom-error-no-custom-404`)
               let result = await this.renderPageComponent(ctx, bubbleNoFallback);
               if (result !== false) return result;
             }
-          } catch (error22) {
-            let err = (0, _iserror.getProperError)(error22);
-            if (error22 instanceof _utils.MissingStaticPage) throw console.error("Invariant: failed to load static page", JSON.stringify({ page, url: ctx.req.url, matchedPath: ctx.req.headers[_constants2.MATCHED_PATH_HEADER], initUrl: (0, _requestmeta.getRequestMeta)(ctx.req, "initURL"), didRewrite: !!(0, _requestmeta.getRequestMeta)(ctx.req, "rewrittenPathname"), rewrittenPathname: (0, _requestmeta.getRequestMeta)(ctx.req, "rewrittenPathname") }, null, 2)), err;
+          } catch (error32) {
+            let err = (0, _iserror.getProperError)(error32);
+            if (error32 instanceof _utils.MissingStaticPage) throw console.error("Invariant: failed to load static page", JSON.stringify({ page, url: ctx.req.url, matchedPath: ctx.req.headers[_constants2.MATCHED_PATH_HEADER], initUrl: (0, _requestmeta.getRequestMeta)(ctx.req, "initURL"), didRewrite: !!(0, _requestmeta.getRequestMeta)(ctx.req, "rewrittenPathname"), rewrittenPathname: (0, _requestmeta.getRequestMeta)(ctx.req, "rewrittenPathname") }, null, 2)), err;
             if (err instanceof _nofallbackerrorexternal.NoFallbackError && bubbleNoFallback) throw err;
             if (err instanceof _utils.DecodeError || err instanceof _utils.NormalizeError) return res.statusCode = 400, await this.renderErrorToResponse(ctx, err);
             res.statusCode = 500, await this.hasPage("/500") && ((0, _requestmeta.addRequestMeta)(ctx.req, "customErrorRender", true), await this.renderErrorToResponse(ctx, err), (0, _requestmeta.removeRequestMeta)(ctx.req, "customErrorRender"));
@@ -13268,8 +13431,8 @@ See here for info: https://nextjs.org/docs/messages/custom-error-no-custom-404`)
             } catch (maybeFallbackError) {
               throw maybeFallbackError instanceof _nofallbackerrorexternal.NoFallbackError ? Object.defineProperty(new Error("invariant: failed to render error page"), "__NEXT_ERROR_CODE", { value: "E55", enumerable: false, configurable: true }) : maybeFallbackError;
             }
-          } catch (error22) {
-            let renderToHtmlError = (0, _iserror.getProperError)(error22), isWrappedError = renderToHtmlError instanceof WrappedBuildError;
+          } catch (error32) {
+            let renderToHtmlError = (0, _iserror.getProperError)(error32), isWrappedError = renderToHtmlError instanceof WrappedBuildError;
             isWrappedError || this.logError(renderToHtmlError), res.statusCode = 500;
             let fallbackComponents = await this.getFallbackErrorComponents(ctx.req.url);
             return fallbackComponents ? ((0, _requestmeta.addRequestMeta)(ctx.req, "match", { definition: fallbackComponents.routeModule.definition, params: void 0 }), this.renderToResponseWithComponents({ ...ctx, pathname: "/_error", renderOpts: { ...ctx.renderOpts, err: isWrappedError ? renderToHtmlError.innerError : renderToHtmlError } }, { query, components: fallbackComponents })) : { body: _renderresult.default.fromStatic("Internal Server Error", "text/plain") };
@@ -13322,8 +13485,8 @@ See here for info: https://nextjs.org/docs/messages/custom-error-no-custom-404`)
         if (path22 = path22.replaceAll("/", "/"), path22.endsWith(".next/BUILD_ID")) return process.env.NEXT_BUILD_ID;
         if (path22.endsWith("/routes-manifest.json")) return { version: 3, pages404: true, appType: "app", caseSensitive: false, basePath: "", redirects: [{ source: "/:path+/", destination: "/:path+", internal: true, priority: true, statusCode: 308, regex: "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$" }], headers: [], onMatchHeaders: [], rewrites: { beforeFiles: [], afterFiles: [], fallback: [] }, dynamicRoutes: [{ page: "/components/[slug]", regex: "^/components/([^/]+?)(?:/)?$", routeKeys: { nxtPslug: "nxtPslug" }, namedRegex: "^/components/(?<nxtPslug>[^/]+?)(?:/)?$" }], staticRoutes: [{ page: "/", regex: "^/(?:/)?$", routeKeys: {}, namedRegex: "^/(?:/)?$" }, { page: "/_global-error", regex: "^/_global\\-error(?:/)?$", routeKeys: {}, namedRegex: "^/_global\\-error(?:/)?$" }, { page: "/_not-found", regex: "^/_not\\-found(?:/)?$", routeKeys: {}, namedRegex: "^/_not\\-found(?:/)?$" }, { page: "/components", regex: "^/components(?:/)?$", routeKeys: {}, namedRegex: "^/components(?:/)?$" }, { page: "/docs", regex: "^/docs(?:/)?$", routeKeys: {}, namedRegex: "^/docs(?:/)?$" }, { page: "/favicon.ico", regex: "^/favicon\\.ico(?:/)?$", routeKeys: {}, namedRegex: "^/favicon\\.ico(?:/)?$" }, { page: "/templates", regex: "^/templates(?:/)?$", routeKeys: {}, namedRegex: "^/templates(?:/)?$" }], dataRoutes: [], rsc: { header: "rsc", varyHeader: "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch", prefetchHeader: "next-router-prefetch", didPostponeHeader: "x-nextjs-postponed", contentTypeHeader: "text/x-component", suffix: ".rsc", prefetchSegmentHeader: "next-router-segment-prefetch", prefetchSegmentSuffix: ".segment.rsc", prefetchSegmentDirSuffix: ".segments", clientParamParsing: false, dynamicRSCPrerender: false }, rewriteHeaders: { pathHeader: "x-nextjs-rewritten-path", queryHeader: "x-nextjs-rewritten-query" } };
         if (path22.endsWith("/required-server-files.json")) return { version: 1, config: { env: {}, webpack: null, typescript: { ignoreBuildErrors: false }, typedRoutes: false, distDir: ".next", cleanDistDir: true, assetPrefix: "", cacheMaxMemorySize: 52428800, configOrigin: "next.config.ts", useFileSystemPublicRoutes: true, generateEtags: true, pageExtensions: ["tsx", "ts", "jsx", "js"], poweredByHeader: true, compress: true, images: { deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840], imageSizes: [32, 48, 64, 96, 128, 256, 384], path: "/_next/image", loader: "default", loaderFile: "", domains: [], disableStaticImages: false, minimumCacheTTL: 14400, formats: ["image/webp"], maximumRedirects: 3, maximumResponseBody: 5e7, dangerouslyAllowLocalIP: false, dangerouslyAllowSVG: false, contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;", contentDispositionType: "attachment", localPatterns: [{ pathname: "**", search: "" }], remotePatterns: [], qualities: [75], unoptimized: false, customCacheHandler: false }, devIndicators: { position: "bottom-left" }, onDemandEntries: { maxInactiveAge: 6e4, pagesBufferLength: 5 }, basePath: "", sassOptions: {}, trailingSlash: false, i18n: null, productionBrowserSourceMaps: false, excludeDefaultMomentLocales: true, reactProductionProfiling: false, reactStrictMode: null, reactMaxHeadersLength: 6e3, httpAgentOptions: { keepAlive: true }, logging: { serverFunctions: true, browserToTerminal: "warn" }, compiler: {}, expireTime: 31536e3, staticPageGenerationTimeout: 60, output: "standalone", modularizeImports: { "@mui/icons-material": { transform: "@mui/icons-material/{{member}}" }, lodash: { transform: "lodash/{{member}}" } }, outputFileTracingRoot: "/Users/shivrajtimilsena/projects/meroUI", cacheComponents: false, cacheLife: { default: { stale: 300, revalidate: 900, expire: 4294967294 }, seconds: { stale: 30, revalidate: 1, expire: 60 }, minutes: { stale: 300, revalidate: 60, expire: 3600 }, hours: { stale: 300, revalidate: 3600, expire: 86400 }, days: { stale: 300, revalidate: 86400, expire: 604800 }, weeks: { stale: 300, revalidate: 604800, expire: 2592e3 }, max: { stale: 300, revalidate: 2592e3, expire: 31536e3 } }, cacheHandlers: {}, experimental: { appNewScrollHandler: false, useSkewCookie: false, cssChunking: true, multiZoneDraftMode: false, appNavFailHandling: false, prerenderEarlyExit: true, serverMinification: true, linkNoTouchStart: false, caseSensitiveRoutes: false, cachedNavigations: false, partialFallbacks: false, dynamicOnHover: false, varyParams: false, prefetchInlining: false, preloadEntriesOnStart: true, clientRouterFilter: true, clientRouterFilterRedirects: false, fetchCacheKeyPrefix: "", proxyPrefetch: "flexible", optimisticClientCache: true, manualClientBasePath: false, cpus: 7, memoryBasedWorkersCount: false, imgOptConcurrency: null, imgOptTimeoutInSeconds: 7, imgOptMaxInputPixels: 268402689, imgOptSequentialRead: null, isrFlushToDisk: true, workerThreads: false, optimizeCss: false, nextScriptWorkers: false, scrollRestoration: false, externalDir: false, disableOptimizedLoading: false, gzipSize: true, craCompat: false, esmExternals: true, fullySpecified: false, swcTraceProfiling: false, forceSwcTransforms: false, largePageDataBytes: 128e3, typedEnv: false, parallelServerCompiles: false, parallelServerBuildTraces: false, ppr: false, authInterrupts: false, webpackMemoryOptimizations: false, optimizeServerReact: true, strictRouteTypes: false, useTypeScriptCli: false, viewTransition: false, removeUncaughtErrorAndRejectionListeners: false, validateRSCRequestHeaders: false, staleTimes: { dynamic: 0, static: 300 }, reactDebugChannel: true, serverComponentsHmrCache: true, staticGenerationMaxConcurrency: 8, staticGenerationMinPagesPerWorker: 25, transitionIndicator: false, gestureTransition: false, inlineCss: false, useCache: false, globalNotFound: false, browserDebugInfoInTerminal: "warn", lockDistDir: true, proxyClientMaxBodySize: 10485760, hideLogsAfterAbort: false, mcpServer: true, turbopackFileSystemCacheForDev: true, turbopackFileSystemCacheForBuild: false, turbopackInferModuleSideEffects: true, turbopackPluginRuntimeStrategy: "childProcesses", optimizePackageImports: ["lucide-react", "date-fns", "lodash-es", "ramda", "antd", "react-bootstrap", "ahooks", "@ant-design/icons", "@headlessui/react", "@headlessui-float/react", "@heroicons/react/20/solid", "@heroicons/react/24/solid", "@heroicons/react/24/outline", "@visx/visx", "@tremor/react", "rxjs", "@mui/material", "@mui/icons-material", "recharts", "react-use", "effect", "@effect/schema", "@effect/platform", "@effect/platform-node", "@effect/platform-browser", "@effect/platform-bun", "@effect/sql", "@effect/sql-mssql", "@effect/sql-mysql2", "@effect/sql-pg", "@effect/sql-sqlite-node", "@effect/sql-sqlite-bun", "@effect/sql-sqlite-wasm", "@effect/sql-sqlite-react-native", "@effect/rpc", "@effect/rpc-http", "@effect/typeclass", "@effect/experimental", "@effect/opentelemetry", "@material-ui/core", "@material-ui/icons", "@tabler/icons-react", "mui-core", "react-icons/ai", "react-icons/bi", "react-icons/bs", "react-icons/cg", "react-icons/ci", "react-icons/di", "react-icons/fa", "react-icons/fa6", "react-icons/fc", "react-icons/fi", "react-icons/gi", "react-icons/go", "react-icons/gr", "react-icons/hi", "react-icons/hi2", "react-icons/im", "react-icons/io", "react-icons/io5", "react-icons/lia", "react-icons/lib", "react-icons/lu", "react-icons/md", "react-icons/pi", "react-icons/ri", "react-icons/rx", "react-icons/si", "react-icons/sl", "react-icons/tb", "react-icons/tfi", "react-icons/ti", "react-icons/vsc", "react-icons/wi"], trustHostHeader: false, isExperimentalCompile: false }, htmlLimitedBots: "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight", bundlePagesRouterDependencies: false, configFileName: "next.config.ts", turbopack: { root: "/Users/shivrajtimilsena/projects/meroUI" }, distDirRoot: ".next" }, appDir: "/Users/shivrajtimilsena/projects/meroUI", relativeAppDir: "", files: [".next/package.json", ".next/routes-manifest.json", ".next/server/pages-manifest.json", ".next/build-manifest.json", ".next/prerender-manifest.json", ".next/server/functions-config-manifest.json", ".next/server/middleware-manifest.json", ".next/server/middleware-build-manifest.js", ".next/server/app-paths-manifest.json", ".next/app-path-routes-manifest.json", ".next/server/server-reference-manifest.js", ".next/server/server-reference-manifest.json", ".next/server/prefetch-hints.json", ".next/BUILD_ID", ".next/server/next-font-manifest.js", ".next/server/next-font-manifest.json", ".next/required-server-files.json"], ignore: [] };
-        if (path22.endsWith("/prerender-manifest.json")) return { version: 4, routes: { "/": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_global-error": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_global-error", dataRoute: "/_global-error.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_not-found": { initialStatus: 404, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_not-found", dataRoute: "/_not-found.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components", dataRoute: "/components.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/badge": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/badge.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/button": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/button.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/card": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/card.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/input": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/input.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/modal": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/modal.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/progress": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/progress.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/skeleton": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/skeleton.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/table": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/table.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tabs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tabs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toast": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toast.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toggle": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toggle.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tooltip": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tooltip.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/docs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/docs", dataRoute: "/docs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/favicon.ico": { initialHeaders: { "cache-control": "public, max-age=0, must-revalidate", "content-type": "image/x-icon", "x-next-cache-tags": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico" }, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/favicon.ico", dataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/templates": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/templates", dataRoute: "/templates.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, dynamicRoutes: { "/components/[slug]": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], routeRegex: "^/components/([^/]+?)(?:/)?$", dataRoute: "/components/[slug].rsc", fallback: null, fallbackRootParams: [], fallbackRouteParams: [], dataRouteRegex: "^/components/([^/]+?)\\.rsc$", prefetchDataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, notFoundRoutes: [], preview: { previewModeId: "1dcb06c0c10fccb8fd565d67a878e458", previewModeSigningKey: "ad038de691be81bcc9c0e57c3b470d86bc767ce309cb5a110e1c287af5e6c3a3", previewModeEncryptionKey: "df499afa62d3dd6263bac86624edfdb2a99a8d978ccac3917e6713b74d9d9c02" } };
-        if (path22.endsWith("/build-manifest.json")) return { pages: { "/_app": [] }, devFiles: [], polyfillFiles: ["static/chunks/0cz1d0mv5g_q7.js"], lowPriorityFiles: ["static/dQwrh8rvPnBuMCKErsfZ_/_buildManifest.js", "static/dQwrh8rvPnBuMCKErsfZ_/_ssgManifest.js", "static/dQwrh8rvPnBuMCKErsfZ_/_clientMiddlewareManifest.js"], rootMainFiles: ["static/chunks/261y1hxfsqgcm.js", "static/chunks/27jktro2p5rq9.js", "static/chunks/25o46h8mdjlrg.js", "static/chunks/10lzwjioi-7jo.js", "static/chunks/turbopack-29n3uar5esu7v.js"] };
+        if (path22.endsWith("/prerender-manifest.json")) return { version: 4, routes: { "/": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_global-error": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_global-error", dataRoute: "/_global-error.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_not-found": { initialStatus: 404, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_not-found", dataRoute: "/_not-found.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components", dataRoute: "/components.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/badge": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/badge.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/button": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/button.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/card": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/card.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/input": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/input.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/modal": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/modal.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/progress": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/progress.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/prompt-bar": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/prompt-bar.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/skeleton": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/skeleton.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/table": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/table.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tabs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tabs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toast": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toast.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toggle": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toggle.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tooltip": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tooltip.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/docs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/docs", dataRoute: "/docs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/favicon.ico": { initialHeaders: { "cache-control": "public, max-age=0, must-revalidate", "content-type": "image/x-icon", "x-next-cache-tags": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico" }, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/favicon.ico", dataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/templates": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/templates", dataRoute: "/templates.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, dynamicRoutes: { "/components/[slug]": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], routeRegex: "^/components/([^/]+?)(?:/)?$", dataRoute: "/components/[slug].rsc", fallback: null, fallbackRootParams: [], fallbackRouteParams: [], dataRouteRegex: "^/components/([^/]+?)\\.rsc$", prefetchDataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, notFoundRoutes: [], preview: { previewModeId: "1dcb06c0c10fccb8fd565d67a878e458", previewModeSigningKey: "ad038de691be81bcc9c0e57c3b470d86bc767ce309cb5a110e1c287af5e6c3a3", previewModeEncryptionKey: "df499afa62d3dd6263bac86624edfdb2a99a8d978ccac3917e6713b74d9d9c02" } };
+        if (path22.endsWith("/build-manifest.json")) return { pages: { "/_app": [] }, devFiles: [], polyfillFiles: ["static/chunks/0cz1d0mv5g_q7.js"], lowPriorityFiles: ["static/h6FxDrRBln8Oc02cpmgYG/_buildManifest.js", "static/h6FxDrRBln8Oc02cpmgYG/_ssgManifest.js", "static/h6FxDrRBln8Oc02cpmgYG/_clientMiddlewareManifest.js"], rootMainFiles: ["static/chunks/261y1hxfsqgcm.js", "static/chunks/27jktro2p5rq9.js", "static/chunks/25o46h8mdjlrg.js", "static/chunks/10lzwjioi-7jo.js", "static/chunks/turbopack-29n3uar5esu7v.js"] };
         if (path22.endsWith("/app-path-routes-manifest.json")) return { "/(docs)/components/[slug]/page": "/components/[slug]", "/(docs)/components/page": "/components", "/(docs)/docs/page": "/docs", "/_global-error/page": "/_global-error", "/_not-found/page": "/_not-found", "/favicon.ico/route": "/favicon.ico", "/page": "/", "/templates/page": "/templates" };
         if (path22.endsWith("/server/server-reference-manifest.json")) return { node: {}, edge: {}, encryptionKey: "jxhBeDRad98CkXZqUi/REj0lfZjUelftSHaKKpEfWNI=" };
         if (path22.endsWith("/server/prefetch-hints.json")) return {};
@@ -13333,9 +13496,9 @@ See here for info: https://nextjs.org/docs/messages/custom-error-no-custom-404`)
         if (path22.endsWith("/server/functions-config-manifest.json")) return { version: 1, functions: {} };
         if (path22.endsWith("/server/app-paths-manifest.json")) return { "/(docs)/components/[slug]/page": "app/(docs)/components/[slug]/page.js", "/(docs)/components/page": "app/(docs)/components/page.js", "/(docs)/docs/page": "app/(docs)/docs/page.js", "/_global-error/page": "app/_global-error/page.js", "/_not-found/page": "app/_not-found/page.js", "/favicon.ico/route": "app/favicon.ico/route.js", "/page": "app/page.js", "/templates/page": "app/templates/page.js" };
         if (path22.endsWith("/server/app/page/react-loadable-manifest.json")) return {};
-        if (path22.endsWith("/server/app/templates/page/react-loadable-manifest.json")) return {};
-        if (path22.endsWith("/server/app/_not-found/page/react-loadable-manifest.json")) return {};
         if (path22.endsWith("/server/app/_global-error/page/react-loadable-manifest.json")) return {};
+        if (path22.endsWith("/server/app/_not-found/page/react-loadable-manifest.json")) return {};
+        if (path22.endsWith("/server/app/templates/page/react-loadable-manifest.json")) return {};
         if (path22.endsWith("/server/app/(docs)/docs/page/react-loadable-manifest.json")) return {};
         if (path22.endsWith("/server/app/(docs)/components/page/react-loadable-manifest.json")) return {};
         if (path22.endsWith("/server/app/(docs)/components/[slug]/page/react-loadable-manifest.json")) return {};
@@ -13346,15 +13509,15 @@ See here for info: https://nextjs.org/docs/messages/custom-error-no-custom-404`)
         throw new Error(`Unexpected loadManifest(${path22}) call!`);
       }
       __name(loadManifest, "loadManifest");
-      var v552 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/1o6__1wu-ae97.js", "/_next/static/chunks/14mrh2-p_w84d.js"], v59c = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/1o6__1wu-ae97.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/2-s45rux142gm.js"], v6f4 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js"], v1b4 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/node_modules_0h91jdk._.js"], v0c5 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1qz-9jm._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js", "server/chunks/ssr/src_components_sections_1ta2tx8._.js"], vd56 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/1o6__1wu-ae97.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/26qg4uake2nx7.js"], v7b9 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_0_h66el._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js"], v5b8 = ["/_next/static/chunks/05-c3ty_6dwfk.js", "/_next/static/chunks/14mrh2-p_w84d.js"], vf23 = ["server/chunks/ssr/[root-of-the-server]__1s8rlz2._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js"], vb05 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/1o6__1wu-ae97.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/2rw1bfv7hwppj.js", "/_next/static/chunks/15wo26az0yjmr.js"], v6f6 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/1o6__1wu-ae97.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/2rw1bfv7hwppj.js"], v77b = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1xhgq9l._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js", "server/chunks/ssr/src_components_docs_CopyLine_tsx_0olxzx_._.js"], v586 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1xhgq9l._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js"], v064 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/1o6__1wu-ae97.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/2rw1bfv7hwppj.js", "/_next/static/chunks/0jypo8o83vaxf.js"], v66a = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1xhgq9l._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js", "server/chunks/ssr/src_components_1xqkxja._.js"], v614 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v59c, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v59c, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v59c, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Hero.tsx <module evaluation>": { id: 77258, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Hero.tsx": { id: 77258, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Marquee.tsx <module evaluation>": { id: 38134, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Marquee.tsx": { id: 38134, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Features.tsx <module evaluation>": { id: 14999, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Features.tsx": { id: 14999, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Install.tsx <module evaluation>": { id: 84424, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Install.tsx": { id: 84424, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/DesignShowcase.tsx <module evaluation>": { id: 88366, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/DesignShowcase.tsx": { id: 88366, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Footer.tsx <module evaluation>": { id: 81469, name: "*", chunks: v59c, async: false }, "[project]/src/components/sections/Footer.tsx": { id: 81469, name: "*", chunks: v59c, async: false } }, vf66 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v0c5, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v0c5, async: false } }, 77258: { "*": { id: 9264, name: "*", chunks: v0c5, async: false } }, 38134: { "*": { id: 71672, name: "*", chunks: v0c5, async: false } }, 14999: { "*": { id: 10547, name: "*", chunks: v0c5, async: false } }, 84424: { "*": { id: 90001, name: "*", chunks: v0c5, async: false } }, 88366: { "*": { id: 36119, name: "*", chunks: v0c5, async: false } }, 81469: { "*": { id: 3424, name: "*", chunks: v0c5, async: false } } }, vfaa = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 77258: { "*": { id: 52995, name: "*", chunks: [], async: false } }, 38134: { "*": { id: 21122, name: "*", chunks: [], async: false } }, 14999: { "*": { id: 9423, name: "*", chunks: [], async: false } }, 84424: { "*": { id: 65036, name: "*", chunks: [], async: false } }, 88366: { "*": { id: 55547, name: "*", chunks: [], async: false } }, 81469: { "*": { id: 94592, name: "*", chunks: [], async: false } } }, vd8b = { "[project]/src/app/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/page": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }] }, v709 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/2-s45rux142gm.js"] }, v003 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: vd56, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: vd56, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: vd56, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: vd56, async: false }, "[project]/src/components/docs/CopyLine.tsx <module evaluation>": { id: 94816, name: "*", chunks: vd56, async: false }, "[project]/src/components/docs/CopyLine.tsx": { id: 94816, name: "*", chunks: vd56, async: false } }, vcc6 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v7b9, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v7b9, async: false } }, 94816: { "*": { id: 43608, name: "*", chunks: v7b9, async: false } } }, v9a0 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 94816: { "*": { id: 26454, name: "*", chunks: [], async: false } } }, v554 = { "[project]/src/app/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/templates/page": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }] }, v686 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/templates/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/26qg4uake2nx7.js"] }, v5e0 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v552, async: false } }, vcc4 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } } }, v12b = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } } }, v73f = { "[project]/src/app/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }] }, v73b = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"] }, v14c = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v5b8, async: false } }, vfb9 = { 39756: { "*": { id: 2420, name: "*", chunks: vf23, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: vf23, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: vf23, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: vf23, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: vf23, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: vf23, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: vf23, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: vf23, async: false } } }, v165 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } } }, v1ff = { "[project]/node_modules/next/dist/client/components/builtin/global-error": [] }, v73a = { "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/05-c3ty_6dwfk.js", "static/chunks/14mrh2-p_w84d.js"] }, v3c0 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: vb05, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: vb05, async: false }, "[project]/src/components/docs/Sidebar.tsx <module evaluation>": { id: 3664, name: "*", chunks: v6f6, async: false }, "[project]/src/components/docs/Sidebar.tsx": { id: 3664, name: "*", chunks: v6f6, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v6f6, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v6f6, async: false }, "[project]/src/components/docs/CopyLine.tsx <module evaluation>": { id: 94816, name: "*", chunks: vb05, async: false }, "[project]/src/components/docs/CopyLine.tsx": { id: 94816, name: "*", chunks: vb05, async: false } }, v07b = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v77b, async: false } }, 3664: { "*": { id: 18519, name: "*", chunks: v586, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v586, async: false } }, 94816: { "*": { id: 43608, name: "*", chunks: v77b, async: false } } }, v803 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 3664: { "*": { id: 30714, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 94816: { "*": { id: 26454, name: "*", chunks: [], async: false } } }, vf27 = { "[project]/src/app/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/(docs)/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/(docs)/docs/page": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }] }, v05c = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/(docs)/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/2rw1bfv7hwppj.js"], "[project]/src/app/(docs)/docs/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/2rw1bfv7hwppj.js", "static/chunks/15wo26az0yjmr.js"] }, v4ce = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v6f6, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v6f6, async: false }, "[project]/src/components/docs/Sidebar.tsx <module evaluation>": { id: 3664, name: "*", chunks: v6f6, async: false }, "[project]/src/components/docs/Sidebar.tsx": { id: 3664, name: "*", chunks: v6f6, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v6f6, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v6f6, async: false } }, v023 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v586, async: false } }, 3664: { "*": { id: 18519, name: "*", chunks: v586, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v586, async: false } } }, v023d = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 3664: { "*": { id: 30714, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } } }, v186 = { "[project]/src/app/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/(docs)/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }] }, v6d3 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/(docs)/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/2rw1bfv7hwppj.js"] }, v869 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v552, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v064, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v064, async: false }, "[project]/src/components/docs/Sidebar.tsx <module evaluation>": { id: 3664, name: "*", chunks: v6f6, async: false }, "[project]/src/components/docs/Sidebar.tsx": { id: 3664, name: "*", chunks: v6f6, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v6f6, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v6f6, async: false }, "[project]/src/components/docs/ComponentPreview.tsx <module evaluation>": { id: 65592, name: "*", chunks: v064, async: false }, "[project]/src/components/docs/ComponentPreview.tsx": { id: 65592, name: "*", chunks: v064, async: false }, "[project]/src/components/docs/CopyBlock.tsx <module evaluation>": { id: 19777, name: "*", chunks: v064, async: false }, "[project]/src/components/docs/CopyBlock.tsx": { id: 19777, name: "*", chunks: v064, async: false } }, v9d6 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v66a, async: false } }, 3664: { "*": { id: 18519, name: "*", chunks: v586, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v586, async: false } }, 65592: { "*": { id: 41578, name: "*", chunks: v66a, async: false } }, 19777: { "*": { id: 55563, name: "*", chunks: v66a, async: false } } }, vae2 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 3664: { "*": { id: 30714, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 65592: { "*": { id: 74710, name: "*", chunks: [], async: false } }, 19777: { "*": { id: 79199, name: "*", chunks: [], async: false } } }, v291 = { "[project]/src/app/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/(docs)/layout": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }], "[project]/src/app/(docs)/components/[slug]/page": [{ path: "static/chunks/1oqfo-0wa-sxv.css", inlined: false }] }, v3b1 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/(docs)/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/2rw1bfv7hwppj.js"], "[project]/src/app/(docs)/components/[slug]/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/1o6__1wu-ae97.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/2rw1bfv7hwppj.js", "static/chunks/0jypo8o83vaxf.js"] };
+      var v593 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/0rksi3_amll3c.js", "/_next/static/chunks/14mrh2-p_w84d.js"], v3d8 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/0rksi3_amll3c.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/0z72-m203b8-n.js"], v6f4 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js"], v1b4 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/node_modules_0h91jdk._.js"], v6d3 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_0khwjt7._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js", "server/chunks/ssr/src_components_sections_1ta2tx8._.js"], v4aa = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/0rksi3_amll3c.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/26qg4uake2nx7.js"], v7b9 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_0_h66el._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js"], v5b8 = ["/_next/static/chunks/05-c3ty_6dwfk.js", "/_next/static/chunks/14mrh2-p_w84d.js"], vf23 = ["server/chunks/ssr/[root-of-the-server]__1s8rlz2._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js"], vadd = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/0rksi3_amll3c.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/076podjn-ce9d.js", "/_next/static/chunks/15wo26az0yjmr.js"], v550 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/0rksi3_amll3c.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/076podjn-ce9d.js"], v77b = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1xhgq9l._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js", "server/chunks/ssr/src_components_docs_CopyLine_tsx_0olxzx_._.js"], v586 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1xhgq9l._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js"], v959 = ["/_next/static/chunks/1sccb_zpht8ro.js", "/_next/static/chunks/0rksi3_amll3c.js", "/_next/static/chunks/14mrh2-p_w84d.js", "/_next/static/chunks/076podjn-ce9d.js", "/_next/static/chunks/2eiyn7qnym9qr.js", "/_next/static/chunks/0orzggs_ca_si.js"], ve51 = ["server/chunks/ssr/[root-of-the-server]__1k7i5r_._.js", "server/chunks/ssr/node_modules_next_1iemwhs._.js", "server/chunks/ssr/node_modules_next_dist_0uboya6._.js", "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js", "server/chunks/ssr/src_components_1xhgq9l._.js", "server/chunks/ssr/node_modules_next_dist_1enzot_._.js", "server/chunks/ssr/src_components_ui_1ga4d_c._.js", "server/chunks/ssr/_1e5ewtu._.js"], vc0a = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v3d8, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v3d8, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v3d8, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Hero.tsx <module evaluation>": { id: 77258, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Hero.tsx": { id: 77258, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Marquee.tsx <module evaluation>": { id: 38134, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Marquee.tsx": { id: 38134, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Features.tsx <module evaluation>": { id: 14999, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Features.tsx": { id: 14999, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Install.tsx <module evaluation>": { id: 84424, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Install.tsx": { id: 84424, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/DesignShowcase.tsx <module evaluation>": { id: 88366, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/DesignShowcase.tsx": { id: 88366, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Footer.tsx <module evaluation>": { id: 81469, name: "*", chunks: v3d8, async: false }, "[project]/src/components/sections/Footer.tsx": { id: 81469, name: "*", chunks: v3d8, async: false } }, v7cd = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v6d3, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v6d3, async: false } }, 77258: { "*": { id: 9264, name: "*", chunks: v6d3, async: false } }, 38134: { "*": { id: 71672, name: "*", chunks: v6d3, async: false } }, 14999: { "*": { id: 10547, name: "*", chunks: v6d3, async: false } }, 84424: { "*": { id: 90001, name: "*", chunks: v6d3, async: false } }, 88366: { "*": { id: 36119, name: "*", chunks: v6d3, async: false } }, 81469: { "*": { id: 3424, name: "*", chunks: v6d3, async: false } } }, vfaa = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 77258: { "*": { id: 52995, name: "*", chunks: [], async: false } }, 38134: { "*": { id: 21122, name: "*", chunks: [], async: false } }, 14999: { "*": { id: 9423, name: "*", chunks: [], async: false } }, 84424: { "*": { id: 65036, name: "*", chunks: [], async: false } }, 88366: { "*": { id: 55547, name: "*", chunks: [], async: false } }, 81469: { "*": { id: 94592, name: "*", chunks: [], async: false } } }, vf73 = { "[project]/src/app/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/page": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }] }, v6fd = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/0z72-m203b8-n.js"] }, ve05 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v593, async: false } }, vcc4 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } } }, v12b = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } } }, vcd0 = { "[project]/src/app/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }] }, v72e = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"] }, vf61 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v4aa, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v4aa, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v4aa, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v4aa, async: false }, "[project]/src/components/docs/CopyLine.tsx <module evaluation>": { id: 94816, name: "*", chunks: v4aa, async: false }, "[project]/src/components/docs/CopyLine.tsx": { id: 94816, name: "*", chunks: v4aa, async: false } }, vcc6 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v7b9, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v7b9, async: false } }, 94816: { "*": { id: 43608, name: "*", chunks: v7b9, async: false } } }, v9a0 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 94816: { "*": { id: 26454, name: "*", chunks: [], async: false } } }, vab8 = { "[project]/src/app/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/templates/page": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }] }, v852 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/templates/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/26qg4uake2nx7.js"] }, v14c = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v5b8, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v5b8, async: false } }, vfb9 = { 39756: { "*": { id: 2420, name: "*", chunks: vf23, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: vf23, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: vf23, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: vf23, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: vf23, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: vf23, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: vf23, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: vf23, async: false } } }, v165 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } } }, v1ff = { "[project]/node_modules/next/dist/client/components/builtin/global-error": [] }, v73a = { "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/05-c3ty_6dwfk.js", "static/chunks/14mrh2-p_w84d.js"] }, vd36 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: vadd, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: vadd, async: false }, "[project]/src/components/docs/Sidebar.tsx <module evaluation>": { id: 3664, name: "*", chunks: v550, async: false }, "[project]/src/components/docs/Sidebar.tsx": { id: 3664, name: "*", chunks: v550, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v550, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v550, async: false }, "[project]/src/components/docs/CopyLine.tsx <module evaluation>": { id: 94816, name: "*", chunks: vadd, async: false }, "[project]/src/components/docs/CopyLine.tsx": { id: 94816, name: "*", chunks: vadd, async: false } }, v07b = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v77b, async: false } }, 3664: { "*": { id: 18519, name: "*", chunks: v586, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v586, async: false } }, 94816: { "*": { id: 43608, name: "*", chunks: v77b, async: false } } }, v803 = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 3664: { "*": { id: 30714, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 94816: { "*": { id: 26454, name: "*", chunks: [], async: false } } }, v12f = { "[project]/src/app/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/(docs)/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/(docs)/docs/page": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }] }, va37 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/(docs)/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/076podjn-ce9d.js"], "[project]/src/app/(docs)/docs/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/076podjn-ce9d.js", "static/chunks/15wo26az0yjmr.js"] }, vd08 = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v550, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v550, async: false }, "[project]/src/components/docs/Sidebar.tsx <module evaluation>": { id: 3664, name: "*", chunks: v550, async: false }, "[project]/src/components/docs/Sidebar.tsx": { id: 3664, name: "*", chunks: v550, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v550, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v550, async: false } }, v023 = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: v586, async: false } }, 3664: { "*": { id: 18519, name: "*", chunks: v586, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v586, async: false } } }, v023d = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 3664: { "*": { id: 30714, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } } }, v576 = { "[project]/src/app/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/(docs)/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }] }, v4a2 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/(docs)/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/076podjn-ce9d.js"] }, vb5c = { "[project]/node_modules/next/dist/esm/client/components/layout-router.js <module evaluation>": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/layout-router.js": { id: 39756, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js <module evaluation>": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/render-from-template-context.js": { id: 37457, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js <module evaluation>": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-page.js": { id: 47257, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js <module evaluation>": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/client-segment.js": { id: 92825, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js <module evaluation>": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": { id: 68017, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js <module evaluation>": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/framework/boundary-components.js": { id: 97367, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js <module evaluation>": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/esm/lib/metadata/generate/icon-mark.js": { id: 27201, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx <module evaluation>": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/ScrollProgress.tsx": { id: 46083, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx <module evaluation>": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/src/components/Preloader.tsx": { id: 24179, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/components/builtin/global-error.js": { id: 68027, name: "*", chunks: v593, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js <module evaluation>": { id: 22016, name: "*", chunks: v959, async: false }, "[project]/node_modules/next/dist/client/app-dir/link.js": { id: 22016, name: "*", chunks: v959, async: false }, "[project]/src/components/docs/Sidebar.tsx <module evaluation>": { id: 3664, name: "*", chunks: v550, async: false }, "[project]/src/components/docs/Sidebar.tsx": { id: 3664, name: "*", chunks: v550, async: false }, "[project]/src/components/ThemeToggle.tsx <module evaluation>": { id: 22530, name: "*", chunks: v550, async: false }, "[project]/src/components/ThemeToggle.tsx": { id: 22530, name: "*", chunks: v550, async: false }, "[project]/src/components/docs/ComponentPreview.tsx <module evaluation>": { id: 65592, name: "*", chunks: v959, async: false }, "[project]/src/components/docs/ComponentPreview.tsx": { id: 65592, name: "*", chunks: v959, async: false }, "[project]/src/components/docs/CopyBlock.tsx <module evaluation>": { id: 19777, name: "*", chunks: v959, async: false }, "[project]/src/components/docs/CopyBlock.tsx": { id: 19777, name: "*", chunks: v959, async: false }, "[project]/src/components/docs/ComponentToolbar.tsx <module evaluation>": { id: 27601, name: "*", chunks: v959, async: false }, "[project]/src/components/docs/ComponentToolbar.tsx": { id: 27601, name: "*", chunks: v959, async: false } }, v28e = { 39756: { "*": { id: 2420, name: "*", chunks: v6f4, async: false } }, 37457: { "*": { id: 24017, name: "*", chunks: v6f4, async: false } }, 47257: { "*": { id: 77682, name: "*", chunks: v6f4, async: false } }, 92825: { "*": { id: 97296, name: "*", chunks: v6f4, async: false } }, 68017: { "*": { id: 61660, name: "*", chunks: v6f4, async: false } }, 97367: { "*": { id: 90574, name: "*", chunks: v6f4, async: false } }, 27201: { "*": { id: 60704, name: "*", chunks: v6f4, async: false } }, 46083: { "*": { id: 88680, name: "*", chunks: v6f4, async: false } }, 24179: { "*": { id: 50370, name: "*", chunks: v6f4, async: false } }, 68027: { "*": { id: 40622, name: "*", chunks: v1b4, async: false } }, 22016: { "*": { id: 38246, name: "*", chunks: ve51, async: false } }, 3664: { "*": { id: 18519, name: "*", chunks: v586, async: false } }, 22530: { "*": { id: 79556, name: "*", chunks: v586, async: false } }, 65592: { "*": { id: 41578, name: "*", chunks: ve51, async: false } }, 19777: { "*": { id: 55563, name: "*", chunks: ve51, async: false } }, 27601: { "*": { id: 18293, name: "*", chunks: ve51, async: false } } }, v23d = { 39756: { "*": { id: 26768, name: "*", chunks: [], async: false } }, 37457: { "*": { id: 17910, name: "*", chunks: [], async: false } }, 47257: { "*": { id: 92977, name: "*", chunks: [], async: false } }, 92825: { "*": { id: 48552, name: "*", chunks: [], async: false } }, 68017: { "*": { id: 83919, name: "*", chunks: [], async: false } }, 97367: { "*": { id: 24150, name: "*", chunks: [], async: false } }, 27201: { "*": { id: 40771, name: "*", chunks: [], async: false } }, 46083: { "*": { id: 63243, name: "*", chunks: [], async: false } }, 24179: { "*": { id: 1388, name: "*", chunks: [], async: false } }, 68027: { "*": { id: 82509, name: "*", chunks: [], async: false } }, 22016: { "*": { id: 84707, name: "*", chunks: [], async: false } }, 3664: { "*": { id: 30714, name: "*", chunks: [], async: false } }, 22530: { "*": { id: 35347, name: "*", chunks: [], async: false } }, 65592: { "*": { id: 74710, name: "*", chunks: [], async: false } }, 19777: { "*": { id: 79199, name: "*", chunks: [], async: false } }, 27601: { "*": { id: 40577, name: "*", chunks: [], async: false } } }, v729 = { "[project]/src/app/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/node_modules/next/dist/client/components/builtin/global-error": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/(docs)/layout": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }], "[project]/src/app/(docs)/components/[slug]/page": [{ path: "static/chunks/3_z52nyd-gsyw.css", inlined: false }] }, vc92 = { "[project]/src/app/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/node_modules/next/dist/client/components/builtin/global-error": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js"], "[project]/src/app/(docs)/layout": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/076podjn-ce9d.js"], "[project]/src/app/(docs)/components/[slug]/page": ["static/chunks/1sccb_zpht8ro.js", "static/chunks/0rksi3_amll3c.js", "static/chunks/14mrh2-p_w84d.js", "static/chunks/076podjn-ce9d.js", "static/chunks/2eiyn7qnym9qr.js", "static/chunks/0orzggs_ca_si.js"] };
       function evalManifest(path22, shouldCache = true, cache = sharedCache, handleMissing) {
-        if (path22 = path22.replaceAll("/", "/"), path22.endsWith("server/app/(docs)/components/[slug]/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/(docs)/components/[slug]/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v869, ssrModuleMapping: v9d6, edgeSSRModuleMapping: {}, rscModuleMapping: vae2, edgeRscModuleMapping: {}, entryCSSFiles: v291, entryJSFiles: v3b1 }, { __RSC_MANIFEST: { "/(docs)/components/[slug]/page": globalThis.__RSC_MANIFEST["/(docs)/components/[slug]/page"] } };
-        if (path22.endsWith("server/app/(docs)/components/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/(docs)/components/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v4ce, ssrModuleMapping: v023, edgeSSRModuleMapping: {}, rscModuleMapping: v023d, edgeRscModuleMapping: {}, entryCSSFiles: v186, entryJSFiles: v6d3 }, { __RSC_MANIFEST: { "/(docs)/components/page": globalThis.__RSC_MANIFEST["/(docs)/components/page"] } };
+        if (path22 = path22.replaceAll("/", "/"), path22.endsWith("server/app/(docs)/components/[slug]/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/(docs)/components/[slug]/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: vb5c, ssrModuleMapping: v28e, edgeSSRModuleMapping: {}, rscModuleMapping: v23d, edgeRscModuleMapping: {}, entryCSSFiles: v729, entryJSFiles: vc92 }, { __RSC_MANIFEST: { "/(docs)/components/[slug]/page": globalThis.__RSC_MANIFEST["/(docs)/components/[slug]/page"] } };
+        if (path22.endsWith("server/app/(docs)/components/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/(docs)/components/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: vd08, ssrModuleMapping: v023, edgeSSRModuleMapping: {}, rscModuleMapping: v023d, edgeRscModuleMapping: {}, entryCSSFiles: v576, entryJSFiles: v4a2 }, { __RSC_MANIFEST: { "/(docs)/components/page": globalThis.__RSC_MANIFEST["/(docs)/components/page"] } };
         if (path22.endsWith("server/app/_global-error/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/_global-error/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v14c, ssrModuleMapping: vfb9, edgeSSRModuleMapping: {}, rscModuleMapping: v165, edgeRscModuleMapping: {}, entryCSSFiles: v1ff, entryJSFiles: v73a }, { __RSC_MANIFEST: { "/_global-error/page": globalThis.__RSC_MANIFEST["/_global-error/page"] } };
-        if (path22.endsWith("server/app/(docs)/docs/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/(docs)/docs/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v3c0, ssrModuleMapping: v07b, edgeSSRModuleMapping: {}, rscModuleMapping: v803, edgeRscModuleMapping: {}, entryCSSFiles: vf27, entryJSFiles: v05c }, { __RSC_MANIFEST: { "/(docs)/docs/page": globalThis.__RSC_MANIFEST["/(docs)/docs/page"] } };
-        if (path22.endsWith("server/app/_not-found/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/_not-found/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v5e0, ssrModuleMapping: vcc4, edgeSSRModuleMapping: {}, rscModuleMapping: v12b, edgeRscModuleMapping: {}, entryCSSFiles: v73f, entryJSFiles: v73b }, { __RSC_MANIFEST: { "/_not-found/page": globalThis.__RSC_MANIFEST["/_not-found/page"] } };
-        if (path22.endsWith("server/app/templates/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/templates/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v003, ssrModuleMapping: vcc6, edgeSSRModuleMapping: {}, rscModuleMapping: v9a0, edgeRscModuleMapping: {}, entryCSSFiles: v554, entryJSFiles: v686 }, { __RSC_MANIFEST: { "/templates/page": globalThis.__RSC_MANIFEST["/templates/page"] } };
-        if (path22.endsWith("server/app/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: v614, ssrModuleMapping: vf66, edgeSSRModuleMapping: {}, rscModuleMapping: vfaa, edgeRscModuleMapping: {}, entryCSSFiles: vd8b, entryJSFiles: v709 }, { __RSC_MANIFEST: { "/page": globalThis.__RSC_MANIFEST["/page"] } };
+        if (path22.endsWith("server/app/(docs)/docs/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/(docs)/docs/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: vd36, ssrModuleMapping: v07b, edgeSSRModuleMapping: {}, rscModuleMapping: v803, edgeRscModuleMapping: {}, entryCSSFiles: v12f, entryJSFiles: va37 }, { __RSC_MANIFEST: { "/(docs)/docs/page": globalThis.__RSC_MANIFEST["/(docs)/docs/page"] } };
+        if (path22.endsWith("server/app/_not-found/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/_not-found/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: ve05, ssrModuleMapping: vcc4, edgeSSRModuleMapping: {}, rscModuleMapping: v12b, edgeRscModuleMapping: {}, entryCSSFiles: vcd0, entryJSFiles: v72e }, { __RSC_MANIFEST: { "/_not-found/page": globalThis.__RSC_MANIFEST["/_not-found/page"] } };
+        if (path22.endsWith("server/app/templates/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/templates/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: vf61, ssrModuleMapping: vcc6, edgeSSRModuleMapping: {}, rscModuleMapping: v9a0, edgeRscModuleMapping: {}, entryCSSFiles: vab8, entryJSFiles: v852 }, { __RSC_MANIFEST: { "/templates/page": globalThis.__RSC_MANIFEST["/templates/page"] } };
+        if (path22.endsWith("server/app/page_client-reference-manifest.js")) return globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {}, globalThis.__RSC_MANIFEST["/page"] = { moduleLoading: { prefix: "", crossOrigin: null }, clientModules: vc0a, ssrModuleMapping: v7cd, edgeSSRModuleMapping: {}, rscModuleMapping: vfaa, edgeRscModuleMapping: {}, entryCSSFiles: vf73, entryJSFiles: v6fd }, { __RSC_MANIFEST: { "/page": globalThis.__RSC_MANIFEST["/page"] } };
         if (path22.endsWith("_client-reference-manifest.js")) return { __RSC_MANIFEST: {} };
         throw new Error(`Unexpected evalManifest(${path22}) call!`);
       }
@@ -18157,18 +18320,18 @@ function print() { __p += __j.call(arguments, '') }
       globalThis.openNextDebug = false;
       globalThis.openNextVersion = "4.1.0";
       globalThis.nextVersion = "16.2.12";
-      var __defProp32 = Object.defineProperty, __getOwnPropDesc3 = Object.getOwnPropertyDescriptor, __getOwnPropNames32 = Object.getOwnPropertyNames, __hasOwnProp3 = Object.prototype.hasOwnProperty, __export4 = /* @__PURE__ */ __name((target, all) => {
-        for (var name in all) __defProp32(target, name, { get: all[name], enumerable: true });
+      var __defProp42 = Object.defineProperty, __getOwnPropDesc3 = Object.getOwnPropertyDescriptor, __getOwnPropNames32 = Object.getOwnPropertyNames, __hasOwnProp3 = Object.prototype.hasOwnProperty, __export4 = /* @__PURE__ */ __name((target, all) => {
+        for (var name in all) __defProp42(target, name, { get: all[name], enumerable: true });
       }, "__export4"), __copyProps3 = /* @__PURE__ */ __name((to, from, except, desc) => {
-        if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames32(from)) !__hasOwnProp3.call(to, key) && key !== except && __defProp32(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc3(from, key)) || desc.enumerable });
+        if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames32(from)) !__hasOwnProp3.call(to, key) && key !== except && __defProp42(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc3(from, key)) || desc.enumerable });
         return to;
-      }, "__copyProps3"), __toCommonJS3 = /* @__PURE__ */ __name((mod3) => __copyProps3(__defProp32({}, "__esModule", { value: true }), mod3), "__toCommonJS3"), composable_cache_exports = {};
+      }, "__copyProps3"), __toCommonJS3 = /* @__PURE__ */ __name((mod3) => __copyProps3(__defProp42({}, "__esModule", { value: true }), mod3), "__toCommonJS3"), composable_cache_exports = {};
       __export4(composable_cache_exports, { default: /* @__PURE__ */ __name(() => composable_cache_default, "default") });
       module.exports = __toCommonJS3(composable_cache_exports);
-      function debug22(...args) {
+      function debug32(...args) {
         globalThis.openNextDebug && console.log(...args);
       }
-      __name(debug22, "debug2");
+      __name(debug32, "debug3");
       function compareSemver2(v1, operator, v2) {
         let versionDiff = 0;
         if (v1 === "latest") versionDiff = 1;
@@ -18204,7 +18367,7 @@ function print() { __p += __j.call(arguments, '') }
       __name(getTagKey, "getTagKey");
       async function writeTags(tags) {
         let store = globalThis.__openNextAls.getStore();
-        if (debug22("Writing tags", tags, store), !store || globalThis.openNextConfig.dangerous?.disableTagCache) return;
+        if (debug32("Writing tags", tags, store), !store || globalThis.openNextConfig.dangerous?.disableTagCache) return;
         let tagsToWrite = tags.filter((t) => {
           let tagKey = getTagKey(t), shouldWrite = !store.writtenTags.has(tagKey);
           return shouldWrite && store.writtenTags.add(tagKey), shouldWrite;
@@ -18237,7 +18400,7 @@ function print() { __p += __j.call(arguments, '') }
           }
           let result = await globalThis.incrementalCache.get(cacheKey, "composable");
           if (!result?.value?.value) return;
-          debug22("composable cache result", result);
+          debug32("composable cache result", result);
           let revalidate = result.value.revalidate;
           if (globalThis.tagCache.mode === "nextMode" && result.value.tags.length > 0) {
             if (result.shouldBypassTagCache ? false : await globalThis.tagCache.hasBeenRevalidated(result.value.tags, result.lastModified)) return;
@@ -18248,7 +18411,7 @@ function print() { __p += __j.call(arguments, '') }
           }
           return { ...result.value, revalidate, value: toReadableStream2(result.value.value) };
         } catch {
-          debug22("Cannot read composable cache entry");
+          debug32("Cannot read composable cache entry");
           return;
         }
       }, async set(cacheKey, pendingEntry) {
@@ -18282,7 +18445,7 @@ function print() { __p += __j.call(arguments, '') }
             toWrite.length > 0 && await writeTags(toWrite);
           }
         } catch (e) {
-          debug22("Failed to update tags", e);
+          debug32("Failed to update tags", e);
         }
       } };
     } });
@@ -18293,41 +18456,41 @@ function print() { __p += __j.call(arguments, '') }
       globalThis.openNextDebug = false;
       globalThis.openNextVersion = "4.1.0";
       globalThis.nextVersion = "16.2.12";
-      var __defProp32 = Object.defineProperty, __getOwnPropDesc3 = Object.getOwnPropertyDescriptor, __getOwnPropNames32 = Object.getOwnPropertyNames, __hasOwnProp3 = Object.prototype.hasOwnProperty, __export4 = /* @__PURE__ */ __name((target, all) => {
-        for (var name in all) __defProp32(target, name, { get: all[name], enumerable: true });
+      var __defProp42 = Object.defineProperty, __getOwnPropDesc3 = Object.getOwnPropertyDescriptor, __getOwnPropNames32 = Object.getOwnPropertyNames, __hasOwnProp3 = Object.prototype.hasOwnProperty, __export4 = /* @__PURE__ */ __name((target, all) => {
+        for (var name in all) __defProp42(target, name, { get: all[name], enumerable: true });
       }, "__export4"), __copyProps3 = /* @__PURE__ */ __name((to, from, except, desc) => {
-        if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames32(from)) !__hasOwnProp3.call(to, key) && key !== except && __defProp32(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc3(from, key)) || desc.enumerable });
+        if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames32(from)) !__hasOwnProp3.call(to, key) && key !== except && __defProp42(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc3(from, key)) || desc.enumerable });
         return to;
-      }, "__copyProps3"), __toCommonJS3 = /* @__PURE__ */ __name((mod3) => __copyProps3(__defProp32({}, "__esModule", { value: true }), mod3), "__toCommonJS3"), cache_exports = {};
+      }, "__copyProps3"), __toCommonJS3 = /* @__PURE__ */ __name((mod3) => __copyProps3(__defProp42({}, "__esModule", { value: true }), mod3), "__toCommonJS3"), cache_exports = {};
       __export4(cache_exports, { SOFT_TAG_PREFIX: /* @__PURE__ */ __name(() => SOFT_TAG_PREFIX, "SOFT_TAG_PREFIX"), default: /* @__PURE__ */ __name(() => Cache, "default") });
       module.exports = __toCommonJS3(cache_exports);
-      function isOpenNextError22(e) {
+      function isOpenNextError32(e) {
         try {
           return "__openNextInternal" in e;
         } catch {
           return false;
         }
       }
-      __name(isOpenNextError22, "isOpenNextError2");
-      function debug22(...args) {
+      __name(isOpenNextError32, "isOpenNextError3");
+      function debug32(...args) {
         globalThis.openNextDebug && console.log(...args);
       }
-      __name(debug22, "debug2");
-      function warn22(...args) {
+      __name(debug32, "debug3");
+      function warn32(...args) {
         console.warn(...args);
       }
-      __name(warn22, "warn2");
-      var DOWNPLAYED_ERROR_LOGS22 = [{ clientName: "S3Client", commandName: "GetObjectCommand", errorName: "NoSuchKey" }], isDownplayedErrorLog22 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS22.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog2");
-      function error22(...args) {
-        if (args.some((arg) => isDownplayedErrorLog22(arg))) return debug22(...args);
-        if (args.some((arg) => isOpenNextError22(arg))) {
-          let error222 = args.find((arg) => isOpenNextError22(arg));
-          return error222.logLevel < getOpenNextErrorLogLevel22() ? void 0 : error222.logLevel === 0 ? console.log(...args.map((arg) => isOpenNextError22(arg) ? `${arg.name}: ${arg.message}` : arg)) : error222.logLevel === 1 ? warn22(...args.map((arg) => isOpenNextError22(arg) ? `${arg.name}: ${arg.message}` : arg)) : console.error(...args);
+      __name(warn32, "warn3");
+      var DOWNPLAYED_ERROR_LOGS32 = [{ clientName: "S3Client", commandName: "GetObjectCommand", errorName: "NoSuchKey" }], isDownplayedErrorLog32 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS32.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog3");
+      function error32(...args) {
+        if (args.some((arg) => isDownplayedErrorLog32(arg))) return debug32(...args);
+        if (args.some((arg) => isOpenNextError32(arg))) {
+          let error222 = args.find((arg) => isOpenNextError32(arg));
+          return error222.logLevel < getOpenNextErrorLogLevel32() ? void 0 : error222.logLevel === 0 ? console.log(...args.map((arg) => isOpenNextError32(arg) ? `${arg.name}: ${arg.message}` : arg)) : error222.logLevel === 1 ? warn32(...args.map((arg) => isOpenNextError32(arg) ? `${arg.name}: ${arg.message}` : arg)) : console.error(...args);
         }
         console.error(...args);
       }
-      __name(error22, "error2");
-      function getOpenNextErrorLogLevel22() {
+      __name(error32, "error3");
+      function getOpenNextErrorLogLevel32() {
         switch ((process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1").toLowerCase()) {
           case "debug":
           case "0":
@@ -18339,7 +18502,7 @@ function print() { __p += __j.call(arguments, '') }
             return 1;
         }
       }
-      __name(getOpenNextErrorLogLevel22, "getOpenNextErrorLogLevel2");
+      __name(getOpenNextErrorLogLevel32, "getOpenNextErrorLogLevel3");
       function compareSemver2(v1, operator, v2) {
         let versionDiff = 0;
         if (v1 === "latest") versionDiff = 1;
@@ -18393,7 +18556,7 @@ function print() { __p += __j.call(arguments, '') }
       __name(getTagKey, "getTagKey");
       async function writeTags(tags) {
         let store = globalThis.__openNextAls.getStore();
-        if (debug22("Writing tags", tags, store), !store || globalThis.openNextConfig.dangerous?.disableTagCache) return;
+        if (debug32("Writing tags", tags, store), !store || globalThis.openNextConfig.dangerous?.disableTagCache) return;
         let tagsToWrite = tags.filter((t) => {
           let tagKey = getTagKey(t), shouldWrite = !store.writtenTags.has(tagKey);
           return shouldWrite && store.writtenTags.add(tagKey), shouldWrite;
@@ -18423,7 +18586,7 @@ function print() { __p += __j.call(arguments, '') }
           return isFetchCache(options) ? this.getFetchCache(key, softTags, tags) : this.getIncrementalCache(key);
         }
         async getFetchCache(key, softTags, tags) {
-          debug22("get fetch cache", { key, softTags, tags });
+          debug32("get fetch cache", { key, softTags, tags });
           try {
             let cachedEntry = await globalThis.incrementalCache.get(key, "fetch");
             if (cachedEntry?.value === void 0) return null;
@@ -18435,7 +18598,7 @@ function print() { __p += __j.call(arguments, '') }
             }
             return { lastModified: (cachedEntry.shouldBypassTagCache ? false : await isStale2(key, _tags, _lastModified)) ? 1 : _lastModified, value: cachedEntry.value };
           } catch (e) {
-            return debug22("Failed to get fetch cache", e), null;
+            return debug32("Failed to get fetch cache", e), null;
           }
         }
         async getIncrementalCache(key) {
@@ -18454,9 +18617,9 @@ function print() { __p += __j.call(arguments, '') }
               }
               return { lastModified: _lastModified, value: { kind: compareSemver2(globalThis.nextVersion, ">=", "15.0.0") ? "PAGES" : "PAGE", html: cacheData.html, pageData: cacheData.type === "page" ? cacheData.json : cacheData.rsc, status: meta?.status, headers: meta?.headers } };
             }
-            return cacheData?.type === "redirect" ? { lastModified: _lastModified, value: { kind: "REDIRECT", props: cacheData.props } } : (warn22("Unknown cache type", cacheData), null);
+            return cacheData?.type === "redirect" ? { lastModified: _lastModified, value: { kind: "REDIRECT", props: cacheData.props } } : (warn32("Unknown cache type", cacheData), null);
           } catch (e) {
-            return debug22("Failed to get body cache", e), null;
+            return debug32("Failed to get body cache", e), null;
           }
         }
         async set(key, data, ctx) {
@@ -18495,9 +18658,9 @@ function print() { __p += __j.call(arguments, '') }
                   break;
               }
             }
-            await this.updateTagsOnSet(key, data, ctx), debug22("Finished setting cache");
+            await this.updateTagsOnSet(key, data, ctx), debug32("Finished setting cache");
           } catch (e) {
-            error22("Failed to set cache", e);
+            error32("Failed to set cache", e);
           } finally {
             detachedPromise?.resolve();
           }
@@ -18513,9 +18676,9 @@ function print() { __p += __j.call(arguments, '') }
               return;
             }
             for (let tag of _tags) {
-              debug22("revalidateTag", tag);
+              debug32("revalidateTag", tag);
               let paths = await globalThis.tagCache.getByTag(tag);
-              debug22("Items", paths);
+              debug32("Items", paths);
               let now = Date.now(), toInsert = paths.map((path22) => {
                 let baseEntry = { path: path22, tag };
                 return durations ? { ...baseEntry, stale: now, expire: durations.expire !== void 0 ? now + durations.expire * 1e3 : void 0 } : { ...baseEntry, expire: now };
@@ -18524,7 +18687,7 @@ function print() { __p += __j.call(arguments, '') }
                 let hardTags = (await globalThis.tagCache.getByPath(path22)).filter((t) => !t.startsWith(SOFT_TAG_PREFIX));
                 for (let hardTag of hardTags) {
                   let _paths = await globalThis.tagCache.getByTag(hardTag);
-                  debug22({ hardTag, _paths }), toInsert.push(..._paths.map((path222) => {
+                  debug32({ hardTag, _paths }), toInsert.push(..._paths.map((path222) => {
                     let baseEntry = { path: path222, tag: hardTag };
                     return durations ? { ...baseEntry, stale: now, expire: durations.expire !== void 0 ? now + durations.expire * 1e3 : void 0 } : { ...baseEntry, expire: now };
                   }));
@@ -18535,13 +18698,13 @@ function print() { __p += __j.call(arguments, '') }
               uniquePaths.length > 0 && await globalThis.cdnInvalidationHandler.invalidatePaths(uniquePaths.map((path22) => ({ initialPath: path22, rawPath: path22, resolvedRoutes: [{ route: path22, type: "app" }] })));
             }
           } catch (e) {
-            error22("Failed to revalidate tag", e);
+            error32("Failed to revalidate tag", e);
           }
         }
         async updateTagsOnSet(key, data, ctx) {
           if (globalThis.openNextConfig.dangerous?.disableTagCache || globalThis.tagCache.mode === "nextMode" || !data) return;
           let derivedTags = data?.kind === "FETCH" ? ctx?.tags ?? data?.data?.tags ?? [] : data?.kind === "PAGE" ? data.headers?.["x-next-cache-tags"]?.split(",") ?? [] : [];
-          debug22("derivedTags", derivedTags);
+          debug32("derivedTags", derivedTags);
           let storedTags = await globalThis.tagCache.getByPath(key), tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
           tagsToWrite.length > 0 && await writeTags(tagsToWrite.map((tag) => ({ path: key, tag, revalidatedAt: 1 })));
         }
@@ -42504,8 +42667,8 @@ Original Message: ${d2}`);
         e.default.variable != null && (f.variable = e.default.variable);
         var h = a.i(93372), i = a.i(71521);
         a.s(["default", 0, function({ children: a2 }) {
-          return (0, b.jsx)("html", { lang: "en", className: `${d.variable} ${f.variable} h-full antialiased`, suppressHydrationWarning: true, children: (0, b.jsxs)("body", { className: "min-h-full flex flex-col bg-canvas text-ink", children: [(0, b.jsx)("script", { dangerouslySetInnerHTML: { __html: "(function(){try{var t=localStorage.getItem('mero-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();" } }), (0, b.jsx)("a", { href: "#main", className: "sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[120] focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:font-mono focus:text-xs focus:uppercase focus:tracking-[0.2em] focus:text-canvas", children: "Skip to content" }), (0, b.jsx)(h.ScrollProgress, {}), (0, b.jsx)(g, {}), (0, b.jsx)(i.Preloader, {}), a2] }) });
-        }, "metadata", 0, { title: "meroUI: Production-ready UI for Next.js 16", description: "Type-safe, accessible, zero-config React components built for Next.js 16 and React 19. Ship faster with meroUI." }, "viewport", 0, { width: "device-width", initialScale: 1, themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#09090b" }, { media: "(prefers-color-scheme: light)", color: "#ffffff" }], colorScheme: "light" }], 27572);
+          return (0, b.jsx)("html", { lang: "en", className: `${d.variable} ${f.variable} h-full antialiased`, suppressHydrationWarning: true, children: (0, b.jsxs)("body", { className: "min-h-full flex flex-col bg-canvas text-ink", children: [(0, b.jsx)("script", { dangerouslySetInnerHTML: { __html: "(function(){try{var t=localStorage.getItem('mero-theme');var d=t?t==='dark':true;document.documentElement.classList.toggle('dark',d);}catch(e){document.documentElement.classList.add('dark');}})();" } }), (0, b.jsx)("a", { href: "#main", className: "sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[120] focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:font-mono focus:text-xs focus:uppercase focus:tracking-[0.2em] focus:text-canvas", children: "Skip to content" }), (0, b.jsx)(h.ScrollProgress, {}), (0, b.jsx)(g, {}), (0, b.jsx)(i.Preloader, {}), a2] }) });
+        }, "metadata", 0, { title: "meroUI: Production-ready UI for Next.js 16", description: "Type-safe, accessible, zero-config React components built for Next.js 16 and React 19. Ship faster with meroUI." }, "viewport", 0, { width: "device-width", initialScale: 1, themeColor: [{ color: "#09090b" }, { media: "(prefers-color-scheme: light)", color: "#ffffff" }], colorScheme: "dark" }], 27572);
       }, 50645, (a) => {
         a.n(a.i(27572));
       }];
@@ -47654,7 +47817,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
     } });
     require_src_lib_gsap_ts_1_gaps3 = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js"(exports, module) {
       "use strict";
-      module.exports = [18079, 26304, 81783, 93556, (a) => {
+      module.exports = [18079, 26304, 81783, (a) => {
         "use strict";
         function b(a10) {
           if (a10 === void 0) throw ReferenceError("this hasn't been initialised - super() hasn't been called");
@@ -50309,7 +50472,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         })());
         (function(a10, b10) {
           for (var c10 in b10) c10 in a10 || (a10[c10] = b10[c10]);
-        })(h5.prototype, { pointerX: 0, pointerY: 0, startX: 0, startY: 0, deltaX: 0, deltaY: 0, isDragging: false, isPressed: false }), h5.zIndex = 1e3, h5.version = "3.15.0", (gX || hh() && (gX = window.gsap) && gX.registerPlugin && gX) && gX.registerPlugin(h5), a.s(["Draggable", 0, h5], 93556);
+        })(h5.prototype, { pointerX: 0, pointerY: 0, startX: 0, startY: 0, deltaX: 0, deltaY: 0, isDragging: false, isPressed: false }), h5.zIndex = 1e3, h5.version = "3.15.0", (gX || hh() && (gX = window.gsap) && gX.registerPlugin && gX) && gX.registerPlugin(h5);
         var h6, h7, h8, h9, ia, ib, ic, id, ie = /* @__PURE__ */ __name(function() {
           return h6 || false;
         }, "ie"), ig = {}, ih = /* @__PURE__ */ __name(function(a10) {
@@ -50455,7 +50618,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         }), iE() && ip.registerPlugin(iV), dH.registerPlugin(gp, h5, iV), a.s([], 18079);
       }];
     } });
-    require_root_of_the_server_021_9y7 = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/[root-of-the-server]__021_9y7._.js"(exports, module) {
+    require_root_of_the_server_059qs8j = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/[root-of-the-server]__059qs8j._.js"(exports, module) {
       "use strict";
       module.exports = [50640, (a, b, c) => {
         "use strict";
@@ -50474,7 +50637,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         b.exports = a.x("next/dist/shared/lib/no-fallback-error.external.js", () => require_no_fallback_error_external());
       }, 85287, (a) => {
         "use strict";
-        let b = [{ title: "Feedback", items: [{ slug: "button", name: "Button", blurb: "Solid, ghost, quiet. Three weights for any action.", built: true, glyph: "B" }, { slug: "badge", name: "Badge", blurb: "Solid, outline, or dot with an optional live pulse.", built: true, glyph: "\u25C6" }, { slug: "progress", name: "Progress", blurb: "Accessible progressbar with a mono label and value.", built: true, glyph: "\u25AE" }, { slug: "skeleton", name: "Skeleton", blurb: "Quiet placeholders while data streams in.", built: true, glyph: "\u25A4" }, { slug: "toast", name: "Toast", blurb: "Transient feedback, stacked and auto-dismissing.", built: true, glyph: "\u25CC" }] }, { title: "Controls", items: [{ slug: "input", name: "Input", blurb: "Labeled text field, keyboard-first and autofill-aware.", built: true, glyph: "\u2328" }, { slug: "toggle", name: "Toggle", blurb: "Switch with a visible checked state and focus ring.", built: true, glyph: "\u25C9" }, { slug: "tabs", name: "Tabs", blurb: "Tablist with an animated underline, pure keyboard.", built: true, glyph: "\u2263" }] }, { title: "Display", items: [{ slug: "card", name: "Card", blurb: "A hairline-bordered surface for grouped content.", built: true, glyph: "\u25A2" }, { slug: "table", name: "Table", blurb: "Dense data rows with sticky headers and mono cells.", built: true, glyph: "\u25A6" }, { slug: "modal", name: "Modal", blurb: "Focus-trapped dialog with escape and backdrop.", built: true, glyph: "\u25FB" }, { slug: "tooltip", name: "Tooltip", blurb: "Hover and focus-triggered inline annotation.", built: true, glyph: "\u24D8" }] }], c = b.flatMap((a2) => a2.items);
+        let b = [{ title: "Feedback", items: [{ slug: "button", name: "Button", blurb: "Solid, ghost, quiet. Three weights for any action.", built: true, glyph: "B" }, { slug: "badge", name: "Badge", blurb: "Solid, outline, or dot with an optional live pulse.", built: true, glyph: "\u25C6" }, { slug: "progress", name: "Progress", blurb: "Accessible progressbar with a mono label and value.", built: true, glyph: "\u25AE" }, { slug: "skeleton", name: "Skeleton", blurb: "Quiet placeholders while data streams in.", built: true, glyph: "\u25A4" }, { slug: "toast", name: "Toast", blurb: "Transient feedback, stacked and auto-dismissing.", built: true, glyph: "\u25CC" }] }, { title: "Controls", items: [{ slug: "input", name: "Input", blurb: "Labeled text field, keyboard-first and autofill-aware.", built: true, glyph: "\u2328" }, { slug: "toggle", name: "Toggle", blurb: "Switch with a visible checked state and focus ring.", built: true, glyph: "\u25C9" }, { slug: "tabs", name: "Tabs", blurb: "Tablist with an animated underline, pure keyboard.", built: true, glyph: "\u2263" }, { slug: "prompt-bar", name: "Prompt Bar", blurb: "Composer with @ sources, / commands, dictation and a model picker.", built: true, glyph: "\u270E" }] }, { title: "Display", items: [{ slug: "card", name: "Card", blurb: "A hairline-bordered surface for grouped content.", built: true, glyph: "\u25A2" }, { slug: "table", name: "Table", blurb: "Dense data rows with sticky headers and mono cells.", built: true, glyph: "\u25A6" }, { slug: "modal", name: "Modal", blurb: "Focus-trapped dialog with escape and backdrop.", built: true, glyph: "\u25FB" }, { slug: "tooltip", name: "Tooltip", blurb: "Hover and focus-triggered inline annotation.", built: true, glyph: "\u24D8" }] }], c = b.flatMap((a2) => a2.items);
         c.filter((a2) => a2.built).length, a.s(["ALL_COMPONENTS", 0, c, "COMPONENT_GROUPS", 0, b]);
       }, 10585, (a) => {
         a.v("/_next/static/media/favicon.2vob68tjqpejf.ico" + (globalThis.NEXT_CLIENT_ASSET_SUFFIX || ""));
@@ -50482,154 +50645,6 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         "use strict";
         let b = { src: a.i(10585).default, width: 256, height: 256 };
         a.s(["default", 0, b]);
-      }, 9947, (a) => {
-        "use strict";
-        a.s(["ComponentPreview", () => b]);
-        let b = (0, a.i(11857).registerClientReference)(function() {
-          throw Error("Attempted to call ComponentPreview() from the server but ComponentPreview is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
-        }, "[project]/src/components/docs/ComponentPreview.tsx <module evaluation>", "ComponentPreview");
-      }, 74710, (a) => {
-        "use strict";
-        a.s(["ComponentPreview", () => b]);
-        let b = (0, a.i(11857).registerClientReference)(function() {
-          throw Error("Attempted to call ComponentPreview() from the server but ComponentPreview is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
-        }, "[project]/src/components/docs/ComponentPreview.tsx", "ComponentPreview");
-      }, 45473, (a) => {
-        "use strict";
-        a.i(9947);
-        var b = a.i(74710);
-        a.n(b);
-      }, 89587, (a) => {
-        "use strict";
-        a.s(["CopyBlock", () => b]);
-        let b = (0, a.i(11857).registerClientReference)(function() {
-          throw Error("Attempted to call CopyBlock() from the server but CopyBlock is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
-        }, "[project]/src/components/docs/CopyBlock.tsx <module evaluation>", "CopyBlock");
-      }, 79199, (a) => {
-        "use strict";
-        a.s(["CopyBlock", () => b]);
-        let b = (0, a.i(11857).registerClientReference)(function() {
-          throw Error("Attempted to call CopyBlock() from the server but CopyBlock is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
-        }, "[project]/src/components/docs/CopyBlock.tsx", "CopyBlock");
-      }, 96336, (a) => {
-        "use strict";
-        a.i(89587);
-        var b = a.i(79199);
-        a.n(b);
-      }, 94659, (a) => {
-        "use strict";
-        var b = a.i(7997);
-        a.i(70396);
-        var c = a.i(73727), d = a.i(95936), e = a.i(85287);
-        let f = { button: { usage: `import { Button } from "mero-ui";
-
-<Button>Deploy</Button>
-<Button variant="ghost">Cancel</Button>
-<Button variant="quiet" size="sm">Dismiss</Button>
-
-<Button href="/pricing">Get started</Button>
-<Button disabled>Waiting</Button>`, props: [{ name: "variant", type: '"solid" | "ghost" | "quiet"', desc: "Visual weight. Defaults to solid." }, { name: "size", type: '"sm" | "md" | "lg"', desc: "Button scale. Defaults to md." }, { name: "href", type: "string", desc: "Renders an internal link instead of a button." }, { name: "disabled", type: "boolean", desc: "Disables pointer events and dims the label." }] }, badge: { usage: `import { Badge } from "mero-ui";
-
-<Badge>stable</Badge>
-<Badge variant="outline">alpha</Badge>
-<Badge variant="dot" pulse>v1.0.0</Badge>`, props: [{ name: "variant", type: '"solid" | "outline" | "dot"', desc: "Filled, hairline, or dot status. Defaults to solid." }, { name: "pulse", type: "boolean", desc: 'Pulses the dot. Requires variant="dot".' }] }, progress: { usage: `import { Progress } from "mero-ui";
-
-<Progress value={72} label="Shipped" />`, props: [{ name: "value", type: "number", desc: "Percentage, 0 to 100." }, { name: "label", type: "string", desc: "Optional label rendered above the bar." }] }, skeleton: { usage: `import { Skeleton } from "mero-ui";
-
-<Skeleton className="h-3 w-full" />
-<Skeleton className="h-3 w-3/4" />`, props: [{ name: "className", type: "string", desc: "Width, height and radius via Tailwind utilities." }] }, toast: { usage: `import { ToastProvider, ToastViewport, useToast } from "mero-ui";
-
-function App() {
-  return (
-    <ToastProvider>
-      <Notifier />
-      <ToastViewport />
-    </ToastProvider>
-  );
-}
-
-function Notifier() {
-  const { toast } = useToast();
-  return (
-    <Button onClick={() =>
-      toast({ title: "Copied", description: "to the clipboard" })
-    }>
-      Notify
-    </Button>
-  );
-}`, props: [{ name: "toast", type: "fn({ title, description?, duration? })", desc: "Queues a toast. Returns its id." }, { name: "dismiss", type: "fn(id: number)", desc: "Removes a toast by id." }, { name: "duration", type: "number", desc: "Auto-dismiss delay in ms. Defaults to 4000." }] }, input: { usage: `import { Input } from "mero-ui";
-
-<Input label="Email" placeholder="you@ship.dev" hint="We never share it." />`, props: [{ name: "label", type: "string", desc: "Required visible label, rendered above the field." }, { name: "placeholder", type: "string", desc: "Placeholder text inside the field." }, { name: "hint", type: "string", desc: "Helper text rendered below the field." }, { name: "id", type: "string", desc: "Custom field id. Derived from the label by default." }] }, toggle: { usage: `import { Toggle } from "mero-ui";
-
-<Toggle label="Autoplay" defaultOn />
-<Toggle label="Haptics" />`, props: [{ name: "label", type: "string", desc: 'Accessible label. Defaults to "Toggle".' }, { name: "defaultOn", type: "boolean", desc: "Initial checked state. Defaults to false." }] }, tabs: { usage: `import { Tabs } from "mero-ui";
-
-<Tabs
-  items={[
-    { label: "App", content: <p>Server by default.</p> },
-    { label: "Page", content: <p>Streamed.</p> },
-  ]}
-/>`, props: [{ name: "items", type: "{ label: string; content: ReactNode }[]", desc: "Tab labels and panel content." }] }, card: { usage: `import { Card, CardHeader, CardTitle, CardContent } from "mero-ui";
-
-<Card>
-  <CardHeader>
-    <CardTitle>Ship it</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <p>One file at a time.</p>
-  </CardContent>
-</Card>`, props: [{ name: "className", type: "string", desc: "Surface padding, width and layout utilities." }] }, table: { usage: `import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "mero-ui";
-
-<Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>name</TableHead>
-      <TableHead>count</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    <TableRow>
-      <TableCell mono>button</TableCell>
-      <TableCell mono>84</TableCell>
-    </TableRow>
-  </TableBody>
-</Table>`, props: [{ name: "mono", type: "boolean", desc: "TableCell renders its value in mono type." }] }, modal: { usage: `import { Modal } from "mero-ui";
-import { useState } from "react";
-
-function Dialog() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Open</Button>
-      <Modal open={open} onClose={() => setOpen(false)}
-        title="Dialog" description="Focus trapped.">
-        <p>Escape and backdrop close it. Tab stays inside.</p>
-      </Modal>
-    </>
-  );
-}`, props: [{ name: "open", type: "boolean", desc: "Controls visibility. Portaled to document.body." }, { name: "onClose", type: "fn()", desc: "Called on Escape, backdrop, or close button." }, { name: "title", type: "string", desc: "Dialog title, wired to aria-labelledby." }, { name: "footer", type: "ReactNode", desc: "Optional action row at the bottom." }] }, tooltip: { usage: `import { Tooltip } from "mero-ui";
-
-<Tooltip label="Copies the command" side="top">
-  <Button variant="ghost">Copy</Button>
-</Tooltip>`, props: [{ name: "label", type: "string", desc: "Annotation text." }, { name: "side", type: '"top" | "bottom" | "left" | "right"', desc: "Placement. Defaults to top." }, { name: "delayMs", type: "number", desc: "Show delay in ms. Defaults to 150." }] } };
-        var g = a.i(45473), h = a.i(96336);
-        async function i({ params: a2 }) {
-          let { slug: b2 } = await a2, c2 = e.ALL_COMPONENTS.find((a3) => a3.slug === b2);
-          return c2 ? { title: `${c2.name} - meroUI`, description: c2.blurb } : { title: "Not found - meroUI" };
-        }
-        __name(i, "i");
-        async function j({ params: a2 }) {
-          let { slug: i2 } = await a2, k = e.ALL_COMPONENTS.find((a3) => a3.slug === i2);
-          k || (0, c.notFound)();
-          let l = f[i2];
-          return (0, b.jsxs)("div", { className: "flex max-w-[56rem] flex-col", children: [(0, b.jsxs)(d.default, { href: "/docs", className: "font-mono text-[11px] uppercase tracking-[0.24em] text-faint transition-colors hover:text-ink", children: [(0, b.jsx)("span", { className: "text-dim", children: "/" }), "components", (0, b.jsx)("span", { className: "text-dim", children: "/" }), (0, b.jsx)("span", { className: "text-muted", children: k.slug })] }), (0, b.jsxs)("h1", { className: "mt-4 text-4xl font-semibold tracking-tight md:text-5xl", children: [k.name, "."] }), (0, b.jsx)("p", { className: "mt-3 max-w-xl text-base leading-7 text-muted", children: k.blurb }), (0, b.jsx)("div", { className: "mt-8 flex h-56 items-center justify-center rounded-md border border-line bg-canvas/40 p-8", children: (0, b.jsx)(g.ComponentPreview, { slug: k.slug }) }), (0, b.jsx)("h2", { className: "mt-14 text-2xl font-semibold tracking-tight", children: "Install." }), (0, b.jsx)("div", { className: "mt-4", children: (0, b.jsx)(h.CopyBlock, { code: `npx meroui add ${k.slug}` }) }), (0, b.jsx)("h2", { className: "mt-12 text-2xl font-semibold tracking-tight", children: "Usage." }), (0, b.jsx)("div", { className: "mt-4", children: (0, b.jsx)(h.CopyBlock, { code: l.usage }) }), (0, b.jsx)("h2", { className: "mt-12 text-2xl font-semibold tracking-tight", children: "Props." }), (0, b.jsx)("div", { className: "mt-4 overflow-hidden rounded-md border border-line", children: (0, b.jsxs)("table", { className: "w-full border-collapse text-left", children: [(0, b.jsx)("thead", { children: (0, b.jsxs)("tr", { className: "border-b border-line bg-panel/60", children: [(0, b.jsx)("th", { className: "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint", children: "name" }), (0, b.jsx)("th", { className: "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint", children: "type" }), (0, b.jsx)("th", { className: "hidden px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint sm:table-cell", children: "description" })] }) }), (0, b.jsx)("tbody", { children: l.props.map((a3) => (0, b.jsxs)("tr", { className: "border-b border-line/60 last:border-0", children: [(0, b.jsx)("td", { className: "px-4 py-3 font-mono text-sm text-ink", children: a3.name }), (0, b.jsx)("td", { className: "px-4 py-3 font-mono text-xs text-faint", children: a3.type }), (0, b.jsx)("td", { className: "hidden px-4 py-3 text-sm text-muted sm:table-cell", children: a3.desc })] }, a3.name)) })] }) })] });
-        }
-        __name(j, "j");
-        a.s(["default", 0, j, "generateMetadata", 0, i, "generateStaticParams", 0, function() {
-          return e.ALL_COMPONENTS.map((a2) => ({ slug: a2.slug }));
-        }], 94659);
-      }, 53257, (a) => {
-        a.n(a.i(94659));
       }];
     } });
     require_t0wyzn = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/_0t0wyzn._.js"(exports, module) {
@@ -50733,6 +50748,720 @@ function Dialog() {
         }, "metadata", 0, { title: "Library - meroUI", description: "Browse the meroUI component library: type-safe, accessible, zero-config React components for Next.js 16 and React 19." }]);
       }, 85050, (a) => {
         a.n(a.i(17311));
+      }];
+    } });
+    require_e5ewtu = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/_1e5ewtu._.js"(exports, module) {
+      "use strict";
+      module.exports = [41578, (a) => {
+        "use strict";
+        var b = a.i(87924), c = a.i(72131), d = a.i(55486), e = a.i(96438), f = a.i(94988), g = a.i(90231), h = a.i(84757), i = a.i(77316), j = a.i(15720);
+        function k({ children: a2, className: c2 = "" }) {
+          return (0, b.jsx)("tr", { className: `border-b border-line last:border-0 ${c2}`, children: a2 });
+        }
+        __name(k, "k");
+        function l({ children: a2, className: c2 = "" }) {
+          return (0, b.jsx)("th", { scope: "col", className: `sticky top-0 z-10 whitespace-nowrap bg-panel px-4 py-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted ${c2}`, children: a2 });
+        }
+        __name(l, "l");
+        function m({ children: a2, mono: c2 = false, className: d2 = "" }) {
+          return (0, b.jsx)("td", { className: `px-4 py-3 align-middle text-ink ${c2 ? "font-mono text-xs" : ""} ${d2}`, children: a2 });
+        }
+        __name(m, "m");
+        let n = (0, c.createContext)(null);
+        function o() {
+          let a2 = (0, c.useContext)(n);
+          if (!a2) throw Error("useToast must be used within a ToastProvider");
+          return a2;
+        }
+        __name(o, "o");
+        function p({ className: a2 = "" }) {
+          let { toasts: c2, dismiss: d2 } = o();
+          return (0, b.jsx)("div", { "aria-live": "polite", className: `pointer-events-none fixed right-4 bottom-4 z-[110] flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2.5 ${a2}`, children: c2.map((a3) => (0, b.jsx)(q, { toast: a3, onDismiss: /* @__PURE__ */ __name(() => d2(a3.id), "onDismiss") }, a3.id)) });
+        }
+        __name(p, "p");
+        function q({ toast: a2, onDismiss: d2 }) {
+          let [e2, f2] = (0, c.useState)(false);
+          return (0, c.useEffect)(() => {
+            let a3 = requestAnimationFrame(() => f2(true));
+            return () => cancelAnimationFrame(a3);
+          }, []), (0, b.jsxs)("div", { className: `pointer-events-auto flex items-start justify-between gap-3 rounded-md border border-line bg-panel/90 px-4 py-3 backdrop-blur-sm transition-all duration-300 ease-out motion-reduce:transition-none ${e2 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`, children: [(0, b.jsxs)("div", { className: "min-w-0", children: [(0, b.jsx)("p", { className: "text-sm font-medium text-ink", children: a2.title }), a2.description ? (0, b.jsx)("p", { className: "mt-0.5 text-xs leading-5 text-muted", children: a2.description }) : null] }), (0, b.jsx)("button", { type: "button", onClick: d2, "aria-label": "Dismiss notification", className: "shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink", children: "close" })] });
+        }
+        __name(q, "q");
+        let r = { top: "bottom-full left-1/2 -translate-x-1/2 mb-2", bottom: "top-full left-1/2 -translate-x-1/2 mt-2", left: "right-full top-1/2 -translate-y-1/2 mr-2", right: "left-full top-1/2 -translate-y-1/2 ml-2" };
+        var s = a.i(35112);
+        function t({ open: a2, onClose: d2, title: e2, description: f2, children: g2, footer: h2 }) {
+          let i2 = (0, c.useId)(), j2 = (0, c.useId)(), k2 = (0, c.useRef)(null), l2 = (0, c.useRef)(null), m2 = (0, c.useRef)(d2), [n2, o2] = (0, c.useState)(false), [p2, q2] = (0, c.useState)(false);
+          return (0, c.useEffect)(() => o2(true), []), (0, c.useEffect)(() => {
+            m2.current = d2;
+          }, [d2]), (0, c.useEffect)(() => {
+            if (!a2 || !n2) return;
+            l2.current = document.activeElement;
+            let b2 = k2.current, c2 = /* @__PURE__ */ __name(() => b2 ? Array.from(b2.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')) : [], "c2");
+            c2()[0]?.focus();
+            let d3 = document.body.style.overflow;
+            document.body.style.overflow = "hidden", requestAnimationFrame(() => q2(true));
+            let e3 = /* @__PURE__ */ __name((a3) => {
+              if (a3.key === "Escape") return void m2.current();
+              if (a3.key !== "Tab") return;
+              let b3 = c2();
+              if (b3.length === 0) return;
+              let d4 = b3[0], e4 = b3[b3.length - 1];
+              b3.includes(document.activeElement) ? a3.shiftKey && document.activeElement === d4 ? (a3.preventDefault(), e4.focus()) : a3.shiftKey || document.activeElement !== e4 || (a3.preventDefault(), d4.focus()) : (a3.preventDefault(), d4.focus());
+            }, "e3");
+            return document.addEventListener("keydown", e3), () => {
+              document.removeEventListener("keydown", e3), document.body.style.overflow = d3, q2(false), l2.current?.focus();
+            };
+          }, [a2, n2]), n2 && a2 ? (0, s.createPortal)((0, b.jsxs)("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4", children: [(0, b.jsx)("div", { "aria-hidden": true, onClick: /* @__PURE__ */ __name(() => m2.current(), "onClick"), className: "absolute inset-0 bg-scrim/80" }), (0, b.jsxs)("div", { ref: k2, role: "dialog", "aria-modal": "true", "aria-labelledby": i2, "aria-describedby": f2 ? j2 : void 0, className: `relative w-full max-w-md rounded-md border border-line bg-panel shadow-[0_40px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-300 ease-out motion-reduce:transition-none ${p2 ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-[0.98] opacity-0"}`, children: [(0, b.jsxs)("div", { className: "flex items-start justify-between gap-4 border-b border-line px-6 py-5", children: [(0, b.jsxs)("div", { children: [(0, b.jsx)("h2", { id: i2, className: "text-xl font-semibold tracking-tight text-ink", children: e2 }), f2 ? (0, b.jsx)("p", { id: j2, className: "mt-1 text-sm leading-6 text-muted", children: f2 }) : null] }), (0, b.jsx)("button", { type: "button", onClick: /* @__PURE__ */ __name(() => m2.current(), "onClick"), "aria-label": "Close dialog", className: "shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink", children: "close" })] }), (0, b.jsx)("div", { className: "max-h-[60vh] overflow-y-auto px-6 py-5", children: g2 }), h2 ? (0, b.jsx)("div", { className: "flex items-center justify-end gap-3 border-t border-line px-6 py-4", children: h2 }) : null] })] }), document.body) : null;
+        }
+        __name(t, "t");
+        var u = /* @__PURE__ */ __name((a2) => a2 <= 0.04045 ? a2 / 12.92 : Math.pow((a2 + 0.055) / 1.055, 2.4), "u"), v = /* @__PURE__ */ __name((a2) => a2 <= 31308e-7 ? 12.92 * a2 : 1.055 * Math.pow(a2, 1 / 2.4) - 0.055, "v"), w = /* @__PURE__ */ __name((a2) => {
+          var b2, c2, d2;
+          let e2, f2, g2, [h2, i2, j2] = (b2 = u(a2[0]), e2 = Math.cbrt(0.4122214708 * b2 + 0.5363325363 * (c2 = u(a2[1])) + 0.0514459929 * (d2 = u(a2[2]))), [0.2104542553 * e2 + 0.793617785 * (f2 = Math.cbrt(0.2119034982 * b2 + 0.6806995451 * c2 + 0.1073969566 * d2)) - 0.0040720468 * (g2 = Math.cbrt(0.0883024619 * b2 + 0.2817188376 * c2 + 0.6299787005 * d2)), 1.9779984951 * e2 - 2.428592205 * f2 + 0.4505937099 * g2, 0.0259040371 * e2 + 0.7827717662 * f2 - 0.808675766 * g2]);
+          return { L: h2, C: Math.sqrt(i2 * i2 + j2 * j2), H: Math.atan2(j2, i2) };
+        }, "w"), x = /* @__PURE__ */ __name(({ L: a2, C: b2, H: c2 }) => {
+          let d2, e2, f2, g2, h2, i2, j2 = b2 * Math.cos(c2), k2 = b2 * Math.sin(c2), [l2, m2, n2] = (d2 = a2 + 0.3963377774 * j2 + 0.2158037573 * k2, e2 = a2 - 0.1055613458 * j2 - 0.0638541728 * k2, f2 = a2 - 0.0894841775 * j2 - 1.291485548 * k2, [4.0767416621 * (g2 = d2 * d2 * d2) - 3.3077115913 * (h2 = e2 * e2 * e2) + 0.2309699292 * (i2 = f2 * f2 * f2), -1.2684380046 * g2 + 2.6097574011 * h2 - 0.3413193965 * i2, -0.0041960863 * g2 - 0.7034186147 * h2 + 1.707614701 * i2]), o2 = /* @__PURE__ */ __name((a3) => Math.max(0, Math.min(1, a3)), "o2");
+          return [o2(v(l2)), o2(v(m2)), o2(v(n2))];
+        }, "x"), y = /* @__PURE__ */ __name((a2) => {
+          let b2 = parseInt(a2.replace("#", ""), 16);
+          return [(b2 >> 16 & 255) / 255, (b2 >> 8 & 255) / 255, (255 & b2) / 255];
+        }, "y"), z = /* @__PURE__ */ __name((a2, b2, c2) => {
+          let d2, e2 = a2.C < 1e-4 ? b2.H : a2.H, f2 = b2.C < 1e-4 ? a2.H : b2.H;
+          return { L: a2.L + (b2.L - a2.L) * c2, C: a2.C + (b2.C - a2.C) * c2, H: ((d2 = f2 - e2) > Math.PI && (d2 -= 2 * Math.PI), d2 < -Math.PI && (d2 += 2 * Math.PI), e2 + d2 * c2) };
+        }, "z");
+        function A(a2, b2) {
+          if (a2.length === 0) return [];
+          if (a2.length === 1) {
+            let c3 = x(a2[0]);
+            return Array.from({ length: b2 }, () => c3);
+          }
+          let c2 = [], d2 = a2.length;
+          for (let e2 = 0; e2 < b2; e2++) {
+            let f2 = e2 / (b2 - 1) * (d2 - 1), g2 = Math.min(d2 - 2, Math.floor(f2)), h2 = f2 - g2;
+            c2.push(x(z(a2[g2], a2[g2 + 1], h2)));
+          }
+          return c2;
+        }
+        __name(A, "A");
+        var B = { red: "#FF3D7F", orange: "#FF7A1A", yellow: "#FFD600", green: "#C2FF3D", mint: "#00FFA8", teal: "#00E5D6", cyan: "#1FC8FF", blue: "#2E70FF", indigo: "#7B4FFF", purple: "#D33CFF", pink: "#FF3DC0", brown: "#D8A87B" };
+        function C(a2) {
+          let b2 = a2.length, c2 = a2.map((a3, c3) => c3 / (b2 - 1)), d2 = c2.map((a3) => Math.cos(2 * Math.PI * 0.5 * a3)), e2 = c2.map((a3) => Math.sin(2 * Math.PI * 0.5 * a3)), f2 = d2.reduce((a3, b3) => a3 + b3, 0), g2 = e2.reduce((a3, b3) => a3 + b3, 0), h2 = d2.reduce((a3, b3) => a3 + b3 * b3, 0), i2 = e2.reduce((a3, b3) => a3 + b3 * b3, 0), j2 = d2.reduce((a3, b3, c3) => a3 + b3 * e2[c3], 0), k2 = [[b2, f2, g2], [f2, h2, j2], [g2, j2, i2]], l2 = /* @__PURE__ */ __name((c3) => {
+            let f3 = a2.map((a3) => a3[c3]), g3 = f3.reduce((a3, b3) => a3 + b3, 0), h3 = (function(a3, b3) {
+              let c4 = /* @__PURE__ */ __name((a4) => a4[0][0] * (a4[1][1] * a4[2][2] - a4[1][2] * a4[2][1]) - a4[0][1] * (a4[1][0] * a4[2][2] - a4[1][2] * a4[2][0]) + a4[0][2] * (a4[1][0] * a4[2][1] - a4[1][1] * a4[2][0]), "c4"), d3 = c4(a3);
+              if (1e-9 > Math.abs(d3)) return null;
+              let e3 = /* @__PURE__ */ __name((c5) => a3.map((a4, d4) => a4.map((a5, e4) => e4 === c5 ? b3[d4] : a5)), "e3");
+              return [c4(e3(0)) / d3, c4(e3(1)) / d3, c4(e3(2)) / d3];
+            })(k2, [g3, f3.reduce((a3, b3, c4) => a3 + b3 * d2[c4], 0), f3.reduce((a3, b3, c4) => a3 + b3 * e2[c4], 0)]);
+            if (!h3) return { a: g3 / b2, b: 0, d: 0 };
+            let [i3, j3, l3] = h3;
+            return { a: i3, b: Math.sqrt(j3 * j3 + l3 * l3), d: (Math.atan2(-l3, j3) / (2 * Math.PI) + 1) % 1 };
+          }, "l2"), m2 = l2(0), n2 = l2(1), o2 = l2(2);
+          return { a: [m2.a, n2.a, o2.a], b: [m2.b, n2.b, o2.b], c: [0.5, 0.5, 0.5], d: [m2.d, n2.d, o2.d] };
+        }
+        __name(C, "C");
+        function D(a2) {
+          if (a2.length === 0) {
+            var b2, c2;
+            let a3;
+            return b2 = B.indigo, c2 = B.cyan, (a3 = A([w(y(b2)), w(y(c2))], 17))[0] = y(b2), a3[a3.length - 1] = y(c2), C(a3);
+          }
+          return a2.length === 1 ? { a: y(a2[0]), b: [0, 0, 0], c: [1, 1, 1], d: [0, 0, 0] } : C(A(a2.map((a3) => w(y(a3))), 17));
+        }
+        __name(D, "D");
+        Object.fromEntries(Object.entries(B).map(([a2, b2]) => [a2, w(y(b2))]));
+        var E = { prism: D(["#00C0E8", "#6155F5", "#CB30E0"]), berry: D(["#FF2D55", "#CB30E0"]), lagoon: D(["#0088FF", "#00C0E8", "#34C759"]), citrus: D(["#34C759", "#FFCC00", "#FF8D28"]), azure: D(["#00C0E8", "#0088FF", "#6155F5"]), ember: D(["#FFCC00", "#FF8D28", "#FF2D55"]) };
+        function F(a2, b2, c2, d2) {
+          let e2 = /* @__PURE__ */ __name((b3) => 3 * (1 - b3) * (1 - b3) * b3 * a2 + 3 * (1 - b3) * b3 * b3 * c2 + b3 * b3 * b3, "e2"), f2 = /* @__PURE__ */ __name((b3) => 3 * (1 - 4 * b3 + 3 * b3 * b3) * a2 + 3 * (2 * b3 - 3 * b3 * b3) * c2 + 3 * b3 * b3, "f2");
+          return (a3) => {
+            let c3;
+            if (a3 <= 0) return 0;
+            if (a3 >= 1) return 1;
+            let g2 = a3;
+            for (let b3 = 0; b3 < 8; b3++) {
+              let b4 = e2(g2) - a3;
+              if (1e-6 > Math.abs(b4)) break;
+              let c4 = f2(g2);
+              if (1e-6 > Math.abs(c4)) break;
+              g2 -= b4 / c4;
+            }
+            return 3 * (1 - (c3 = g2)) * (1 - c3) * c3 * b2 + 3 * (1 - c3) * c3 * c3 * d2 + c3 * c3 * c3;
+          };
+        }
+        __name(F, "F");
+        var G = { linear: /* @__PURE__ */ __name((a2) => a2, "linear"), easeOutQuart: /* @__PURE__ */ __name((a2) => 1 - Math.pow(1 - a2, 4), "easeOutQuart"), easeOutCubic: /* @__PURE__ */ __name((a2) => 1 - Math.pow(1 - a2, 3), "easeOutCubic"), easeInCubic: /* @__PURE__ */ __name((a2) => a2 * a2 * a2, "easeInCubic"), easeInOutCubic: /* @__PURE__ */ __name((a2) => a2 < 0.5 ? 4 * a2 * a2 * a2 : 1 - Math.pow(-2 * a2 + 2, 3) / 2, "easeInOutCubic"), easeOutExpo: /* @__PURE__ */ __name((a2) => a2 === 1 ? 1 : 1 - Math.pow(2, -10 * a2), "easeOutExpo"), easeInOutQuint: /* @__PURE__ */ __name((a2) => a2 < 0.5 ? 16 * a2 * a2 * a2 * a2 * a2 : 1 - Math.pow(-2 * a2 + 2, 5) / 2, "easeInOutQuint"), snap: F(1, 0, 0.35, 0.95), ease: F(0.25, 0.1, 0.25, 1), back: F(0.175, 0.885, 0.32, 1.1) }, H = /* @__PURE__ */ __name((a2) => 1 - Math.pow(1 - a2, 4), "H"), I = /* @__PURE__ */ __name((a2) => a2 < 0.5 ? 4 * a2 * a2 * a2 : 1 - Math.pow(-2 * a2 + 2, 3) / 2, "I");
+        let J = D([B.red, B.orange, B.yellow, B.green, B.cyan, B.blue, B.purple]);
+        function K({ children: a2, size: c2 = 15, strokeWidth: d2 = 1.8 }) {
+          return (0, b.jsx)("svg", { width: c2, height: c2, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: d2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true", children: a2 });
+        }
+        __name(K, "K");
+        let L = { clip: (0, b.jsx)("path", { d: "m21.4 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" }), chart: (0, b.jsx)("path", { d: "M4 20V10M10 20V4M16 20v-7M22 20H2" }), layers: (0, b.jsxs)("g", { children: [(0, b.jsx)("path", { d: "M12 2 2 7l10 5 10-5-10-5z" }), (0, b.jsx)("path", { d: "M2 17l10 5 10-5M2 12l10 5 10-5" })] }), globe: (0, b.jsxs)("g", { children: [(0, b.jsx)("circle", { cx: "12", cy: "12", r: "10" }), (0, b.jsx)("path", { d: "M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" })] }) }, M = { figma: (0, b.jsxs)("svg", { width: "11", height: "16", viewBox: "0 0 38 57", "aria-hidden": "true", children: [(0, b.jsx)("path", { d: "M9.5 57A9.5 9.5 0 0 0 19 47.5V38H9.5a9.5 9.5 0 0 0 0 19z", fill: "#0ACF83" }), (0, b.jsx)("path", { d: "M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z", fill: "#A259FF" }), (0, b.jsx)("path", { d: "M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z", fill: "#F24E1E" }), (0, b.jsx)("path", { d: "M19 0h9.5a9.5 9.5 0 1 1 0 19H19V0z", fill: "#FF7262" }), (0, b.jsx)("path", { d: "M38 28.5a9.5 9.5 0 1 1-19 0 9.5 9.5 0 0 1 19 0z", fill: "#1ABCFE" })] }), slack: (0, b.jsxs)("svg", { width: "15", height: "15", viewBox: "0 0 127 127", "aria-hidden": "true", children: [(0, b.jsx)("path", { d: "M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80c0-7.3 5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z", fill: "#E01E5A" }), (0, b.jsx)("path", { d: "M47 27.2c-7.3 0-13.2-5.9-13.2-13.2C33.8 6.7 39.7.8 47 .8c7.3 0 13.2 5.9 13.2 13.2v13.2H47zm0 6.7c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H13.9C6.6 60.3.7 54.4.7 47.1c0-7.3 5.9-13.2 13.2-13.2H47z", fill: "#36C5F0" }), (0, b.jsx)("path", { d: "M99.9 47.1c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H99.9V47.1zm-6.6 0c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V13.9C66.9 6.6 72.8.7 80.1.7c7.3 0 13.2 5.9 13.2 13.2v33.2z", fill: "#2EB67D" }), (0, b.jsx)("path", { d: "M80.1 99.8c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V99.8h13.2zm0-6.6c-7.3 0-13.2-5.9-13.2-13.2 0-7.3 5.9-13.2 13.2-13.2h33.1c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H80.1z", fill: "#ECB22E" })] }), gmail: (0, b.jsxs)("svg", { width: "15", height: "12", viewBox: "0 0 256 193", "aria-hidden": "true", children: [(0, b.jsx)("path", { d: "M58.182 192.05V93.14L27.507 65.077 0 49.504v125.091c0 9.658 7.825 17.455 17.455 17.455h40.727Z", fill: "#4285F4" }), (0, b.jsx)("path", { d: "M197.818 192.05h40.727c9.659 0 17.455-7.826 17.455-17.455V49.505l-31.156 17.837-27.026 25.798v98.91Z", fill: "#34A853" }), (0, b.jsx)("path", { d: "m58.182 93.14-4.174-38.647 4.174-36.989L128 69.868l69.818-52.364 4.669 34.992-4.669 40.644L128 145.504 58.182 93.14Z", fill: "#EA4335" }), (0, b.jsx)("path", { d: "M197.818 17.504V93.14L256 49.504V26.231c0-21.585-24.64-33.89-41.89-20.945l-16.292 12.218Z", fill: "#FBBC04" }), (0, b.jsx)("path", { d: "m0 49.504 26.759 20.07L58.182 93.14V17.504L41.89 5.286C24.61-7.66 0 4.646 0 26.23v23.273Z", fill: "#C5221F" })] }) }, N = [{ key: "attach", name: "Add photos & files", desc: "Upload from your computer", glyph: "clip", attach: true }, { key: "scoop", name: "Scoop Data", desc: "Sales & churn metrics", glyph: "chart" }, { key: "flavors", name: "Flavor records", desc: "26 makers, tags, links", glyph: "layers" }, { key: "web", name: "Web search", desc: "Real-time news and info", glyph: "globe" }, { key: "figma", name: "Figma", desc: "Design-to-code workflows", brand: "figma" }, { key: "slack", name: "Slack", desc: "Read and manage Slack", brand: "slack" }, { key: "gmail", name: "Gmail", desc: "Read and manage Gmail", brand: "gmail", connect: true }], O = [{ key: "compare", name: "/compare", desc: "Flavor vs. last summer" }, { key: "churn-plan", name: "/churn-plan", desc: "Draft a churn schedule" }, { key: "restock", name: "/restock", desc: "Build a reorder list" }, { key: "draft-email", name: "/draft-email", desc: "Write a supplier email" }, { key: "summarize", name: "/summarize", desc: "Digest the thread so far" }], P = [{ key: "sprinkles-5", name: "Sprinkles 5", tag: "Flagship" }, { key: "vanilla-1", name: "Vanilla 1", tag: "Basic" }, { key: "freezer-burn", name: "Freezer Burn 0.4", tag: "Stale" }], Q = ["flavor-chart.png", "summer-menu.pdf", "pos-export.csv"], R = "Compare pistachio weekends to last summer", S = [{ draft: "", connect: false, model: "vanilla-1", hold: 1100 }, { draft: "@", active: 0, hold: 900 }, { draft: "@", active: 1, hold: 620 }, { draft: "@", active: 4, hold: 620 }, { draft: "@", active: 6, hold: 700 }, { draft: "@", active: 6, connect: true, hold: 1e3 }, { draft: "", hold: 700 }, { draft: "/", active: 0, hold: 900 }, { draft: "/", active: 1, hold: 620 }, { draft: "/", active: 3, hold: 1e3 }, { draft: "", hold: 800 }, { draft: "", modelOpen: true, hold: 1200 }, { draft: "", model: "sprinkles-5", hold: 2400 }, { draft: "", hold: 900 }], T = { button: (0, b.jsxs)("div", { className: "flex flex-wrap items-center justify-center gap-2", children: [(0, b.jsx)(e.Button, { size: "sm", children: "Deploy" }), (0, b.jsx)(e.Button, { size: "sm", variant: "ghost", children: "Cancel" })] }), badge: (0, b.jsxs)("div", { className: "flex flex-wrap items-center justify-center gap-2", children: [(0, b.jsx)(d.Badge, { variant: "dot", pulse: true, children: "v1.0.0" }), (0, b.jsx)(d.Badge, { children: "stable" })] }), progress: (0, b.jsx)("div", { className: "w-full max-w-[11rem]", children: (0, b.jsx)(g.Progress, { value: 72, label: "Shipped" }) }), toggle: (0, b.jsxs)("div", { className: "flex flex-col items-center gap-3", children: [(0, b.jsx)(i.Toggle, { defaultOn: true, label: "Autoplay" }), (0, b.jsx)(i.Toggle, { label: "Haptics" })] }), input: (0, b.jsx)("div", { className: "w-full max-w-[11rem]", children: (0, b.jsx)(f.Input, { label: "Email", placeholder: "you@ship.dev" }) }), tabs: (0, b.jsx)(h.Tabs, { items: [{ label: "App", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "rsc by default" }) }, { label: "Page", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "streamed" }) }, { label: "Data", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "server action" }) }] }), card: (0, b.jsxs)(function({ className: a2 = "", children: c2 }) {
+          return (0, b.jsx)("div", { className: `rounded-md border border-line bg-panel/60 ${a2}`, children: c2 });
+        }, { className: "w-full max-w-[12rem]", children: [(0, b.jsx)(function({ className: a2 = "", children: c2 }) {
+          return (0, b.jsx)("div", { className: `flex flex-col gap-1.5 p-6 ${a2}`, children: c2 });
+        }, { children: (0, b.jsx)(function({ className: a2 = "", children: c2 }) {
+          return (0, b.jsx)("h3", { className: `text-lg font-semibold tracking-tight text-ink ${a2}`, children: c2 });
+        }, { children: "Ship it" }) }), (0, b.jsx)(function({ className: a2 = "", children: c2 }) {
+          return (0, b.jsx)("div", { className: `p-6 pt-0 ${a2}`, children: c2 });
+        }, { children: (0, b.jsx)("p", { className: "text-xs leading-5 text-muted", children: "One file at a time." }) })] }), skeleton: (0, b.jsxs)("div", { className: "w-24 flex flex-col gap-2", children: [(0, b.jsx)(j.Skeleton, { className: "h-2 w-full" }), (0, b.jsx)(j.Skeleton, { className: "h-2 w-3/4" }), (0, b.jsx)(j.Skeleton, { className: "h-2 w-1/2" })] }), table: (0, b.jsxs)(function({ children: a2, mono: c2 = false, className: d2 = "" }) {
+          return (0, b.jsx)("div", { className: `w-full overflow-x-auto ${d2}`, children: (0, b.jsx)("table", { className: `w-full border-collapse text-left text-sm ${c2 ? "font-mono" : ""}`, children: a2 }) });
+        }, { className: "max-w-[12rem]", children: [(0, b.jsx)(function({ children: a2 }) {
+          return (0, b.jsx)("thead", { children: a2 });
+        }, { children: (0, b.jsxs)(k, { children: [(0, b.jsx)(l, { children: "name" }), (0, b.jsx)(l, { children: "count" })] }) }), (0, b.jsxs)(function({ children: a2 }) {
+          return (0, b.jsx)("tbody", { children: a2 });
+        }, { children: [(0, b.jsxs)(k, { children: [(0, b.jsx)(m, { mono: true, children: "button" }), (0, b.jsx)(m, { mono: true, children: "84" })] }), (0, b.jsxs)(k, { children: [(0, b.jsx)(m, { mono: true, children: "modal" }), (0, b.jsx)(m, { mono: true, children: "3" })] })] })] }), tooltip: (0, b.jsx)(function({ label: a2, children: d2, side: e2 = "top", delayMs: f2 = 150, className: g2 = "" }) {
+          let h2 = (0, c.useId)(), [i2, j2] = (0, c.useState)(false), k2 = (0, c.useRef)(null), l2 = /* @__PURE__ */ __name(() => {
+            k2.current && window.clearTimeout(k2.current), k2.current = window.setTimeout(() => j2(true), f2);
+          }, "l2"), m2 = /* @__PURE__ */ __name(() => {
+            k2.current && window.clearTimeout(k2.current), j2(false);
+          }, "m2");
+          (0, c.useEffect)(() => () => {
+            k2.current && window.clearTimeout(k2.current);
+          }, []);
+          let n2 = (0, c.isValidElement)(d2) ? (0, c.cloneElement)(d2, { onMouseEnter: l2, onMouseLeave: m2, onFocus: l2, onBlur: m2, "aria-describedby": h2 }) : d2;
+          return (0, b.jsxs)("span", { className: `relative inline-flex ${g2}`, children: [n2, i2 ? (0, b.jsx)("span", { id: h2, role: "tooltip", className: `pointer-events-none absolute z-[80] max-w-[16rem] rounded-md border border-line bg-panel px-2.5 py-1.5 text-center font-mono text-[10px] leading-4 text-ink shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] ${r[e2]}`, children: a2 }) : null] });
+        }, { label: "hover + focus", side: "top", children: (0, b.jsx)(e.Button, { size: "sm", variant: "ghost", children: "Tip" }) }), modal: (0, b.jsx)("div", { className: "flex items-center justify-center", children: (0, b.jsx)(function() {
+          let [a2, d2] = (0, c.useState)(false);
+          return (0, b.jsxs)(b.Fragment, { children: [(0, b.jsx)(e.Button, { size: "sm", onClick: /* @__PURE__ */ __name(() => d2(true), "onClick"), children: "Open" }), (0, b.jsx)(t, { open: a2, onClose: /* @__PURE__ */ __name(() => d2(false), "onClose"), title: "Dialog", description: "A focus-trapped surface.", children: (0, b.jsx)("p", { className: "text-sm leading-6 text-muted", children: "Escape closes it, the backdrop closes it, Tab stays inside, and focus returns to the trigger when it closes." }) })] });
+        }, {}) }), toast: (0, b.jsx)(function({ children: a2 }) {
+          let [d2, e2] = (0, c.useState)([]), f2 = (0, c.useRef)(1), g2 = (0, c.useRef)(/* @__PURE__ */ new Set());
+          (0, c.useEffect)(() => () => {
+            g2.current.forEach((a3) => window.clearTimeout(a3)), g2.current.clear();
+          }, []);
+          let h2 = (0, c.useCallback)((a3) => {
+            e2((b2) => b2.filter((b3) => b3.id !== a3));
+          }, []), i2 = (0, c.useCallback)((a3) => {
+            let b2 = f2.current++;
+            e2((c3) => [...c3, { id: b2, title: a3.title, description: a3.description }]);
+            let c2 = window.setTimeout(() => h2(b2), a3.duration ?? 4e3);
+            return g2.current.add(c2), b2;
+          }, [h2]), j2 = (0, c.useMemo)(() => ({ toasts: d2, toast: i2, dismiss: h2 }), [d2, i2, h2]);
+          return (0, b.jsx)(n.Provider, { value: j2, children: a2 });
+        }, { children: (0, b.jsx)("div", { className: "flex items-center justify-center", children: (0, b.jsx)(function() {
+          let { toast: a2 } = o();
+          return (0, b.jsxs)(b.Fragment, { children: [(0, b.jsx)(e.Button, { size: "sm", onClick: /* @__PURE__ */ __name(() => a2({ title: "Component added", description: "copied to src/components/ui" }), "onClick"), children: "Notify" }), (0, b.jsx)(p, {})] });
+        }, {}) }) }), "prompt-bar": (0, b.jsx)(function({ variant: a2 = "Rounded" }) {
+          let d2, e2 = a2 === "Pill", [f2, g2] = (0, c.useState)(""), [h2, i2] = (0, c.useState)(false), [j2, k2] = (0, c.useState)(false), [l2, m2] = (0, c.useState)(false), [n2, o2] = (0, c.useState)(P[1]), [p2, q2] = (0, c.useState)([]), [r2, s2] = (0, c.useState)(false), [t2, u2] = (0, c.useState)(0), [v2, w2] = (0, c.useState)(false), [x2, y2] = (0, c.useState)(true), [z2, A2] = (0, c.useState)(0), [B2, C2] = (0, c.useState)(false), [D2, F2] = (0, c.useState)(null), [T2, U] = (0, c.useState)(false), [V, W] = (0, c.useState)(null), [X, Y] = (0, c.useState)(null), Z = (0, c.useRef)(null), $ = (0, c.useRef)(null), _ = (0, c.useRef)(null), aa = (0, c.useRef)(null), ab = (0, c.useRef)([]), ac = (0, c.useRef)([]), ad = (0, c.useRef)(null), ae = (0, c.useRef)(null), af = (0, c.useRef)(false), ag = /* @__PURE__ */ __name((a3) => {
+            y2(false), x2 && a3.target === $.current && g2("");
+          }, "ag"), ah = h2 ? null : (d2 = /(^|\s)([@/])([\w-]*)$/.exec(f2)) ? { kind: d2[2] === "@" ? "at" : "slash", query: d2[3].toLowerCase(), start: d2.index + d2[1].length } : null, ai = j2 ? "at" : ah?.kind ?? null, aj = j2 ? "" : ah?.query ?? "", ak = ai === "at" ? N.filter((a3) => a3.name.toLowerCase().includes(aj)) : ai === "slash" ? O.filter((a3) => a3.name.slice(1).startsWith(aj)) : [];
+          (0, c.useEffect)(() => {
+            u2(0), U(false);
+          }, [ai, aj]), (0, c.useLayoutEffect)(() => {
+            let a3 = ab.current[t2];
+            a3 && F2({ top: a3.offsetTop, height: a3.offsetHeight });
+          }, [ai, aj, t2, r2, ak.length]);
+          let al = P.findIndex((a3) => a3.key === n2.key);
+          (0, c.useLayoutEffect)(() => {
+            if (!l2) return;
+            let a3 = ac.current[X ?? al];
+            a3 && W({ top: a3.offsetTop, height: a3.offsetHeight });
+          }, [l2, X, al]), (0, c.useEffect)(() => {
+            l2 || Y(null);
+          }, [l2]);
+          let am = /* @__PURE__ */ __name(() => {
+            let a3 = ad.current;
+            if (!a3) return null;
+            let b2 = Math.random;
+            Math.random = () => 0;
+            try {
+              return /* @__PURE__ */ (function(a4 = {}) {
+                return null;
+              })({ canvas: a3, palette: J, direction: "ltr", bandTight: 10, swellAmount: 0.85 });
+            } finally {
+              Math.random = b2;
+            }
+          }, "am");
+          (0, c.useEffect)(() => (ae.current = am(), () => {
+            ae.current?.destroy(), ae.current = null;
+          }), []);
+          let an = /* @__PURE__ */ __name((a3) => {
+            o2(a3), m2(false), a3.key === "sprinkles-5" && (() => {
+              if (af.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+              ae.current?.destroy();
+              let a4 = am();
+              ae.current = a4, a4 && (af.current = true, (function(a5, b2 = {}) {
+                var c2, d3;
+                let e3, f3, g3 = b2.sweepMs ?? 1100, h3 = b2.outroMs ?? 700, i3 = Math.max(0, Math.min(1, b2.midpoint ?? 0.56)), j3 = ((c2 = b2.easing ?? "ease") ? typeof c2 == "function" ? c2 : G[c2] : G.easeOutQuart) ?? H, k3 = Math.max(0, Math.min(1.5, b2.peakAlpha ?? 1));
+                b2.palette && a5.setPalette((d3 = b2.palette) ? typeof d3 == "string" ? E[d3] : d3 : E.prism), b2.bandTight !== void 0 && a5.setBandTight(b2.bandTight), b2.direction && a5.setDirection(b2.direction), b2.waveAmount !== void 0 && a5.setWaveAmount(b2.waveAmount), b2.rippleAmount !== void 0 && a5.setRippleAmount(b2.rippleAmount), b2.waveSpeed !== void 0 && a5.setWaveSpeed(b2.waveSpeed), b2.brightness !== void 0 && a5.setBrightness(b2.brightness), b2.swellAmount !== void 0 && a5.setSwellAmount(b2.swellAmount);
+                let l3 = false, m3 = 0, n3 = new Promise((a6) => {
+                  e3 = a6;
+                }), o3 = new Promise((a6) => {
+                  f3 = a6;
+                });
+                return (async () => {
+                  var c3, d4, n4, o4, p3, q3;
+                  let r3 = a5.getProgress(), s3 = r3 >= 0.999 ? 0 : Math.max(0, Math.min(1, r3));
+                  a5.setAlpha(k3), a5.setProgress(s3);
+                  let t3 = 1 - s3, u3 = Math.max(80, g3 * t3), v3 = false, w3 = Promise.resolve(), x3 = /* @__PURE__ */ __name(() => {
+                    v3 = true, (w3 = Promise.resolve().then(() => b2.onMidpoint?.()).then(() => {
+                    })).then(e3, (a6) => {
+                      console.error("[glimm] midpoint callback failed:", a6), e3();
+                    });
+                  }, "x3"), y3 = performance.now();
+                  await new Promise((b3) => {
+                    let c4 = /* @__PURE__ */ __name(() => {
+                      if (l3) return void b3();
+                      let d5 = Math.min(1, (performance.now() - y3) / u3), e4 = s3 + t3 * j3(d5);
+                      a5.setProgress(e4), !v3 && e4 >= i3 && x3(), d5 < 1 ? m3 = requestAnimationFrame(c4) : b3();
+                    }, "c4");
+                    m3 = requestAnimationFrame(c4);
+                  }), l3 || (v3 || x3(), await w3.catch(() => {
+                  }), l3 || (await (c3 = h3, d4 = k3, n4 = I, o4 = a5.setAlpha, p3 = /* @__PURE__ */ __name(() => l3, "p3"), q3 = /* @__PURE__ */ __name((a6) => {
+                    m3 = a6;
+                  }, "q3"), new Promise((a6) => {
+                    let b3 = performance.now(), e4 = /* @__PURE__ */ __name(() => {
+                      if (p3()) return void a6();
+                      let f4 = Math.min(1, (performance.now() - b3) / c3);
+                      o4(d4 + (0 - d4) * n4(f4)), f4 < 1 ? q3(requestAnimationFrame(e4)) : a6();
+                    }, "e4");
+                    q3(requestAnimationFrame(e4));
+                  })), l3 || (a5.setProgress(0), b2.onComplete?.(), f3())));
+                })(), { midpoint: n3, done: o3, cancel: /* @__PURE__ */ __name(() => {
+                  l3 = true, cancelAnimationFrame(m3), e3(), f3();
+                }, "cancel") };
+              })(a4, { palette: J, direction: "ltr", sweepMs: 950, outroMs: 130, peakAlpha: 1.3, bandTight: 10, brightness: 1.4, swellAmount: 1, waveSpeed: 1.3, easing: "easeOutExpo" }).done.finally(() => {
+                af.current = false;
+              }));
+            })();
+          }, "an");
+          (0, c.useEffect)(() => {
+            if (!x2) return;
+            let a3 = S[z2 % S.length];
+            if (g2(a3.draft), a3.active !== void 0 && u2(a3.active), a3.connect !== void 0 && s2(a3.connect), a3.modelOpen !== void 0 && m2(a3.modelOpen), a3.model) {
+              let b3 = P.find((b4) => b4.key === a3.model);
+              b3 && an(b3);
+            }
+            let b2 = setTimeout(() => A2((a4) => a4 + 1), a3.hold);
+            return () => clearTimeout(b2);
+          }, [x2, z2]), (0, c.useEffect)(() => {
+            if (!v2) return;
+            let a3 = setTimeout(() => {
+              g2((a4) => a4 ? `${a4.trimEnd()} ${R}` : R), w2(false), $.current?.focus();
+            }, 2200);
+            return () => clearTimeout(a3);
+          }, [v2]), (0, c.useLayoutEffect)(() => {
+            let a3 = $.current, b2 = Z.current, c2 = _.current, d3 = aa.current;
+            if (!a3 || !b2 || !c2 || !d3) return;
+            let e3 = 84 + d3.offsetWidth, g3 = b2.clientWidth - e3 - 16, h3 = f2.includes(`
+`) || c2.offsetWidth + 8 > g3;
+            h3 !== B2 && C2(h3), a3.style.height = "0px";
+            let i3 = a3.scrollHeight;
+            a3.style.height = `${Math.min(Math.max(i3, 28), 100)}px`, a3.style.overflowY = i3 > 100 ? "auto" : "hidden";
+          }, [f2, B2]);
+          let ao = /* @__PURE__ */ __name(() => {
+            k2(false), m2(false);
+          }, "ao"), ap = /* @__PURE__ */ __name((a3) => {
+            N.find((b3) => b3.key === a3.key)?.attach ? (q2((a4) => [...a4, Q[a4.length % Q.length]]), ah && g2(f2.slice(0, ah.start))) : g2(ai === "at" ? `${ah ? f2.slice(0, ah.start) : f2}@${a3.name} ` : `${ah ? f2.slice(0, ah.start) : f2}${a3.name} `), k2(false), i2(false), $.current?.focus();
+          }, "ap"), aq = f2.trim().length > 0 || p2.length > 0, ar = /* @__PURE__ */ __name(() => {
+            aq && (g2(""), q2([]), ao());
+          }, "ar");
+          return (0, b.jsx)("div", { className: "flex min-h-[384px] w-full max-w-105 flex-col justify-end pb-8", onPointerDownCapture: ag, onKeyDownCapture: ag, children: (0, b.jsxs)("div", { className: "relative", children: [ai && (0, b.jsxs)("div", { onMouseLeave: /* @__PURE__ */ __name(() => U(false), "onMouseLeave"), className: "absolute inset-x-0 bottom-full z-10 mb-2 rounded-[10px] bg-surface p-1 shadow-raised", style: { animation: "pop-in 180ms cubic-bezier(0.23,1,0.32,1) both", transformOrigin: "bottom center" }, children: [(0, b.jsx)("span", { "aria-hidden": true, className: "pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover", style: { top: D2?.top ?? 0, height: D2?.height ?? 0, opacity: D2 && T2 && ak.length > 0 ? 1 : 0, transition: "top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease" } }), ak.map((a3, c2) => {
+            let d3 = ai === "at" ? N.find((b2) => b2.key === a3.key) : void 0;
+            return (0, b.jsxs)("button", { type: "button", ref: /* @__PURE__ */ __name((a4) => {
+              ab.current[c2] = a4;
+            }, "ref"), onMouseDown: /* @__PURE__ */ __name((a4) => a4.preventDefault(), "onMouseDown"), onMouseEnter: /* @__PURE__ */ __name(() => {
+              u2(c2), U(true);
+            }, "onMouseEnter"), onClick: /* @__PURE__ */ __name(() => ap(a3), "onClick"), className: "relative z-10 flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left", children: [d3 && (0, b.jsx)("span", { className: "flex size-5.5 shrink-0 items-center justify-center text-ink-2", children: d3.brand ? M[d3.brand] : (0, b.jsx)(K, { size: 15, children: L[d3.glyph ?? "clip"] }) }), (0, b.jsx)("span", { className: "shrink-0 text-[12.5px] font-medium text-ink", children: a3.name }), (0, b.jsx)("span", { className: "min-w-0 flex-1 truncate text-[12px] text-ink-3", children: a3.desc }), d3?.connect && (0, b.jsx)("span", { role: "button", tabIndex: -1, onClick: /* @__PURE__ */ __name((a4) => {
+              a4.stopPropagation(), s2((a5) => !a5);
+            }, "onClick"), className: `shrink-0 text-[12px] font-medium transition-colors duration-100 ${r2 ? "text-green" : "text-accent-ink hover:underline"}`, children: r2 ? "Connected" : "Connect" })] }, a3.key);
+          }), ak.length === 0 && (0, b.jsxs)("div", { className: "flex h-9 items-center px-2 text-[12px] text-ink-3", children: ["No matches for \u201C", aj, "\u201D"] }), (0, b.jsx)("div", { className: "mt-1 border-t border-line px-2 pt-1.5 pb-1 text-[11px] text-ink-3", children: ai === "at" ? "Type to search sources & files" : "Type to search commands" })] }), l2 && (0, b.jsxs)("div", { onMouseLeave: /* @__PURE__ */ __name(() => Y(null), "onMouseLeave"), className: "absolute right-0 bottom-full z-10 mb-2 w-44 rounded-[10px] bg-surface p-1 shadow-raised", style: { animation: "pop-in 180ms cubic-bezier(0.23,1,0.32,1) both", transformOrigin: "bottom right" }, children: [(0, b.jsx)("span", { "aria-hidden": true, className: "pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover", style: { top: V?.top ?? 0, height: V?.height ?? 0, opacity: V && X !== null ? 1 : 0, transition: "top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease" } }), P.map((a3, c2) => (0, b.jsxs)("button", { type: "button", ref: /* @__PURE__ */ __name((a4) => {
+            ac.current[c2] = a4;
+          }, "ref"), onMouseDown: /* @__PURE__ */ __name((a4) => a4.preventDefault(), "onMouseDown"), onMouseEnter: /* @__PURE__ */ __name(() => Y(c2), "onMouseEnter"), onClick: /* @__PURE__ */ __name(() => {
+            an(a3), $.current?.focus();
+          }, "onClick"), className: "relative z-10 flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left", children: [(0, b.jsx)("span", { className: "min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink", children: a3.name }), (0, b.jsx)("span", { className: "shrink-0 text-[11px] text-ink-3", children: a3.tag }), (0, b.jsx)("span", { className: `shrink-0 text-ink ${a3.key === n2.key ? "" : "invisible"}`, children: (0, b.jsx)(K, { size: 13, strokeWidth: 2.5, children: (0, b.jsx)("path", { d: "M20 6L9 17l-5-5" }) }) })] }, a3.key))] }), (0, b.jsxs)("div", { className: `relative isolate flex flex-col gap-1.5 overflow-hidden border border-line bg-surface p-1.5 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong ${e2 ? p2.length > 0 || B2 ? "rounded-[24px]" : "rounded-full" : "rounded-[14px]"}`, children: [(0, b.jsx)("canvas", { ref: ad, "aria-hidden": "true", className: "pointer-events-none absolute inset-0 -z-10 h-full w-full", style: { borderRadius: "inherit" } }), (0, b.jsx)("span", { ref: _, "aria-hidden": "true", className: "pointer-events-none absolute invisible whitespace-pre text-[13px] leading-[18px]", children: f2 }), p2.length > 0 && (0, b.jsx)("div", { className: `flex flex-wrap gap-1.5 pt-0.5 ${e2 ? "px-1" : "px-0.5"}`, children: p2.map((a3, c2) => (0, b.jsxs)("span", { className: `flex h-6.5 items-center gap-1.5 bg-field py-1 pr-1 pl-1.5 text-[11.5px] text-ink-2 shadow-hairline ${e2 ? "rounded-full" : "rounded-chip"}`, style: { animation: "pop-in 200ms cubic-bezier(0.23,1,0.32,1) both" }, children: [(0, b.jsx)(K, { size: 12, children: (0, b.jsxs)("g", { children: [(0, b.jsx)("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" }), (0, b.jsx)("path", { d: "M14 2v6h6" })] }) }), (0, b.jsx)("span", { className: "max-w-36 truncate", children: a3 }), (0, b.jsx)("button", { type: "button", "aria-label": `Remove ${a3}`, onClick: /* @__PURE__ */ __name(() => q2((a4) => a4.filter((a5, b2) => b2 !== c2)), "onClick"), className: `flex size-4 items-center justify-center text-ink-3 transition-colors duration-100 hover:bg-line/70 hover:text-ink ${e2 ? "rounded-full" : "rounded-[4px]"}`, children: (0, b.jsx)(K, { size: 10, strokeWidth: 2.5, children: (0, b.jsx)("path", { d: "M18 6L6 18M6 6l12 12" }) }) })] }, `${a3}-${c2}`)) }), (0, b.jsxs)("div", { ref: Z, className: `grid items-end gap-x-1 gap-y-1.5 ${B2 ? "grid-cols-[minmax(0,1fr)_auto_28px_28px]" : "grid-cols-[28px_minmax(0,1fr)_auto_28px_28px]"}`, children: [(0, b.jsx)("button", { type: "button", "aria-label": "Add attachments and sources", "aria-expanded": j2, onClick: /* @__PURE__ */ __name(() => {
+            m2(false), k2((a3) => !a3), $.current?.focus();
+          }, "onClick"), className: `flex size-7 shrink-0 items-center justify-center justify-self-start text-ink-3 transition-[background-color,color,transform] duration-150 hover:bg-hover hover:text-ink active:scale-[0.94] ${e2 ? "rounded-full" : "rounded-[8px]"} ${j2 ? "bg-hover text-ink" : ""} ${B2 ? "col-start-1 row-start-2" : "col-start-1 row-start-1"}`, children: (0, b.jsx)(K, { size: 16, strokeWidth: 2, children: (0, b.jsx)("path", { d: "M12 5v14M5 12h14" }) }) }), (0, b.jsx)("textarea", { ref: $, rows: 1, value: f2, onChange: /* @__PURE__ */ __name((a3) => {
+            g2(a3.target.value), i2(false), k2(false);
+          }, "onChange"), onKeyDown: /* @__PURE__ */ __name((a3) => {
+            if (ai && ak.length > 0) {
+              if (a3.key === "ArrowDown" || a3.key === "ArrowUp") {
+                a3.preventDefault(), U(true), u2((b2) => (b2 + (a3.key === "ArrowDown" ? 1 : ak.length - 1)) % ak.length);
+                return;
+              }
+              if (a3.key === "Enter" && !a3.shiftKey || a3.key === "Tab") {
+                a3.preventDefault(), ap(ak[t2]);
+                return;
+              }
+            }
+            if (a3.key === "Escape") {
+              i2(true), ao();
+              return;
+            }
+            a3.key !== "Enter" || a3.shiftKey || a3.nativeEvent.isComposing || (a3.preventDefault(), ar());
+          }, "onKeyDown"), placeholder: v2 ? "Listening\u2026" : "Write a message\u2026", "aria-label": "Prompt", className: `min-h-7 min-w-0 w-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3 ${B2 ? "col-span-full col-start-1 row-start-1" : "col-start-2 row-start-1"}` }), (0, b.jsxs)("button", { ref: aa, type: "button", "aria-expanded": l2, "aria-label": "Choose model", onClick: /* @__PURE__ */ __name(() => {
+            k2(false), m2((a3) => !a3);
+          }, "onClick"), className: `flex h-7 shrink-0 items-center gap-1 px-1.5 text-[12px] font-medium text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink ${e2 ? "rounded-full" : "rounded-[8px]"} ${B2 ? "col-start-2 row-start-2" : "col-start-3 row-start-1"}`, children: [n2.name, (0, b.jsx)("span", { className: "text-ink-3", children: (0, b.jsx)(K, { size: 11, strokeWidth: 2.4, children: (0, b.jsx)("path", { d: "M6 9l6 6 6-6" }) }) })] }), (0, b.jsx)("button", { type: "button", "aria-label": v2 ? "Stop dictation" : "Start dictation", "aria-pressed": v2, onClick: /* @__PURE__ */ __name(() => w2((a3) => !a3), "onClick"), className: `flex size-7 shrink-0 items-center justify-center transition-[background-color,color,transform] duration-150 active:scale-[0.94] ${e2 ? "rounded-full" : "rounded-[8px]"} ${v2 ? "bg-accent-tint text-accent-ink" : "text-ink-3 hover:bg-hover hover:text-ink"} ${B2 ? "col-start-3 row-start-2" : "col-start-4 row-start-1"}`, children: v2 ? (0, b.jsx)("span", { className: "flex h-3.5 items-center gap-[2.5px]", children: [0, 1, 2].map((a3) => (0, b.jsx)("span", { className: "w-[2.5px] rounded-full bg-current", style: { height: "100%", animation: `eq-bounce 900ms ease-in-out ${150 * a3}ms infinite` } }, a3)) }) : (0, b.jsx)(K, { size: 15, strokeWidth: 2, children: (0, b.jsxs)("g", { children: [(0, b.jsx)("path", { d: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" }), (0, b.jsx)("path", { d: "M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" })] }) }) }), (0, b.jsx)("button", { type: "button", "aria-label": "Send", disabled: !aq, onClick: ar, className: `flex size-7 shrink-0 items-center justify-center transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] ${e2 ? "rounded-full" : "rounded-[8px]"} ${B2 ? "col-start-4 row-start-2" : "col-start-5 row-start-1"}`, style: { background: aq ? "var(--ink)" : "var(--line-strong)", color: aq ? "var(--surface)" : "var(--ink-2)" }, children: (0, b.jsx)(K, { size: 16, strokeWidth: 2.4, children: (0, b.jsx)("path", { d: "M12 19V5M5 12l7-7 7 7" }) }) })] })] })] }) });
+        }, {}) };
+        a.s(["ComponentPreview", 0, function({ slug: a2 }) {
+          return (0, b.jsx)(b.Fragment, { children: T[a2] ?? null });
+        }], 41578);
+      }, 62642, (a, b, c) => {
+        var d, e, f = (function(a2) {
+          var b2 = /(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i, c2 = 0, d2 = {}, e2 = { manual: a2.Prism && a2.Prism.manual, disableWorkerMessageHandler: a2.Prism && a2.Prism.disableWorkerMessageHandler, util: { encode: /* @__PURE__ */ __name(function a3(b3) {
+            return b3 instanceof f2 ? new f2(b3.type, a3(b3.content), b3.alias) : Array.isArray(b3) ? b3.map(a3) : b3.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\u00a0/g, " ");
+          }, "a3"), type: /* @__PURE__ */ __name(function(a3) {
+            return Object.prototype.toString.call(a3).slice(8, -1);
+          }, "type"), objId: /* @__PURE__ */ __name(function(a3) {
+            return a3.__id || Object.defineProperty(a3, "__id", { value: ++c2 }), a3.__id;
+          }, "objId"), clone: /* @__PURE__ */ __name(function a3(b3, c3) {
+            var d3, f3;
+            switch (c3 = c3 || {}, e2.util.type(b3)) {
+              case "Object":
+                if (c3[f3 = e2.util.objId(b3)]) return c3[f3];
+                for (var g2 in d3 = {}, c3[f3] = d3, b3) b3.hasOwnProperty(g2) && (d3[g2] = a3(b3[g2], c3));
+                return d3;
+              case "Array":
+                return c3[f3 = e2.util.objId(b3)] ? c3[f3] : (d3 = [], c3[f3] = d3, b3.forEach(function(b4, e3) {
+                  d3[e3] = a3(b4, c3);
+                }), d3);
+              default:
+                return b3;
+            }
+          }, "a3"), getLanguage: /* @__PURE__ */ __name(function(a3) {
+            for (; a3; ) {
+              var c3 = b2.exec(a3.className);
+              if (c3) return c3[1].toLowerCase();
+              a3 = a3.parentElement;
+            }
+            return "none";
+          }, "getLanguage"), setLanguage: /* @__PURE__ */ __name(function(a3, c3) {
+            a3.className = a3.className.replace(RegExp(b2, "gi"), ""), a3.classList.add("language-" + c3);
+          }, "setLanguage"), currentScript: /* @__PURE__ */ __name(function() {
+            if ("u" < typeof document) return null;
+            if (document.currentScript && document.currentScript.tagName === "SCRIPT") return document.currentScript;
+            try {
+              throw Error();
+            } catch (d3) {
+              var a3 = (/at [^(\r\n]*\((.*):[^:]+:[^:]+\)$/i.exec(d3.stack) || [])[1];
+              if (a3) {
+                var b3 = document.getElementsByTagName("script");
+                for (var c3 in b3) if (b3[c3].src == a3) return b3[c3];
+              }
+              return null;
+            }
+          }, "currentScript"), isActive: /* @__PURE__ */ __name(function(a3, b3, c3) {
+            for (var d3 = "no-" + b3; a3; ) {
+              var e3 = a3.classList;
+              if (e3.contains(b3)) return true;
+              if (e3.contains(d3)) return false;
+              a3 = a3.parentElement;
+            }
+            return !!c3;
+          }, "isActive") }, languages: { plain: d2, plaintext: d2, text: d2, txt: d2, extend: /* @__PURE__ */ __name(function(a3, b3) {
+            var c3 = e2.util.clone(e2.languages[a3]);
+            for (var d3 in b3) c3[d3] = b3[d3];
+            return c3;
+          }, "extend"), insertBefore: /* @__PURE__ */ __name(function(a3, b3, c3, d3) {
+            var f3 = (d3 = d3 || e2.languages)[a3], g2 = {};
+            for (var h2 in f3) if (f3.hasOwnProperty(h2)) {
+              if (h2 == b3) for (var i2 in c3) c3.hasOwnProperty(i2) && (g2[i2] = c3[i2]);
+              c3.hasOwnProperty(h2) || (g2[h2] = f3[h2]);
+            }
+            var j2 = d3[a3];
+            return d3[a3] = g2, e2.languages.DFS(e2.languages, function(b4, c4) {
+              c4 === j2 && b4 != a3 && (this[b4] = g2);
+            }), g2;
+          }, "insertBefore"), DFS: /* @__PURE__ */ __name(function a3(b3, c3, d3, f3) {
+            f3 = f3 || {};
+            var g2 = e2.util.objId;
+            for (var h2 in b3) if (b3.hasOwnProperty(h2)) {
+              c3.call(b3, h2, b3[h2], d3 || h2);
+              var i2 = b3[h2], j2 = e2.util.type(i2);
+              j2 !== "Object" || f3[g2(i2)] ? j2 !== "Array" || f3[g2(i2)] || (f3[g2(i2)] = true, a3(i2, c3, h2, f3)) : (f3[g2(i2)] = true, a3(i2, c3, null, f3));
+            }
+          }, "a3") }, plugins: {}, highlightAll: /* @__PURE__ */ __name(function(a3, b3) {
+            e2.highlightAllUnder(document, a3, b3);
+          }, "highlightAll"), highlightAllUnder: /* @__PURE__ */ __name(function(a3, b3, c3) {
+            var d3 = { callback: c3, container: a3, selector: 'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code' };
+            e2.hooks.run("before-highlightall", d3), d3.elements = Array.prototype.slice.apply(d3.container.querySelectorAll(d3.selector)), e2.hooks.run("before-all-elements-highlight", d3);
+            for (var f3, g2 = 0; f3 = d3.elements[g2++]; ) e2.highlightElement(f3, b3 === true, d3.callback);
+          }, "highlightAllUnder"), highlightElement: /* @__PURE__ */ __name(function(b3, c3, d3) {
+            var f3 = e2.util.getLanguage(b3), g2 = e2.languages[f3];
+            e2.util.setLanguage(b3, f3);
+            var h2 = b3.parentElement;
+            h2 && h2.nodeName.toLowerCase() === "pre" && e2.util.setLanguage(h2, f3);
+            var i2 = b3.textContent, j2 = { element: b3, language: f3, grammar: g2, code: i2 };
+            function k2(a3) {
+              j2.highlightedCode = a3, e2.hooks.run("before-insert", j2), j2.element.innerHTML = j2.highlightedCode, e2.hooks.run("after-highlight", j2), e2.hooks.run("complete", j2), d3 && d3.call(j2.element);
+            }
+            __name(k2, "k2");
+            if (e2.hooks.run("before-sanity-check", j2), (h2 = j2.element.parentElement) && h2.nodeName.toLowerCase() === "pre" && !h2.hasAttribute("tabindex") && h2.setAttribute("tabindex", "0"), !j2.code) {
+              e2.hooks.run("complete", j2), d3 && d3.call(j2.element);
+              return;
+            }
+            if (e2.hooks.run("before-highlight", j2), !j2.grammar) return void k2(e2.util.encode(j2.code));
+            if (c3 && a2.Worker) {
+              var l2 = new Worker(e2.filename);
+              l2.onmessage = function(a3) {
+                k2(a3.data);
+              }, l2.postMessage(JSON.stringify({ language: j2.language, code: j2.code, immediateClose: true }));
+            } else k2(e2.highlight(j2.code, j2.grammar, j2.language));
+          }, "highlightElement"), highlight: /* @__PURE__ */ __name(function(a3, b3, c3) {
+            var d3 = { code: a3, grammar: b3, language: c3 };
+            if (e2.hooks.run("before-tokenize", d3), !d3.grammar) throw Error('The language "' + d3.language + '" has no grammar.');
+            return d3.tokens = e2.tokenize(d3.code, d3.grammar), e2.hooks.run("after-tokenize", d3), f2.stringify(e2.util.encode(d3.tokens), d3.language);
+          }, "highlight"), tokenize: /* @__PURE__ */ __name(function(a3, b3) {
+            var c3 = b3.rest;
+            if (c3) {
+              for (var d3 in c3) b3[d3] = c3[d3];
+              delete b3.rest;
+            }
+            var j2 = new h();
+            return i(j2, j2.head, a3), (/* @__PURE__ */ __name(function a4(b4, c4, d4, h2, j3, k2) {
+              for (var l2 in d4) if (d4.hasOwnProperty(l2) && d4[l2]) {
+                var m = d4[l2];
+                m = Array.isArray(m) ? m : [m];
+                for (var n = 0; n < m.length; ++n) {
+                  if (k2 && k2.cause == l2 + "," + n) return;
+                  var o = m[n], p = o.inside, q = !!o.lookbehind, r = !!o.greedy, s = o.alias;
+                  if (r && !o.pattern.global) {
+                    var t = o.pattern.toString().match(/[imsuy]*$/)[0];
+                    o.pattern = RegExp(o.pattern.source, t + "g");
+                  }
+                  for (var u = o.pattern || o, v = h2.next, w = j3; v !== c4.tail && (!k2 || !(w >= k2.reach)); w += v.value.length, v = v.next) {
+                    var x, y = v.value;
+                    if (c4.length > b4.length) return;
+                    if (!(y instanceof f2)) {
+                      var z = 1;
+                      if (r) {
+                        if (!(x = g(u, w, b4, q)) || x.index >= b4.length) break;
+                        var A = x.index, B = x.index + x[0].length, C = w;
+                        for (C += v.value.length; A >= C; ) C += (v = v.next).value.length;
+                        if (C -= v.value.length, w = C, v.value instanceof f2) continue;
+                        for (var D = v; D !== c4.tail && (C < B || typeof D.value == "string"); D = D.next) z++, C += D.value.length;
+                        z--, y = b4.slice(w, C), x.index -= w;
+                      } else if (!(x = g(u, 0, y, q))) continue;
+                      var A = x.index, E = x[0], F = y.slice(0, A), G = y.slice(A + E.length), H = w + y.length;
+                      k2 && H > k2.reach && (k2.reach = H);
+                      var I = v.prev;
+                      if (F && (I = i(c4, I, F), w += F.length), (function(a5, b5, c5) {
+                        for (var d5 = b5.next, e3 = 0; e3 < c5 && d5 !== a5.tail; e3++) d5 = d5.next;
+                        b5.next = d5, d5.prev = b5, a5.length -= e3;
+                      })(c4, I, z), v = i(c4, I, new f2(l2, p ? e2.tokenize(E, p) : E, s, E)), G && i(c4, v, G), z > 1) {
+                        var J = { cause: l2 + "," + n, reach: H };
+                        a4(b4, c4, d4, v.prev, w, J), k2 && J.reach > k2.reach && (k2.reach = J.reach);
+                      }
+                    }
+                  }
+                }
+              }
+            }, "a4"))(a3, j2, b3, j2.head, 0), (function(a4) {
+              for (var b4 = [], c4 = a4.head.next; c4 !== a4.tail; ) b4.push(c4.value), c4 = c4.next;
+              return b4;
+            })(j2);
+          }, "tokenize"), hooks: { all: {}, add: /* @__PURE__ */ __name(function(a3, b3) {
+            var c3 = e2.hooks.all;
+            c3[a3] = c3[a3] || [], c3[a3].push(b3);
+          }, "add"), run: /* @__PURE__ */ __name(function(a3, b3) {
+            var c3 = e2.hooks.all[a3];
+            if (c3 && c3.length) for (var d3, f3 = 0; d3 = c3[f3++]; ) d3(b3);
+          }, "run") }, Token: f2 };
+          function f2(a3, b3, c3, d3) {
+            this.type = a3, this.content = b3, this.alias = c3, this.length = 0 | (d3 || "").length;
+          }
+          __name(f2, "f2");
+          function g(a3, b3, c3, d3) {
+            a3.lastIndex = b3;
+            var e3 = a3.exec(c3);
+            if (e3 && d3 && e3[1]) {
+              var f3 = e3[1].length;
+              e3.index += f3, e3[0] = e3[0].slice(f3);
+            }
+            return e3;
+          }
+          __name(g, "g");
+          function h() {
+            var a3 = { value: null, prev: null, next: null }, b3 = { value: null, prev: a3, next: null };
+            a3.next = b3, this.head = a3, this.tail = b3, this.length = 0;
+          }
+          __name(h, "h");
+          function i(a3, b3, c3) {
+            var d3 = b3.next, e3 = { value: c3, prev: b3, next: d3 };
+            return b3.next = e3, d3.prev = e3, a3.length++, e3;
+          }
+          __name(i, "i");
+          if (a2.Prism = e2, f2.stringify = /* @__PURE__ */ __name(function a3(b3, c3) {
+            if (typeof b3 == "string") return b3;
+            if (Array.isArray(b3)) {
+              var d3 = "";
+              return b3.forEach(function(b4) {
+                d3 += a3(b4, c3);
+              }), d3;
+            }
+            var f3 = { type: b3.type, content: a3(b3.content, c3), tag: "span", classes: ["token", b3.type], attributes: {}, language: c3 }, g2 = b3.alias;
+            g2 && (Array.isArray(g2) ? Array.prototype.push.apply(f3.classes, g2) : f3.classes.push(g2)), e2.hooks.run("wrap", f3);
+            var h2 = "";
+            for (var i2 in f3.attributes) h2 += " " + i2 + '="' + (f3.attributes[i2] || "").replace(/"/g, "&quot;") + '"';
+            return "<" + f3.tag + ' class="' + f3.classes.join(" ") + '"' + h2 + ">" + f3.content + "</" + f3.tag + ">";
+          }, "a3"), !a2.document) return a2.addEventListener && (e2.disableWorkerMessageHandler || a2.addEventListener("message", function(b3) {
+            var c3 = JSON.parse(b3.data), d3 = c3.language, f3 = c3.code, g2 = c3.immediateClose;
+            a2.postMessage(e2.highlight(f3, e2.languages[d3], d3)), g2 && a2.close();
+          }, false)), e2;
+          var j = e2.util.currentScript();
+          function k() {
+            e2.manual || e2.highlightAll();
+          }
+          __name(k, "k");
+          if (j && (e2.filename = j.src, j.hasAttribute("data-manual") && (e2.manual = true)), !e2.manual) {
+            var l = document.readyState;
+            l === "loading" || l === "interactive" && j && j.defer ? document.addEventListener("DOMContentLoaded", k) : window.requestAnimationFrame ? window.requestAnimationFrame(k) : window.setTimeout(k, 16);
+          }
+          return e2;
+        })("u" > typeof WorkerGlobalScope && self instanceof WorkerGlobalScope ? self : {});
+        b.exports && (b.exports = f), a.g.Prism = f, f.languages.markup = { comment: { pattern: /<!--(?:(?!<!--)[\s\S])*?-->/, greedy: true }, prolog: { pattern: /<\?[\s\S]+?\?>/, greedy: true }, doctype: { pattern: /<!DOCTYPE(?:[^>"'[\]]|"[^"]*"|'[^']*')+(?:\[(?:[^<"'\]]|"[^"]*"|'[^']*'|<(?!!--)|<!--(?:[^-]|-(?!->))*-->)*\]\s*)?>/i, greedy: true, inside: { "internal-subset": { pattern: /(^[^\[]*\[)[\s\S]+(?=\]>$)/, lookbehind: true, greedy: true, inside: null }, string: { pattern: /"[^"]*"|'[^']*'/, greedy: true }, punctuation: /^<!|>$|[[\]]/, "doctype-tag": /^DOCTYPE/i, name: /[^\s<>'"]+/ } }, cdata: { pattern: /<!\[CDATA\[[\s\S]*?\]\]>/i, greedy: true }, tag: { pattern: /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?=[\s/>])))+)?\s*\/?>/, greedy: true, inside: { tag: { pattern: /^<\/?[^\s>\/]+/, inside: { punctuation: /^<\/?/, namespace: /^[^\s>\/:]+:/ } }, "special-attr": [], "attr-value": { pattern: /=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+)/, inside: { punctuation: [{ pattern: /^=/, alias: "attr-equals" }, { pattern: /^(\s*)["']|["']$/, lookbehind: true }] } }, punctuation: /\/?>/, "attr-name": { pattern: /[^\s>\/]+/, inside: { namespace: /^[^\s>\/:]+:/ } } } }, entity: [{ pattern: /&[\da-z]{1,8};/i, alias: "named-entity" }, /&#x?[\da-f]{1,8};/i] }, f.languages.markup.tag.inside["attr-value"].inside.entity = f.languages.markup.entity, f.languages.markup.doctype.inside["internal-subset"].inside = f.languages.markup, f.hooks.add("wrap", function(a2) {
+          a2.type === "entity" && (a2.attributes.title = a2.content.replace(/&amp;/, "&"));
+        }), Object.defineProperty(f.languages.markup.tag, "addInlined", { value: /* @__PURE__ */ __name(function(a2, b2) {
+          var c2 = {};
+          c2["language-" + b2] = { pattern: /(^<!\[CDATA\[)[\s\S]+?(?=\]\]>$)/i, lookbehind: true, inside: f.languages[b2] }, c2.cdata = /^<!\[CDATA\[|\]\]>$/i;
+          var d2 = { "included-cdata": { pattern: /<!\[CDATA\[[\s\S]*?\]\]>/i, inside: c2 } };
+          d2["language-" + b2] = { pattern: /[\s\S]+/, inside: f.languages[b2] };
+          var e2 = {};
+          e2[a2] = { pattern: RegExp(/(<__[^>]*>)(?:<!\[CDATA\[(?:[^\]]|\](?!\]>))*\]\]>|(?!<!\[CDATA\[)[\s\S])*?(?=<\/__>)/.source.replace(/__/g, function() {
+            return a2;
+          }), "i"), lookbehind: true, greedy: true, inside: d2 }, f.languages.insertBefore("markup", "cdata", e2);
+        }, "value") }), Object.defineProperty(f.languages.markup.tag, "addAttribute", { value: /* @__PURE__ */ __name(function(a2, b2) {
+          f.languages.markup.tag.inside["special-attr"].push({ pattern: RegExp(/(^|["'\s])/.source + "(?:" + a2 + ")" + /\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))/.source, "i"), lookbehind: true, inside: { "attr-name": /^[^\s=]+/, "attr-value": { pattern: /=[\s\S]+/, inside: { value: { pattern: /(^=\s*(["']|(?!["'])))\S[\s\S]*(?=\2$)/, lookbehind: true, alias: [b2, "language-" + b2], inside: f.languages[b2] }, punctuation: [{ pattern: /^=/, alias: "attr-equals" }, /"|'/] } } } });
+        }, "value") }), f.languages.html = f.languages.markup, f.languages.mathml = f.languages.markup, f.languages.svg = f.languages.markup, f.languages.xml = f.languages.extend("markup", {}), f.languages.ssml = f.languages.xml, f.languages.atom = f.languages.xml, f.languages.rss = f.languages.xml, d = /(?:"(?:\\(?:\r\n|[\s\S])|[^"\\\r\n])*"|'(?:\\(?:\r\n|[\s\S])|[^'\\\r\n])*')/, f.languages.css = { comment: /\/\*[\s\S]*?\*\//, atrule: { pattern: RegExp("@[\\w-](?:" + /[^;{\s"']|\s+(?!\s)/.source + "|" + d.source + ")*?" + /(?:;|(?=\s*\{))/.source), inside: { rule: /^@[\w-]+/, "selector-function-argument": { pattern: /(\bselector\s*\(\s*(?![\s)]))(?:[^()\s]|\s+(?![\s)])|\((?:[^()]|\([^()]*\))*\))+(?=\s*\))/, lookbehind: true, alias: "selector" }, keyword: { pattern: /(^|[^\w-])(?:and|not|only|or)(?![\w-])/, lookbehind: true } } }, url: { pattern: RegExp("\\burl\\((?:" + d.source + "|" + /(?:[^\\\r\n()"']|\\[\s\S])*/.source + ")\\)", "i"), greedy: true, inside: { function: /^url/i, punctuation: /^\(|\)$/, string: { pattern: RegExp("^" + d.source + "$"), alias: "url" } } }, selector: { pattern: RegExp(`(^|[{}\\s])[^{}\\s](?:[^{};"'\\s]|\\s+(?![\\s{])|` + d.source + ")*(?=\\s*\\{)"), lookbehind: true }, string: { pattern: d, greedy: true }, property: { pattern: /(^|[^-\w\xA0-\uFFFF])(?!\s)[-_a-z\xA0-\uFFFF](?:(?!\s)[-\w\xA0-\uFFFF])*(?=\s*:)/i, lookbehind: true }, important: /!important\b/i, function: { pattern: /(^|[^-a-z0-9])[-a-z0-9]+(?=\()/i, lookbehind: true }, punctuation: /[(){};:,]/ }, f.languages.css.atrule.inside.rest = f.languages.css, (e = f.languages.markup) && (e.tag.addInlined("style", "css"), e.tag.addAttribute("style", "css")), f.languages.clike = { comment: [{ pattern: /(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/, lookbehind: true, greedy: true }, { pattern: /(^|[^\\:])\/\/.*/, lookbehind: true, greedy: true }], string: { pattern: /(["'])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/, greedy: true }, "class-name": { pattern: /(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i, lookbehind: true, inside: { punctuation: /[.\\]/ } }, keyword: /\b(?:break|catch|continue|do|else|finally|for|function|if|in|instanceof|new|null|return|throw|try|while)\b/, boolean: /\b(?:false|true)\b/, function: /\b\w+(?=\()/, number: /\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i, operator: /[<>]=?|[!=]=?=?|--?|\+\+?|&&?|\|\|?|[?*/~^%]/, punctuation: /[{}[\];(),.:]/ }, f.languages.javascript = f.languages.extend("clike", { "class-name": [f.languages.clike["class-name"], { pattern: /(^|[^$\w\xA0-\uFFFF])(?!\s)[_$A-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\.(?:constructor|prototype))/, lookbehind: true }], keyword: [{ pattern: /((?:^|\})\s*)catch\b/, lookbehind: true }, { pattern: /(^|[^.]|\.\.\.\s*)\b(?:as|assert(?=\s*\{)|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally(?=\s*(?:\{|$))|for|from(?=\s*(?:['"]|$))|function|(?:get|set)(?=\s*(?:[#\[$\w\xA0-\uFFFF]|$))|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/, lookbehind: true }], function: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*(?:\.\s*(?:apply|bind|call)\s*)?\()/, number: { pattern: RegExp(/(^|[^\w$])/.source + "(?:" + (/NaN|Infinity/.source + "|" + /0[bB][01]+(?:_[01]+)*n?/.source + "|" + /0[oO][0-7]+(?:_[0-7]+)*n?/.source + "|" + /0[xX][\dA-Fa-f]+(?:_[\dA-Fa-f]+)*n?/.source + "|" + /\d+(?:_\d+)*n/.source) + "|" + /(?:\d+(?:_\d+)*(?:\.(?:\d+(?:_\d+)*)?)?|\.\d+(?:_\d+)*)(?:[Ee][+-]?\d+(?:_\d+)*)?/.source + ")" + /(?![\w$])/.source), lookbehind: true }, operator: /--|\+\+|\*\*=?|=>|&&=?|\|\|=?|[!=]==|<<=?|>>>?=?|[-+*/%&|^!=<>]=?|\.{3}|\?\?=?|\?\.?|[~:]/ }), f.languages.javascript["class-name"][0].pattern = /(\b(?:class|extends|implements|instanceof|interface|new)\s+)[\w.\\]+/, f.languages.insertBefore("javascript", "keyword", { regex: { pattern: RegExp(/((?:^|[^$\w\xA0-\uFFFF."'\])\s]|\b(?:return|yield))\s*)/.source + /\//.source + "(?:" + /(?:\[(?:[^\]\\\r\n]|\\.)*\]|\\.|[^/\\\[\r\n])+\/[dgimyus]{0,7}/.source + "|" + /(?:\[(?:[^[\]\\\r\n]|\\.|\[(?:[^[\]\\\r\n]|\\.|\[(?:[^[\]\\\r\n]|\\.)*\])*\])*\]|\\.|[^/\\\[\r\n])+\/[dgimyus]{0,7}v[dgimyus]{0,7}/.source + ")" + /(?=(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/)*(?:$|[\r\n,.;:})\]]|\/\/))/.source), lookbehind: true, greedy: true, inside: { "regex-source": { pattern: /^(\/)[\s\S]+(?=\/[a-z]*$)/, lookbehind: true, alias: "language-regex", inside: f.languages.regex }, "regex-delimiter": /^\/|\/$/, "regex-flags": /^[a-z]+$/ } }, "function-variable": { pattern: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*[=:]\s*(?:async\s*)?(?:\bfunction\b|(?:\((?:[^()]|\([^()]*\))*\)|(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*)\s*=>))/, alias: "function" }, parameter: [{ pattern: /(function(?:\s+(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*)?\s*\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\))/, lookbehind: true, inside: f.languages.javascript }, { pattern: /(^|[^$\w\xA0-\uFFFF])(?!\s)[_$a-z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*=>)/i, lookbehind: true, inside: f.languages.javascript }, { pattern: /(\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\)\s*=>)/, lookbehind: true, inside: f.languages.javascript }, { pattern: /((?:\b|\s|^)(?!(?:as|async|await|break|case|catch|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally|for|from|function|get|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|set|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)(?![$\w\xA0-\uFFFF]))(?:(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*)\(\s*|\]\s*\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\)\s*\{)/, lookbehind: true, inside: f.languages.javascript }], constant: /\b[A-Z](?:[A-Z_]|\dx?)*\b/ }), f.languages.insertBefore("javascript", "string", { hashbang: { pattern: /^#!.*/, greedy: true, alias: "comment" }, "template-string": { pattern: /`(?:\\[\s\S]|\$\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})+\}|(?!\$\{)[^\\`])*`/, greedy: true, inside: { "template-punctuation": { pattern: /^`|`$/, alias: "string" }, interpolation: { pattern: /((?:^|[^\\])(?:\\{2})*)\$\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})+\}/, lookbehind: true, inside: { "interpolation-punctuation": { pattern: /^\$\{|\}$/, alias: "punctuation" }, rest: f.languages.javascript } }, string: /[\s\S]+/ } }, "string-property": { pattern: /((?:^|[,{])[ \t]*)(["'])(?:\\(?:\r\n|[\s\S])|(?!\2)[^\\\r\n])*\2(?=\s*:)/m, lookbehind: true, greedy: true, alias: "property" } }), f.languages.insertBefore("javascript", "operator", { "literal-property": { pattern: /((?:^|[,{])[ \t]*)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*:)/m, lookbehind: true, alias: "property" } }), f.languages.markup && (f.languages.markup.tag.addInlined("script", "javascript"), f.languages.markup.tag.addAttribute(/on(?:abort|blur|change|click|composition(?:end|start|update)|dblclick|error|focus(?:in|out)?|key(?:down|up)|load|mouse(?:down|enter|leave|move|out|over|up)|reset|resize|scroll|select|slotchange|submit|unload|wheel)/.source, "javascript")), f.languages.js = f.languages.javascript, (function() {
+          if (f !== void 0 && "u" > typeof document) {
+            Element.prototype.matches || (Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector);
+            var a2 = { js: "javascript", py: "python", rb: "ruby", ps1: "powershell", psm1: "powershell", sh: "bash", bat: "batch", h: "c", tex: "latex" }, b2 = "data-src-status", c2 = "loading", d2 = "loaded", e2 = "pre[data-src]:not([" + b2 + '="' + d2 + '"]):not([' + b2 + '="' + c2 + '"])';
+            f.hooks.add("before-highlightall", function(a3) {
+              a3.selector += ", " + e2;
+            }), f.hooks.add("before-sanity-check", function(g2) {
+              var h = g2.element;
+              if (h.matches(e2)) {
+                g2.code = "", h.setAttribute(b2, c2);
+                var i, j, k, l, m = h.appendChild(document.createElement("CODE"));
+                m.textContent = "Loading\u2026";
+                var n = h.getAttribute("data-src"), o = g2.language;
+                if (o === "none") {
+                  var p = (/\.(\w+)$/.exec(n) || [, "none"])[1];
+                  o = a2[p] || p;
+                }
+                f.util.setLanguage(m, o), f.util.setLanguage(h, o);
+                var q = f.plugins.autoloader;
+                q && q.loadLanguages(o), i = n, j = /* @__PURE__ */ __name(function(a3) {
+                  h.setAttribute(b2, d2);
+                  var c3 = (function(a4) {
+                    var b3 = /^\s*(\d+)\s*(?:(,)\s*(?:(\d+)\s*)?)?$/.exec(a4 || "");
+                    if (b3) {
+                      var c4 = Number(b3[1]), d3 = b3[2], e4 = b3[3];
+                      return d3 ? e4 ? [c4, Number(e4)] : [c4, void 0] : [c4, c4];
+                    }
+                  })(h.getAttribute("data-range"));
+                  if (c3) {
+                    var e3 = a3.split(/\r\n?|\n/g), g3 = c3[0], i2 = c3[1] == null ? e3.length : c3[1];
+                    g3 < 0 && (g3 += e3.length), g3 = Math.max(0, Math.min(g3 - 1, e3.length)), i2 < 0 && (i2 += e3.length), i2 = Math.max(0, Math.min(i2, e3.length)), a3 = e3.slice(g3, i2).join(`
+`), h.hasAttribute("data-start") || h.setAttribute("data-start", String(g3 + 1));
+                  }
+                  m.textContent = a3, f.highlightElement(m);
+                }, "j"), k = /* @__PURE__ */ __name(function(a3) {
+                  h.setAttribute(b2, "failed"), m.textContent = a3;
+                }, "k"), (l = new XMLHttpRequest()).open("GET", i, true), l.onreadystatechange = function() {
+                  var a3;
+                  l.readyState == 4 && (l.status < 400 && l.responseText ? j(l.responseText) : l.status >= 400 ? k((a3 = l.status, "\u2716 Error " + a3 + " while fetching file: " + l.statusText)) : k("\u2716 Error: File does not exist or is empty"));
+                }, l.send(null);
+              }
+            }), f.plugins.fileHighlight = { highlight: /* @__PURE__ */ __name(function(a3) {
+              for (var b3, c3 = (a3 || document).querySelectorAll(e2), d3 = 0; b3 = c3[d3++]; ) f.highlightElement(b3);
+            }, "highlight") };
+            var g = false;
+            f.fileHighlight = function() {
+              g || (console.warn("Prism.fileHighlight is deprecated. Use `Prism.plugins.fileHighlight.highlight` instead."), g = true), f.plugins.fileHighlight.highlight.apply(this, arguments);
+            };
+          }
+        })();
+      }, 4147, (a, b, c) => {
+        Prism.languages.markup = { comment: { pattern: /<!--(?:(?!<!--)[\s\S])*?-->/, greedy: true }, prolog: { pattern: /<\?[\s\S]+?\?>/, greedy: true }, doctype: { pattern: /<!DOCTYPE(?:[^>"'[\]]|"[^"]*"|'[^']*')+(?:\[(?:[^<"'\]]|"[^"]*"|'[^']*'|<(?!!--)|<!--(?:[^-]|-(?!->))*-->)*\]\s*)?>/i, greedy: true, inside: { "internal-subset": { pattern: /(^[^\[]*\[)[\s\S]+(?=\]>$)/, lookbehind: true, greedy: true, inside: null }, string: { pattern: /"[^"]*"|'[^']*'/, greedy: true }, punctuation: /^<!|>$|[[\]]/, "doctype-tag": /^DOCTYPE/i, name: /[^\s<>'"]+/ } }, cdata: { pattern: /<!\[CDATA\[[\s\S]*?\]\]>/i, greedy: true }, tag: { pattern: /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?=[\s/>])))+)?\s*\/?>/, greedy: true, inside: { tag: { pattern: /^<\/?[^\s>\/]+/, inside: { punctuation: /^<\/?/, namespace: /^[^\s>\/:]+:/ } }, "special-attr": [], "attr-value": { pattern: /=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+)/, inside: { punctuation: [{ pattern: /^=/, alias: "attr-equals" }, { pattern: /^(\s*)["']|["']$/, lookbehind: true }] } }, punctuation: /\/?>/, "attr-name": { pattern: /[^\s>\/]+/, inside: { namespace: /^[^\s>\/:]+:/ } } } }, entity: [{ pattern: /&[\da-z]{1,8};/i, alias: "named-entity" }, /&#x?[\da-f]{1,8};/i] }, Prism.languages.markup.tag.inside["attr-value"].inside.entity = Prism.languages.markup.entity, Prism.languages.markup.doctype.inside["internal-subset"].inside = Prism.languages.markup, Prism.hooks.add("wrap", function(a2) {
+          a2.type === "entity" && (a2.attributes.title = a2.content.replace(/&amp;/, "&"));
+        }), Object.defineProperty(Prism.languages.markup.tag, "addInlined", { value: /* @__PURE__ */ __name(function(a2, b2) {
+          var c2 = {};
+          c2["language-" + b2] = { pattern: /(^<!\[CDATA\[)[\s\S]+?(?=\]\]>$)/i, lookbehind: true, inside: Prism.languages[b2] }, c2.cdata = /^<!\[CDATA\[|\]\]>$/i;
+          var d = { "included-cdata": { pattern: /<!\[CDATA\[[\s\S]*?\]\]>/i, inside: c2 } };
+          d["language-" + b2] = { pattern: /[\s\S]+/, inside: Prism.languages[b2] };
+          var e = {};
+          e[a2] = { pattern: RegExp(/(<__[^>]*>)(?:<!\[CDATA\[(?:[^\]]|\](?!\]>))*\]\]>|(?!<!\[CDATA\[)[\s\S])*?(?=<\/__>)/.source.replace(/__/g, function() {
+            return a2;
+          }), "i"), lookbehind: true, greedy: true, inside: d }, Prism.languages.insertBefore("markup", "cdata", e);
+        }, "value") }), Object.defineProperty(Prism.languages.markup.tag, "addAttribute", { value: /* @__PURE__ */ __name(function(a2, b2) {
+          Prism.languages.markup.tag.inside["special-attr"].push({ pattern: RegExp(/(^|["'\s])/.source + "(?:" + a2 + ")" + /\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))/.source, "i"), lookbehind: true, inside: { "attr-name": /^[^\s=]+/, "attr-value": { pattern: /=[\s\S]+/, inside: { value: { pattern: /(^=\s*(["']|(?!["'])))\S[\s\S]*(?=\2$)/, lookbehind: true, alias: [b2, "language-" + b2], inside: Prism.languages[b2] }, punctuation: [{ pattern: /^=/, alias: "attr-equals" }, /"|'/] } } } });
+        }, "value") }), Prism.languages.html = Prism.languages.markup, Prism.languages.mathml = Prism.languages.markup, Prism.languages.svg = Prism.languages.markup, Prism.languages.xml = Prism.languages.extend("markup", {}), Prism.languages.ssml = Prism.languages.xml, Prism.languages.atom = Prism.languages.xml, Prism.languages.rss = Prism.languages.xml;
+      }, 68256, (a, b, c) => {
+        Prism.languages.clike = { comment: [{ pattern: /(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/, lookbehind: true, greedy: true }, { pattern: /(^|[^\\:])\/\/.*/, lookbehind: true, greedy: true }], string: { pattern: /(["'])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/, greedy: true }, "class-name": { pattern: /(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i, lookbehind: true, inside: { punctuation: /[.\\]/ } }, keyword: /\b(?:break|catch|continue|do|else|finally|for|function|if|in|instanceof|new|null|return|throw|try|while)\b/, boolean: /\b(?:false|true)\b/, function: /\b\w+(?=\()/, number: /\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i, operator: /[<>]=?|[!=]=?=?|--?|\+\+?|&&?|\|\|?|[?*/~^%]/, punctuation: /[{}[\];(),.:]/ };
+      }, 41402, (a, b, c) => {
+        Prism.languages.javascript = Prism.languages.extend("clike", { "class-name": [Prism.languages.clike["class-name"], { pattern: /(^|[^$\w\xA0-\uFFFF])(?!\s)[_$A-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\.(?:constructor|prototype))/, lookbehind: true }], keyword: [{ pattern: /((?:^|\})\s*)catch\b/, lookbehind: true }, { pattern: /(^|[^.]|\.\.\.\s*)\b(?:as|assert(?=\s*\{)|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally(?=\s*(?:\{|$))|for|from(?=\s*(?:['"]|$))|function|(?:get|set)(?=\s*(?:[#\[$\w\xA0-\uFFFF]|$))|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/, lookbehind: true }], function: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*(?:\.\s*(?:apply|bind|call)\s*)?\()/, number: { pattern: RegExp(/(^|[^\w$])/.source + "(?:" + (/NaN|Infinity/.source + "|" + /0[bB][01]+(?:_[01]+)*n?/.source + "|" + /0[oO][0-7]+(?:_[0-7]+)*n?/.source + "|" + /0[xX][\dA-Fa-f]+(?:_[\dA-Fa-f]+)*n?/.source + "|" + /\d+(?:_\d+)*n/.source) + "|" + /(?:\d+(?:_\d+)*(?:\.(?:\d+(?:_\d+)*)?)?|\.\d+(?:_\d+)*)(?:[Ee][+-]?\d+(?:_\d+)*)?/.source + ")" + /(?![\w$])/.source), lookbehind: true }, operator: /--|\+\+|\*\*=?|=>|&&=?|\|\|=?|[!=]==|<<=?|>>>?=?|[-+*/%&|^!=<>]=?|\.{3}|\?\?=?|\?\.?|[~:]/ }), Prism.languages.javascript["class-name"][0].pattern = /(\b(?:class|extends|implements|instanceof|interface|new)\s+)[\w.\\]+/, Prism.languages.insertBefore("javascript", "keyword", { regex: { pattern: RegExp(/((?:^|[^$\w\xA0-\uFFFF."'\])\s]|\b(?:return|yield))\s*)/.source + /\//.source + "(?:" + /(?:\[(?:[^\]\\\r\n]|\\.)*\]|\\.|[^/\\\[\r\n])+\/[dgimyus]{0,7}/.source + "|" + /(?:\[(?:[^[\]\\\r\n]|\\.|\[(?:[^[\]\\\r\n]|\\.|\[(?:[^[\]\\\r\n]|\\.)*\])*\])*\]|\\.|[^/\\\[\r\n])+\/[dgimyus]{0,7}v[dgimyus]{0,7}/.source + ")" + /(?=(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/)*(?:$|[\r\n,.;:})\]]|\/\/))/.source), lookbehind: true, greedy: true, inside: { "regex-source": { pattern: /^(\/)[\s\S]+(?=\/[a-z]*$)/, lookbehind: true, alias: "language-regex", inside: Prism.languages.regex }, "regex-delimiter": /^\/|\/$/, "regex-flags": /^[a-z]+$/ } }, "function-variable": { pattern: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*[=:]\s*(?:async\s*)?(?:\bfunction\b|(?:\((?:[^()]|\([^()]*\))*\)|(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*)\s*=>))/, alias: "function" }, parameter: [{ pattern: /(function(?:\s+(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*)?\s*\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\))/, lookbehind: true, inside: Prism.languages.javascript }, { pattern: /(^|[^$\w\xA0-\uFFFF])(?!\s)[_$a-z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*=>)/i, lookbehind: true, inside: Prism.languages.javascript }, { pattern: /(\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\)\s*=>)/, lookbehind: true, inside: Prism.languages.javascript }, { pattern: /((?:\b|\s|^)(?!(?:as|async|await|break|case|catch|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally|for|from|function|get|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|set|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)(?![$\w\xA0-\uFFFF]))(?:(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*)\(\s*|\]\s*\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\)\s*\{)/, lookbehind: true, inside: Prism.languages.javascript }], constant: /\b[A-Z](?:[A-Z_]|\dx?)*\b/ }), Prism.languages.insertBefore("javascript", "string", { hashbang: { pattern: /^#!.*/, greedy: true, alias: "comment" }, "template-string": { pattern: /`(?:\\[\s\S]|\$\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})+\}|(?!\$\{)[^\\`])*`/, greedy: true, inside: { "template-punctuation": { pattern: /^`|`$/, alias: "string" }, interpolation: { pattern: /((?:^|[^\\])(?:\\{2})*)\$\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})+\}/, lookbehind: true, inside: { "interpolation-punctuation": { pattern: /^\$\{|\}$/, alias: "punctuation" }, rest: Prism.languages.javascript } }, string: /[\s\S]+/ } }, "string-property": { pattern: /((?:^|[,{])[ \t]*)(["'])(?:\\(?:\r\n|[\s\S])|(?!\2)[^\\\r\n])*\2(?=\s*:)/m, lookbehind: true, greedy: true, alias: "property" } }), Prism.languages.insertBefore("javascript", "operator", { "literal-property": { pattern: /((?:^|[,{])[ \t]*)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*:)/m, lookbehind: true, alias: "property" } }), Prism.languages.markup && (Prism.languages.markup.tag.addInlined("script", "javascript"), Prism.languages.markup.tag.addAttribute(/on(?:abort|blur|change|click|composition(?:end|start|update)|dblclick|error|focus(?:in|out)?|key(?:down|up)|load|mouse(?:down|enter|leave|move|out|over|up)|reset|resize|scroll|select|slotchange|submit|unload|wheel)/.source, "javascript")), Prism.languages.js = Prism.languages.javascript;
+      }, 30812, (a, b, c) => {
+        (function(a2) {
+          var b2 = a2.util.clone(a2.languages.javascript), c2 = /(?:\s|\/\/.*(?!.)|\/\*(?:[^*]|\*(?!\/))\*\/)/.source, d = /(?:\{(?:\{(?:\{[^{}]*\}|[^{}])*\}|[^{}])*\})/.source, e = /(?:\{<S>*\.{3}(?:[^{}]|<BRACES>)*\})/.source;
+          function f(a3, b3) {
+            return RegExp(a3 = a3.replace(/<S>/g, function() {
+              return c2;
+            }).replace(/<BRACES>/g, function() {
+              return d;
+            }).replace(/<SPREAD>/g, function() {
+              return e;
+            }), b3);
+          }
+          __name(f, "f");
+          e = f(e).source, a2.languages.jsx = a2.languages.extend("markup", b2), a2.languages.jsx.tag.pattern = f(/<\/?(?:[\w.:-]+(?:<S>+(?:[\w.:$-]+(?:=(?:"(?:\\[\s\S]|[^\\"])*"|'(?:\\[\s\S]|[^\\'])*'|[^\s{'"/>=]+|<BRACES>))?|<SPREAD>))*<S>*\/?)?>/.source), a2.languages.jsx.tag.inside.tag.pattern = /^<\/?[^\s>\/]*/, a2.languages.jsx.tag.inside["attr-value"].pattern = /=(?!\{)(?:"(?:\\[\s\S]|[^\\"])*"|'(?:\\[\s\S]|[^\\'])*'|[^\s'">]+)/, a2.languages.jsx.tag.inside.tag.inside["class-name"] = /^[A-Z]\w*(?:\.[A-Z]\w*)*$/, a2.languages.jsx.tag.inside.comment = b2.comment, a2.languages.insertBefore("inside", "attr-name", { spread: { pattern: f(/<SPREAD>/.source), inside: a2.languages.jsx } }, a2.languages.jsx.tag), a2.languages.insertBefore("inside", "special-attr", { script: { pattern: f(/=<BRACES>/.source), alias: "language-javascript", inside: { "script-punctuation": { pattern: /^=(?=\{)/, alias: "punctuation" }, rest: a2.languages.jsx } } }, a2.languages.jsx.tag);
+          var g = /* @__PURE__ */ __name(function(a3) {
+            return a3 ? typeof a3 == "string" ? a3 : typeof a3.content == "string" ? a3.content : a3.content.map(g).join("") : "";
+          }, "g"), h = /* @__PURE__ */ __name(function(b3) {
+            for (var c3 = [], d2 = 0; d2 < b3.length; d2++) {
+              var e2 = b3[d2], f2 = false;
+              if (typeof e2 != "string" && (e2.type === "tag" && e2.content[0] && e2.content[0].type === "tag" ? e2.content[0].content[0].content === "</" ? c3.length > 0 && c3[c3.length - 1].tagName === g(e2.content[0].content[1]) && c3.pop() : e2.content[e2.content.length - 1].content === "/>" || c3.push({ tagName: g(e2.content[0].content[1]), openedBraces: 0 }) : c3.length > 0 && e2.type === "punctuation" && e2.content === "{" ? c3[c3.length - 1].openedBraces++ : c3.length > 0 && c3[c3.length - 1].openedBraces > 0 && e2.type === "punctuation" && e2.content === "}" ? c3[c3.length - 1].openedBraces-- : f2 = true), (f2 || typeof e2 == "string") && c3.length > 0 && c3[c3.length - 1].openedBraces === 0) {
+                var i = g(e2);
+                d2 < b3.length - 1 && (typeof b3[d2 + 1] == "string" || b3[d2 + 1].type === "plain-text") && (i += g(b3[d2 + 1]), b3.splice(d2 + 1, 1)), d2 > 0 && (typeof b3[d2 - 1] == "string" || b3[d2 - 1].type === "plain-text") && (i = g(b3[d2 - 1]) + i, b3.splice(d2 - 1, 1), d2--), b3[d2] = new a2.Token("plain-text", i, null, i);
+              }
+              e2.content && typeof e2.content != "string" && h(e2.content);
+            }
+          }, "h");
+          a2.hooks.add("after-tokenize", function(a3) {
+            (a3.language === "jsx" || a3.language === "tsx") && h(a3.tokens);
+          });
+        })(Prism);
+      }, 9296, (a, b, c) => {
+        var d, e;
+        (d = Prism).languages.typescript = d.languages.extend("javascript", { "class-name": { pattern: /(\b(?:class|extends|implements|instanceof|interface|new|type)\s+)(?!keyof\b)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?:\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?/, lookbehind: true, greedy: true, inside: null }, builtin: /\b(?:Array|Function|Promise|any|boolean|console|never|number|string|symbol|unknown)\b/ }), d.languages.typescript.keyword.push(/\b(?:abstract|declare|is|keyof|readonly|require)\b/, /\b(?:asserts|infer|interface|module|namespace|type)\b(?=\s*(?:[{_$a-zA-Z\xA0-\uFFFF]|$))/, /\btype\b(?=\s*(?:[\{*]|$))/), delete d.languages.typescript.parameter, delete d.languages.typescript["literal-property"], e = d.languages.extend("typescript", {}), delete e["class-name"], d.languages.typescript["class-name"].inside = e, d.languages.insertBefore("typescript", "function", { decorator: { pattern: /@[$\w\xA0-\uFFFF]+/, inside: { at: { pattern: /^@/, alias: "operator" }, function: /^[\s\S]+/ } }, "generic-function": { pattern: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>(?=\s*\()/, greedy: true, inside: { function: /^#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*/, generic: { pattern: /<[\s\S]+/, alias: "class-name", inside: e } } } }), d.languages.ts = d.languages.typescript;
+      }, 28725, (a, b, c) => {
+        var d, e, f;
+        e = (d = Prism).util.clone(d.languages.typescript), d.languages.tsx = d.languages.extend("jsx", e), delete d.languages.tsx.parameter, delete d.languages.tsx["literal-property"], (f = d.languages.tsx.tag).pattern = RegExp(/(^|[^\w$]|(?=<\/))/.source + "(?:" + f.pattern.source + ")", f.pattern.flags), f.lookbehind = true;
+      }, 3956, (a, b, c) => {
+        (function(a2) {
+          var b2 = "\\b(?:BASH|BASHOPTS|BASH_ALIASES|BASH_ARGC|BASH_ARGV|BASH_CMDS|BASH_COMPLETION_COMPAT_DIR|BASH_LINENO|BASH_REMATCH|BASH_SOURCE|BASH_VERSINFO|BASH_VERSION|COLORTERM|COLUMNS|COMP_WORDBREAKS|DBUS_SESSION_BUS_ADDRESS|DEFAULTS_PATH|DESKTOP_SESSION|DIRSTACK|DISPLAY|EUID|GDMSESSION|GDM_LANG|GNOME_KEYRING_CONTROL|GNOME_KEYRING_PID|GPG_AGENT_INFO|GROUPS|HISTCONTROL|HISTFILE|HISTFILESIZE|HISTSIZE|HOME|HOSTNAME|HOSTTYPE|IFS|INSTANCE|JOB|LANG|LANGUAGE|LC_ADDRESS|LC_ALL|LC_IDENTIFICATION|LC_MEASUREMENT|LC_MONETARY|LC_NAME|LC_NUMERIC|LC_PAPER|LC_TELEPHONE|LC_TIME|LESSCLOSE|LESSOPEN|LINES|LOGNAME|LS_COLORS|MACHTYPE|MAILCHECK|MANDATORY_PATH|NO_AT_BRIDGE|OLDPWD|OPTERR|OPTIND|ORBIT_SOCKETDIR|OSTYPE|PAPERSIZE|PATH|PIPESTATUS|PPID|PS1|PS2|PS3|PS4|PWD|RANDOM|REPLY|SECONDS|SELINUX_INIT|SESSION|SESSIONTYPE|SESSION_MANAGER|SHELL|SHELLOPTS|SHLVL|SSH_AUTH_SOCK|TERM|UID|UPSTART_EVENTS|UPSTART_INSTANCE|UPSTART_JOB|UPSTART_SESSION|USER|WINDOWID|XAUTHORITY|XDG_CONFIG_DIRS|XDG_CURRENT_DESKTOP|XDG_DATA_DIRS|XDG_GREETER_DATA_DIR|XDG_MENU_PREFIX|XDG_RUNTIME_DIR|XDG_SEAT|XDG_SEAT_PATH|XDG_SESSION_DESKTOP|XDG_SESSION_ID|XDG_SESSION_PATH|XDG_SESSION_TYPE|XDG_VTNR|XMODIFIERS)\\b", c2 = { pattern: /(^(["']?)\w+\2)[ \t]+\S.*/, lookbehind: true, alias: "punctuation", inside: null }, d = { bash: c2, environment: { pattern: RegExp("\\$" + b2), alias: "constant" }, variable: [{ pattern: /\$?\(\([\s\S]+?\)\)/, greedy: true, inside: { variable: [{ pattern: /(^\$\(\([\s\S]+)\)\)/, lookbehind: true }, /^\$\(\(/], number: /\b0x[\dA-Fa-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:[Ee]-?\d+)?/, operator: /--|\+\+|\*\*=?|<<=?|>>=?|&&|\|\||[=!+\-*/%<>^&|]=?|[?~:]/, punctuation: /\(\(?|\)\)?|,|;/ } }, { pattern: /\$\((?:\([^)]+\)|[^()])+\)|`[^`]+`/, greedy: true, inside: { variable: /^\$\(|^`|\)$|`$/ } }, { pattern: /\$\{[^}]+\}/, greedy: true, inside: { operator: /:[-=?+]?|[!\/]|##?|%%?|\^\^?|,,?/, punctuation: /[\[\]]/, environment: { pattern: RegExp("(\\{)" + b2), lookbehind: true, alias: "constant" } } }, /\$(?:\w+|[#?*!@$])/], entity: /\\(?:[abceEfnrtv\\"]|O?[0-7]{1,3}|U[0-9a-fA-F]{8}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{1,2})/ };
+          a2.languages.bash = { shebang: { pattern: /^#!\s*\/.*/, alias: "important" }, comment: { pattern: /(^|[^"{\\$])#.*/, lookbehind: true }, "function-name": [{ pattern: /(\bfunction\s+)[\w-]+(?=(?:\s*\(?:\s*\))?\s*\{)/, lookbehind: true, alias: "function" }, { pattern: /\b[\w-]+(?=\s*\(\s*\)\s*\{)/, alias: "function" }], "for-or-select": { pattern: /(\b(?:for|select)\s+)\w+(?=\s+in\s)/, alias: "variable", lookbehind: true }, "assign-left": { pattern: /(^|[\s;|&]|[<>]\()\w+(?:\.\w+)*(?=\+?=)/, inside: { environment: { pattern: RegExp("(^|[\\s;|&]|[<>]\\()" + b2), lookbehind: true, alias: "constant" } }, alias: "variable", lookbehind: true }, parameter: { pattern: /(^|\s)-{1,2}(?:\w+:[+-]?)?\w+(?:\.\w+)*(?=[=\s]|$)/, alias: "variable", lookbehind: true }, string: [{ pattern: /((?:^|[^<])<<-?\s*)(\w+)\s[\s\S]*?(?:\r?\n|\r)\2/, lookbehind: true, greedy: true, inside: d }, { pattern: /((?:^|[^<])<<-?\s*)(["'])(\w+)\2\s[\s\S]*?(?:\r?\n|\r)\3/, lookbehind: true, greedy: true, inside: { bash: c2 } }, { pattern: /(^|[^\\](?:\\\\)*)"(?:\\[\s\S]|\$\([^)]+\)|\$(?!\()|`[^`]+`|[^"\\`$])*"/, lookbehind: true, greedy: true, inside: d }, { pattern: /(^|[^$\\])'[^']*'/, lookbehind: true, greedy: true }, { pattern: /\$'(?:[^'\\]|\\[\s\S])*'/, greedy: true, inside: { entity: d.entity } }], environment: { pattern: RegExp("\\$?" + b2), alias: "constant" }, variable: d.variable, function: { pattern: /(^|[\s;|&]|[<>]\()(?:add|apropos|apt|apt-cache|apt-get|aptitude|aspell|automysqlbackup|awk|basename|bash|bc|bconsole|bg|bzip2|cal|cargo|cat|cfdisk|chgrp|chkconfig|chmod|chown|chroot|cksum|clear|cmp|column|comm|composer|cp|cron|crontab|csplit|curl|cut|date|dc|dd|ddrescue|debootstrap|df|diff|diff3|dig|dir|dircolors|dirname|dirs|dmesg|docker|docker-compose|du|egrep|eject|env|ethtool|expand|expect|expr|fdformat|fdisk|fg|fgrep|file|find|fmt|fold|format|free|fsck|ftp|fuser|gawk|git|gparted|grep|groupadd|groupdel|groupmod|groups|grub-mkconfig|gzip|halt|head|hg|history|host|hostname|htop|iconv|id|ifconfig|ifdown|ifup|import|install|ip|java|jobs|join|kill|killall|less|link|ln|locate|logname|logrotate|look|lpc|lpr|lprint|lprintd|lprintq|lprm|ls|lsof|lynx|make|man|mc|mdadm|mkconfig|mkdir|mke2fs|mkfifo|mkfs|mkisofs|mknod|mkswap|mmv|more|most|mount|mtools|mtr|mutt|mv|nano|nc|netstat|nice|nl|node|nohup|notify-send|npm|nslookup|op|open|parted|passwd|paste|pathchk|ping|pkill|pnpm|podman|podman-compose|popd|pr|printcap|printenv|ps|pushd|pv|quota|quotacheck|quotactl|ram|rar|rcp|reboot|remsync|rename|renice|rev|rm|rmdir|rpm|rsync|scp|screen|sdiff|sed|sendmail|seq|service|sftp|sh|shellcheck|shuf|shutdown|sleep|slocate|sort|split|ssh|stat|strace|su|sudo|sum|suspend|swapon|sync|sysctl|tac|tail|tar|tee|time|timeout|top|touch|tr|traceroute|tsort|tty|umount|uname|unexpand|uniq|units|unrar|unshar|unzip|update-grub|uptime|useradd|userdel|usermod|users|uudecode|uuencode|v|vcpkg|vdir|vi|vim|virsh|vmstat|wait|watch|wc|wget|whereis|which|who|whoami|write|xargs|xdg-open|yarn|yes|zenity|zip|zsh|zypper)(?=$|[)\s;|&])/, lookbehind: true }, keyword: { pattern: /(^|[\s;|&]|[<>]\()(?:case|do|done|elif|else|esac|fi|for|function|if|in|select|then|until|while)(?=$|[)\s;|&])/, lookbehind: true }, builtin: { pattern: /(^|[\s;|&]|[<>]\()(?:\.|:|alias|bind|break|builtin|caller|cd|command|continue|declare|echo|enable|eval|exec|exit|export|getopts|hash|help|let|local|logout|mapfile|printf|pwd|read|readarray|readonly|return|set|shift|shopt|source|test|times|trap|type|typeset|ulimit|umask|unalias|unset)(?=$|[)\s;|&])/, lookbehind: true, alias: "class-name" }, boolean: { pattern: /(^|[\s;|&]|[<>]\()(?:false|true)(?=$|[)\s;|&])/, lookbehind: true }, "file-descriptor": { pattern: /\B&\d\b/, alias: "important" }, operator: { pattern: /\d?<>|>\||\+=|=[=~]?|!=?|<<[<-]?|[&\d]?>>|\d[<>]&?|[<>][&=]?|&[>&]?|\|[&|]?/, inside: { "file-descriptor": { pattern: /^\d/, alias: "important" } } }, punctuation: /\$?\(\(?|\)\)?|\.\.|[{}[\];\\]/, number: { pattern: /(^|\s)(?:[1-9]\d*|0)(?:[.,]\d+)?\b/, lookbehind: true } }, c2.inside = a2.languages.bash;
+          for (var e = ["comment", "function-name", "for-or-select", "assign-left", "parameter", "string", "environment", "function", "keyword", "builtin", "boolean", "file-descriptor", "operator", "punctuation", "number"], f = d.variable[1].inside, g = 0; g < e.length; g++) f[e[g]] = a2.languages.bash[e[g]];
+          a2.languages.sh = a2.languages.bash, a2.languages.shell = a2.languages.bash;
+        })(Prism);
+      }, 55563, (a) => {
+        "use strict";
+        var b = a.i(87924), c = a.i(72131), d = a.i(62642);
+        a.i(4147), a.i(68256), a.i(41402), a.i(30812), a.i(9296), a.i(28725), a.i(3956), a.s(["CopyBlock", 0, function({ code: a2, lang: e = "tsx" }) {
+          let [f, g] = (0, c.useState)(false), h = (0, c.useMemo)(() => {
+            try {
+              return d.default.highlight(a2, d.default.languages[e], e);
+            } catch {
+              return a2;
+            }
+          }, [a2, e]), i = /* @__PURE__ */ __name(async () => {
+            try {
+              await navigator.clipboard.writeText(a2), g(true), window.setTimeout(() => g(false), 1600);
+            } catch {
+            }
+          }, "i");
+          return (0, b.jsxs)("div", { className: "group relative overflow-hidden rounded-lg border border-code-border bg-code shadow-hairline", children: [(0, b.jsx)("button", { type: "button", onClick: i, className: "absolute right-2.5 top-2.5 rounded-md border border-code-border bg-code px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-code-muted transition-colors hover:border-code-ink/40 hover:text-code-ink", children: f ? "copied" : "copy" }), (0, b.jsx)("pre", { className: "code-syntax overflow-x-auto p-4 pr-16 font-mono text-[12.5px] leading-relaxed text-code-ink", children: (0, b.jsx)("code", { dangerouslySetInnerHTML: { __html: h } }) })] });
+        }]);
+      }, 18293, (a) => {
+        "use strict";
+        var b = a.i(87924), c = a.i(72131), d = a.i(55563);
+        let e = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+        a.s(["ComponentToolbar", 0, function({ source: a2, children: f }) {
+          let [g, h] = (0, c.useState)(false), [i, j] = (0, c.useState)(false), k = /* @__PURE__ */ __name(async () => {
+            try {
+              await navigator.clipboard.writeText(a2), h(true), window.setTimeout(() => h(false), 1600);
+            } catch {
+            }
+          }, "k"), l = /* @__PURE__ */ __name((a3 = false) => `flex size-8 items-center justify-center rounded-md border bg-panel/60 transition-colors ${a3 ? "border-line-strong text-ink" : "border-line text-muted hover:border-line-strong hover:text-ink"}`, "l");
+          return (0, b.jsxs)("div", { className: "mt-8", children: [(0, b.jsxs)("div", { className: "flex items-center justify-end gap-2", children: [(0, b.jsx)("button", { type: "button", "aria-label": g ? "Copied" : "Copy source", onClick: k, className: l(g), children: g ? (0, b.jsx)("svg", { width: "15", height: "15", viewBox: "0 0 24 24", "aria-hidden": "true", ...e, children: (0, b.jsx)("path", { d: "M20 6 9 17l-5-5" }) }) : (0, b.jsxs)("svg", { width: "15", height: "15", viewBox: "0 0 24 24", "aria-hidden": "true", ...e, children: [(0, b.jsx)("rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }), (0, b.jsx)("path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" })] }) }), (0, b.jsx)("button", { type: "button", "aria-label": i ? "Show preview" : "Show code", "aria-expanded": i, onClick: /* @__PURE__ */ __name(() => j((a3) => !a3), "onClick"), className: l(i), children: (0, b.jsxs)("svg", { width: "16", height: "16", viewBox: "0 0 24 24", "aria-hidden": "true", ...e, children: [(0, b.jsx)("path", { d: "m16 18 6-6-6-6" }), (0, b.jsx)("path", { d: "m8 6-6 6 6 6" })] }) })] }), i ? (0, b.jsx)("div", { className: "mt-3 max-h-[36rem] overflow-y-auto", children: (0, b.jsx)(d.CopyBlock, { code: a2 }) }) : f] });
+        }]);
       }];
     } });
     require_next_internal_server_app_docs_components_slug_page_actions_11glm31 = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/_next-internal_server_app_(docs)_components_[slug]_page_actions_11glm31.js"(exports, module) {
@@ -55311,6 +56040,1660 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         a.s(["__next_app__", 0, M, "handler", 0, O, "routeModule", 0, N], 69611), a.i(69611), a.s(["ClientPageRoot", () => F.ClientPageRoot, "ClientSegmentRoot", () => F.ClientSegmentRoot, "Fragment", () => F.Fragment, "HTTPAccessFallbackBoundary", () => F.HTTPAccessFallbackBoundary, "InstantValidation", () => F.InstantValidation, "LayoutRouter", () => F.LayoutRouter, "LoadingBoundaryProvider", () => F.LoadingBoundaryProvider, "Postpone", () => F.Postpone, "RenderFromTemplateContext", () => F.RenderFromTemplateContext, "RootLayoutBoundary", () => F.RootLayoutBoundary, "SegmentViewNode", () => F.SegmentViewNode, "SegmentViewStateNode", () => F.SegmentViewStateNode, "__next_app__", 0, M, "actionAsyncStorage", () => F.actionAsyncStorage, "captureOwnerStack", () => F.captureOwnerStack, "collectPrefetchHints", () => F.collectPrefetchHints, "collectSegmentData", () => F.collectSegmentData, "createElement", () => F.createElement, "createMetadataComponents", () => F.createMetadataComponents, "createPrerenderParamsForClientSegment", () => F.createPrerenderParamsForClientSegment, "createPrerenderSearchParamsForClientPage", () => F.createPrerenderSearchParamsForClientPage, "createServerParamsForServerSegment", () => F.createServerParamsForServerSegment, "createServerSearchParamsForServerPage", () => F.createServerSearchParamsForServerPage, "createTemporaryReferenceSet", () => F.createTemporaryReferenceSet, "decodeAction", () => F.decodeAction, "decodeFormState", () => F.decodeFormState, "decodeReply", () => F.decodeReply, "handler", 0, O, "patchFetch", () => F.patchFetch, "preconnect", () => F.preconnect, "preloadFont", () => F.preloadFont, "preloadStyle", () => F.preloadStyle, "prerender", () => F.prerender, "renderToReadableStream", () => F.renderToReadableStream, "routeModule", 0, N, "serverHooks", () => F.serverHooks, "taintObjectReference", () => F.taintObjectReference, "workAsyncStorage", () => F.workAsyncStorage, "workUnitAsyncStorage", () => F.workUnitAsyncStorage], 43230);
       }];
     } });
+    require_src_1lsw0x = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_1lsw0x_._.js"(exports, module) {
+      "use strict";
+      module.exports = [9947, (a) => {
+        "use strict";
+        a.s(["ComponentPreview", () => b]);
+        let b = (0, a.i(11857).registerClientReference)(function() {
+          throw Error("Attempted to call ComponentPreview() from the server but ComponentPreview is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
+        }, "[project]/src/components/docs/ComponentPreview.tsx <module evaluation>", "ComponentPreview");
+      }, 74710, (a) => {
+        "use strict";
+        a.s(["ComponentPreview", () => b]);
+        let b = (0, a.i(11857).registerClientReference)(function() {
+          throw Error("Attempted to call ComponentPreview() from the server but ComponentPreview is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
+        }, "[project]/src/components/docs/ComponentPreview.tsx", "ComponentPreview");
+      }, 45473, (a) => {
+        "use strict";
+        a.i(9947);
+        var b = a.i(74710);
+        a.n(b);
+      }, 89587, (a) => {
+        "use strict";
+        a.s(["CopyBlock", () => b]);
+        let b = (0, a.i(11857).registerClientReference)(function() {
+          throw Error("Attempted to call CopyBlock() from the server but CopyBlock is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
+        }, "[project]/src/components/docs/CopyBlock.tsx <module evaluation>", "CopyBlock");
+      }, 79199, (a) => {
+        "use strict";
+        a.s(["CopyBlock", () => b]);
+        let b = (0, a.i(11857).registerClientReference)(function() {
+          throw Error("Attempted to call CopyBlock() from the server but CopyBlock is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
+        }, "[project]/src/components/docs/CopyBlock.tsx", "CopyBlock");
+      }, 96336, (a) => {
+        "use strict";
+        a.i(89587);
+        var b = a.i(79199);
+        a.n(b);
+      }, 86979, (a) => {
+        "use strict";
+        a.s(["ComponentToolbar", () => b]);
+        let b = (0, a.i(11857).registerClientReference)(function() {
+          throw Error("Attempted to call ComponentToolbar() from the server but ComponentToolbar is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
+        }, "[project]/src/components/docs/ComponentToolbar.tsx <module evaluation>", "ComponentToolbar");
+      }, 40577, (a) => {
+        "use strict";
+        a.s(["ComponentToolbar", () => b]);
+        let b = (0, a.i(11857).registerClientReference)(function() {
+          throw Error("Attempted to call ComponentToolbar() from the server but ComponentToolbar is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.");
+        }, "[project]/src/components/docs/ComponentToolbar.tsx", "ComponentToolbar");
+      }, 2510, (a) => {
+        "use strict";
+        a.i(86979);
+        var b = a.i(40577);
+        a.n(b);
+      }, 94659, (a) => {
+        "use strict";
+        var b = a.i(7997);
+        a.i(70396);
+        var c = a.i(73727), d = a.i(95936), e = a.i(85287);
+        let f = { button: { usage: `import { Button } from "mero-ui";
+
+<Button>Deploy</Button>
+<Button variant="ghost">Cancel</Button>
+<Button variant="quiet" size="sm">Dismiss</Button>
+
+<Button href="/pricing">Get started</Button>
+<Button disabled>Waiting</Button>`, props: [{ name: "variant", type: '"solid" | "ghost" | "quiet"', desc: "Visual weight. Defaults to solid." }, { name: "size", type: '"sm" | "md" | "lg"', desc: "Button scale. Defaults to md." }, { name: "href", type: "string", desc: "Renders an internal link instead of a button." }, { name: "disabled", type: "boolean", desc: "Disables pointer events and dims the label." }] }, badge: { usage: `import { Badge } from "mero-ui";
+
+<Badge>stable</Badge>
+<Badge variant="outline">alpha</Badge>
+<Badge variant="dot" pulse>v1.0.0</Badge>`, props: [{ name: "variant", type: '"solid" | "outline" | "dot"', desc: "Filled, hairline, or dot status. Defaults to solid." }, { name: "pulse", type: "boolean", desc: 'Pulses the dot. Requires variant="dot".' }] }, progress: { usage: `import { Progress } from "mero-ui";
+
+<Progress value={72} label="Shipped" />`, props: [{ name: "value", type: "number", desc: "Percentage, 0 to 100." }, { name: "label", type: "string", desc: "Optional label rendered above the bar." }] }, skeleton: { usage: `import { Skeleton } from "mero-ui";
+
+<Skeleton className="h-3 w-full" />
+<Skeleton className="h-3 w-3/4" />`, props: [{ name: "className", type: "string", desc: "Width, height and radius via Tailwind utilities." }] }, toast: { usage: `import { ToastProvider, ToastViewport, useToast } from "mero-ui";
+
+function App() {
+  return (
+    <ToastProvider>
+      <Notifier />
+      <ToastViewport />
+    </ToastProvider>
+  );
+}
+
+function Notifier() {
+  const { toast } = useToast();
+  return (
+    <Button onClick={() =>
+      toast({ title: "Copied", description: "to the clipboard" })
+    }>
+      Notify
+    </Button>
+  );
+}`, props: [{ name: "toast", type: "fn({ title, description?, duration? })", desc: "Queues a toast. Returns its id." }, { name: "dismiss", type: "fn(id: number)", desc: "Removes a toast by id." }, { name: "duration", type: "number", desc: "Auto-dismiss delay in ms. Defaults to 4000." }] }, input: { usage: `import { Input } from "mero-ui";
+
+<Input label="Email" placeholder="you@ship.dev" hint="We never share it." />`, props: [{ name: "label", type: "string", desc: "Required visible label, rendered above the field." }, { name: "placeholder", type: "string", desc: "Placeholder text inside the field." }, { name: "hint", type: "string", desc: "Helper text rendered below the field." }, { name: "id", type: "string", desc: "Custom field id. Derived from the label by default." }] }, toggle: { usage: `import { Toggle } from "mero-ui";
+
+<Toggle label="Autoplay" defaultOn />
+<Toggle label="Haptics" />`, props: [{ name: "label", type: "string", desc: 'Accessible label. Defaults to "Toggle".' }, { name: "defaultOn", type: "boolean", desc: "Initial checked state. Defaults to false." }] }, tabs: { usage: `import { Tabs } from "mero-ui";
+
+<Tabs
+  items={[
+    { label: "App", content: <p>Server by default.</p> },
+    { label: "Page", content: <p>Streamed.</p> },
+  ]}
+/>`, props: [{ name: "items", type: "{ label: string; content: ReactNode }[]", desc: "Tab labels and panel content." }] }, card: { usage: `import { Card, CardHeader, CardTitle, CardContent } from "mero-ui";
+
+<Card>
+  <CardHeader>
+    <CardTitle>Ship it</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <p>One file at a time.</p>
+  </CardContent>
+</Card>`, props: [{ name: "className", type: "string", desc: "Surface padding, width and layout utilities." }] }, table: { usage: `import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "mero-ui";
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>name</TableHead>
+      <TableHead>count</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell mono>button</TableCell>
+      <TableCell mono>84</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>`, props: [{ name: "mono", type: "boolean", desc: "TableCell renders its value in mono type." }] }, modal: { usage: `import { Modal } from "mero-ui";
+import { useState } from "react";
+
+function Dialog() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open</Button>
+      <Modal open={open} onClose={() => setOpen(false)}
+        title="Dialog" description="Focus trapped.">
+        <p>Escape and backdrop close it. Tab stays inside.</p>
+      </Modal>
+    </>
+  );
+}`, props: [{ name: "open", type: "boolean", desc: "Controls visibility. Portaled to document.body." }, { name: "onClose", type: "fn()", desc: "Called on Escape, backdrop, or close button." }, { name: "title", type: "string", desc: "Dialog title, wired to aria-labelledby." }, { name: "footer", type: "ReactNode", desc: "Optional action row at the bottom." }] }, tooltip: { usage: `import { Tooltip } from "mero-ui";
+
+<Tooltip label="Copies the command" side="top">
+  <Button variant="ghost">Copy</Button>
+</Tooltip>`, props: [{ name: "label", type: "string", desc: "Annotation text." }, { name: "side", type: '"top" | "bottom" | "left" | "right"', desc: "Placement. Defaults to top." }, { name: "delayMs", type: "number", desc: "Show delay in ms. Defaults to 150." }] }, "prompt-bar": { usage: `npm i glimm
+
+import PromptBar from "mero-ui";
+
+<PromptBar variant="Rounded" />
+<PromptBar variant="Pill" />
+
+// Setup: the sweep effect needs a WebGL context, so the canvas
+// lives inside the composer and animates on model change.`, props: [{ name: "variant", type: '"Rounded" | "Pill"', desc: "Composer corner shape. Defaults to Rounded." }] } };
+        var g = a.i(45473), h = a.i(96336), i = a.i(2510);
+        let j = { badge: `const variants = {
+  solid: "bg-ink text-canvas",
+  outline: "border border-line-strong text-ink",
+  dot: "border border-line bg-panel text-muted",
+};
+
+export function Badge({
+  children,
+  variant = "solid",
+  pulse = false,
+}: {
+  children: React.ReactNode;
+  variant?: keyof typeof variants;
+  pulse?: boolean;
+}) {
+  return (
+    <span
+      className={\`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.16em] \${variants[variant]}\`}
+    >
+      {pulse ? (
+        <span
+          aria-hidden
+          className="dot-pulse size-1.5 rounded-full bg-ink"
+        />
+      ) : null}
+      {children}
+    </span>
+  );
+}
+`, button: `import Link from "next/link";
+
+const variants = {
+  solid: "bg-ink text-canvas hover:bg-muted",
+  ghost:
+    "border border-line text-ink hover:border-ink hover:bg-ink hover:text-canvas",
+  quiet: "text-muted hover:text-ink",
+};
+
+const sizes = {
+  sm: "h-8 px-3 text-xs",
+  md: "h-10 px-4 text-sm",
+  lg: "h-12 px-6 text-sm",
+};
+
+export function Button({
+  children,
+  variant = "solid",
+  size = "md",
+  href,
+  disabled,
+  className = "",
+  ...rest
+}: {
+  children: React.ReactNode;
+  variant?: keyof typeof variants;
+  size?: keyof typeof sizes;
+  href?: string;
+  disabled?: boolean;
+  className?: string;
+} & React.HTMLAttributes<HTMLButtonElement>) {
+  const cls = \`inline-flex items-center justify-center gap-2 rounded-full font-mono font-medium uppercase tracking-[0.12em] transition-all duration-200 active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 \${variants[variant]} \${sizes[size]} \${className}\`;
+
+  if (href && !disabled) {
+    return (
+      <Link href={href} className={cls}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button className={cls} disabled={disabled} {...rest}>
+      {children}
+    </button>
+  );
+}
+`, card: `/* Card - hairline-bordered surface for grouped content.
+   Server-safe primitives in the shadcn style: one file, full ownership. */
+
+const CARD_BASE =
+  "rounded-md border border-line bg-panel/60";
+
+export function Card({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return <div className={\`\${CARD_BASE} \${className}\`}>{children}</div>;
+}
+
+export function CardHeader({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={\`flex flex-col gap-1.5 p-6 \${className}\`}>{children}</div>
+  );
+}
+
+export function CardTitle({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <h3 className={\`text-lg font-semibold tracking-tight text-ink \${className}\`}>
+      {children}
+    </h3>
+  );
+}
+
+export function CardDescription({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <p className={\`text-sm leading-6 text-muted \${className}\`}>{children}</p>
+  );
+}
+
+export function CardContent({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return <div className={\`p-6 pt-0 \${className}\`}>{children}</div>;
+}
+
+export function CardFooter({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={\`flex items-center gap-3 p-6 pt-0 \${className}\`}>
+      {children}
+    </div>
+  );
+}
+`, input: `export function Input({
+  label,
+  placeholder,
+  hint,
+  id,
+}: {
+  label: string;
+  placeholder?: string;
+  hint?: string;
+  id?: string;
+}) {
+  const fieldId = id ?? label.toLowerCase().replace(/\\s+/g, "-");
+  return (
+    <label htmlFor={fieldId} className="flex w-full flex-col gap-2">
+      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+        {label}
+      </span>
+      <input
+        id={fieldId}
+        name={fieldId}
+        type="text"
+        autoComplete={label.toLowerCase().includes("email") ? "email" : "off"}
+        placeholder={placeholder}
+        className="h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink placeholder:text-muted transition-colors focus:border-ink focus:outline-none"
+      />
+      {hint ? (
+        <span className="font-mono text-[11px] text-muted">{hint}</span>
+      ) : null}
+    </label>
+  );
+}
+`, magnetic: `"use client";
+
+import { useEffect, useRef } from "react";
+import { gsap } from "@/lib/gsap";
+
+export function Magnetic({
+  children,
+  strength = 0.35,
+  className,
+}: {
+  children: React.ReactNode;
+  strength?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+
+    const xTo = gsap.quickTo(el, "x", { duration: 0.5, ease: "power3.out" });
+    const yTo = gsap.quickTo(el, "y", { duration: 0.5, ease: "power3.out" });
+
+    const move = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      xTo((e.clientX - (r.left + r.width / 2)) * strength);
+      yTo((e.clientY - (r.top + r.height / 2)) * strength);
+    };
+    const leave = () => {
+      xTo(0);
+      yTo(0);
+    };
+
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerleave", leave);
+    return () => {
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerleave", leave);
+    };
+  }, [strength]);
+
+  return (
+    <div ref={ref} className={className}>
+      {children}
+    </div>
+  );
+}
+`, modal: `"use client";
+
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+/* Modal - focus-trapped dialog with escape and backdrop.
+   Controlled by the parent (\`open\` + \`onClose\`). Renders into document.body
+   via a portal, traps Tab, closes on Escape or backdrop click, locks body
+   scroll, restores focus to the opener on close. SSR-safe (portal mounts only
+   after first client render). */
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const titleId = useId();
+  const descId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const prevFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const [mounted, setMounted] = useState(false);
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open || !mounted) return;
+    prevFocus.current = document.activeElement as HTMLElement | null;
+
+    const panel = panelRef.current;
+    const focusables = () => {
+      if (!panel) return [] as HTMLElement[];
+      return Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        )
+      );
+    };
+    focusables()[0]?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const raf = requestAnimationFrame(() => setEntered(true));
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      /* if focus escaped the panel (browser chrome, or a non-focusable node),
+         pull it back inside instead of leaking to the page behind */
+      if (!items.includes(document.activeElement as HTMLElement)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      setEntered(false);
+      prevFocus.current?.focus();
+    };
+  }, [open, mounted]);
+
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div
+        aria-hidden
+        onClick={() => onCloseRef.current()}
+        className="absolute inset-0 bg-scrim/80"
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descId : undefined}
+        className={\`relative w-full max-w-md rounded-md border border-line bg-panel shadow-[0_40px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-300 ease-out motion-reduce:transition-none \${
+          entered
+            ? "translate-y-0 scale-100 opacity-100"
+            : "translate-y-3 scale-[0.98] opacity-0"
+        }\`}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+          <div>
+            <h2
+              id={titleId}
+              className="text-xl font-semibold tracking-tight text-ink"
+            >
+              {title}
+            </h2>
+            {description ? (
+              <p id={descId} className="mt-1 text-sm leading-6 text-muted">
+                {description}
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => onCloseRef.current()}
+            aria-label="Close dialog"
+            className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink"
+          >
+            close
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">{children}</div>
+        {footer ? (
+          <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+            {footer}
+          </div>
+        ) : null}
+      </div>
+    </div>,
+    document.body
+  );
+}`, progress: `export function Progress({ value, label }: { value: number; label?: string }) {
+  return (
+    <div className="flex w-full flex-col gap-2">
+      {label ? (
+        <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+          <span>{label}</span>
+          <span className="text-muted">{value}%</span>
+        </div>
+      ) : null}
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-line-strong"
+        role="progressbar"
+        aria-label={label ?? "Progress"}
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="progress-grow h-full rounded-full bg-ink"
+          style={{ width: \`\${value}%\` }}
+        />
+      </div>
+    </div>
+  );
+}
+`, "prompt-bar": `"use client";
+
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createShader, playSweep, accentChain, ACCENTS } from "glimm";
+
+/* The built-in "prism" palette is only cyan\u2192indigo\u2192magenta, so a sweep
+ * reads as blue/purple. Build a true full-spectrum rainbow instead. */
+const RAINBOW = accentChain([
+  ACCENTS.red,
+  ACCENTS.orange,
+  ACCENTS.yellow,
+  ACCENTS.green,
+  ACCENTS.cyan,
+  ACCENTS.blue,
+  ACCENTS.purple,
+]);
+
+/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+ * PROMPT BAR
+ * A composer with real controls: attach, @ data sources,
+ * / commands, a model picker, dictation, and send.
+ * Type @ or / to open the menus; \u2191\u2193 + Enter to pick.
+ * Variants: Rounded (card radius) \xB7 Pill (full radius).
+ * \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+function Icon({ children, size = 15, strokeWidth = 1.8 }: { children: React.ReactNode; size?: number; strokeWidth?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+const GLYPHS: Record<string, React.ReactNode> = {
+  clip: <path d="m21.4 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />,
+  chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
+  layers: <g><path d="M12 2 2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5M2 12l10 5 10-5" /></g>,
+  globe: <g><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></g>,
+};
+
+/* real product marks, inline so the file stays self-contained */
+const BRANDS: Record<string, React.ReactNode> = {
+  figma: (
+    <svg width="11" height="16" viewBox="0 0 38 57" aria-hidden="true">
+      <path d="M9.5 57A9.5 9.5 0 0 0 19 47.5V38H9.5a9.5 9.5 0 0 0 0 19z" fill="#0ACF83" />
+      <path d="M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z" fill="#A259FF" />
+      <path d="M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z" fill="#F24E1E" />
+      <path d="M19 0h9.5a9.5 9.5 0 1 1 0 19H19V0z" fill="#FF7262" />
+      <path d="M38 28.5a9.5 9.5 0 1 1-19 0 9.5 9.5 0 0 1 19 0z" fill="#1ABCFE" />
+    </svg>
+  ),
+  slack: (
+    <svg width="15" height="15" viewBox="0 0 127 127" aria-hidden="true">
+      <path d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80c0-7.3 5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z" fill="#E01E5A" />
+      <path d="M47 27.2c-7.3 0-13.2-5.9-13.2-13.2C33.8 6.7 39.7.8 47 .8c7.3 0 13.2 5.9 13.2 13.2v13.2H47zm0 6.7c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H13.9C6.6 60.3.7 54.4.7 47.1c0-7.3 5.9-13.2 13.2-13.2H47z" fill="#36C5F0" />
+      <path d="M99.9 47.1c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H99.9V47.1zm-6.6 0c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V13.9C66.9 6.6 72.8.7 80.1.7c7.3 0 13.2 5.9 13.2 13.2v33.2z" fill="#2EB67D" />
+      <path d="M80.1 99.8c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V99.8h13.2zm0-6.6c-7.3 0-13.2-5.9-13.2-13.2 0-7.3 5.9-13.2 13.2-13.2h33.1c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H80.1z" fill="#ECB22E" />
+    </svg>
+  ),
+  gmail: (
+    <svg width="15" height="12" viewBox="0 0 256 193" aria-hidden="true">
+      <path d="M58.182 192.05V93.14L27.507 65.077 0 49.504v125.091c0 9.658 7.825 17.455 17.455 17.455h40.727Z" fill="#4285F4" />
+      <path d="M197.818 192.05h40.727c9.659 0 17.455-7.826 17.455-17.455V49.505l-31.156 17.837-27.026 25.798v98.91Z" fill="#34A853" />
+      <path d="m58.182 93.14-4.174-38.647 4.174-36.989L128 69.868l69.818-52.364 4.669 34.992-4.669 40.644L128 145.504 58.182 93.14Z" fill="#EA4335" />
+      <path d="M197.818 17.504V93.14L256 49.504V26.231c0-21.585-24.64-33.89-41.89-20.945l-16.292 12.218Z" fill="#FBBC04" />
+      <path d="m0 49.504 26.759 20.07L58.182 93.14V17.504L41.89 5.286C24.61-7.66 0 4.646 0 26.23v23.273Z" fill="#C5221F" />
+    </svg>
+  ),
+};
+
+type Source = {
+  key: string;
+  name: string;
+  desc: string;
+  glyph?: string;
+  brand?: string;
+  attach?: boolean;
+  connect?: boolean;
+};
+
+const SOURCES: Source[] = [
+  { key: "attach", name: "Add photos & files", desc: "Upload from your computer", glyph: "clip", attach: true },
+  { key: "scoop", name: "Scoop Data", desc: "Sales & churn metrics", glyph: "chart" },
+  { key: "flavors", name: "Flavor records", desc: "26 makers, tags, links", glyph: "layers" },
+  { key: "web", name: "Web search", desc: "Real-time news and info", glyph: "globe" },
+  { key: "figma", name: "Figma", desc: "Design-to-code workflows", brand: "figma" },
+  { key: "slack", name: "Slack", desc: "Read and manage Slack", brand: "slack" },
+  { key: "gmail", name: "Gmail", desc: "Read and manage Gmail", brand: "gmail", connect: true },
+];
+
+const COMMANDS = [
+  { key: "compare", name: "/compare", desc: "Flavor vs. last summer" },
+  { key: "churn-plan", name: "/churn-plan", desc: "Draft a churn schedule" },
+  { key: "restock", name: "/restock", desc: "Build a reorder list" },
+  { key: "draft-email", name: "/draft-email", desc: "Write a supplier email" },
+  { key: "summarize", name: "/summarize", desc: "Digest the thread so far" },
+];
+
+const MODELS = [
+  { key: "sprinkles-5", name: "Sprinkles 5", tag: "Flagship" },
+  { key: "vanilla-1", name: "Vanilla 1", tag: "Basic" },
+  { key: "freezer-burn", name: "Freezer Burn 0.4", tag: "Stale" },
+];
+
+const FILES = ["flavor-chart.png", "summer-menu.pdf", "pos-export.csv"];
+const DICTATION = "Compare pistachio weekends to last summer";
+
+/* self-running demo: walk the @ menu, then the / menu, and repeat.
+ * Any pointer or key interaction hands control to the user. */
+const AUTO_STEPS: {
+  draft: string;
+  active?: number;
+  connect?: boolean;
+  modelOpen?: boolean;
+  model?: string;
+  hold: number;
+}[] = [
+  { draft: "", connect: false, model: "vanilla-1", hold: 1100 },
+  { draft: "@", active: 0, hold: 900 },
+  { draft: "@", active: 1, hold: 620 },
+  { draft: "@", active: 4, hold: 620 },
+  { draft: "@", active: 6, hold: 700 },
+  { draft: "@", active: 6, connect: true, hold: 1000 },
+  { draft: "", hold: 700 },
+  { draft: "/", active: 0, hold: 900 },
+  { draft: "/", active: 1, hold: 620 },
+  { draft: "/", active: 3, hold: 1000 },
+  { draft: "", hold: 800 },
+  // open the model picker and upgrade to the flagship \u2192 rainbow sweep
+  { draft: "", modelOpen: true, hold: 1200 },
+  { draft: "", model: "sprinkles-5", hold: 2400 },
+  { draft: "", hold: 900 },
+];
+
+/* the last @word or /word being typed, if any */
+function parseToken(draft: string): { kind: "at" | "slash"; query: string; start: number } | null {
+  const match = /(^|\\s)([@/])([\\w-]*)$/.exec(draft);
+  if (!match) return null;
+  return {
+    kind: match[2] === "@" ? "at" : "slash",
+    query: match[3].toLowerCase(),
+    start: match.index + match[1].length,
+  };
+}
+
+export default function PromptBar({ variant = "Rounded" }: { variant?: string }) {
+  const pill = variant === "Pill";
+  const [draft, setDraft] = useState("");
+  const [dismissed, setDismissed] = useState(false);
+  const [plusOpen, setPlusOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [model, setModel] = useState(MODELS[1]);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [active, setActive] = useState(0);
+  const [listening, setListening] = useState(false);
+  const [auto, setAuto] = useState(true);
+  const [autoStep, setAutoStep] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [rowBox, setRowBox] = useState<{ top: number; height: number } | null>(null);
+  const [engaged, setEngaged] = useState(false);
+  const [modelBox, setModelBox] = useState<{ top: number; height: number } | null>(null);
+  const [modelHovered, setModelHovered] = useState<number | null>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const modelRef = useRef<HTMLButtonElement>(null);
+  const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const modelRowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const glimmRef = useRef<HTMLCanvasElement>(null);
+  const shaderRef = useRef<ReturnType<typeof createShader> | null>(null);
+  const sweepingRef = useRef(false);
+
+  /* hand control to the user: stop the demo loop, and when they aim at
+   * the input itself, clear the demo's leftover draft for a clean start */
+  const takeOver = (event: { target: EventTarget | null }) => {
+    setAuto(false);
+    if (auto && event.target === inputRef.current) setDraft("");
+  };
+
+  const token = dismissed ? null : parseToken(draft);
+  const menu: "at" | "slash" | null = plusOpen ? "at" : token?.kind ?? null;
+  const query = plusOpen ? "" : token?.query ?? "";
+
+  const rows: { key: string; name: string; desc: string }[] =
+    menu === "at"
+      ? SOURCES.filter((s) => s.name.toLowerCase().includes(query))
+      : menu === "slash"
+        ? COMMANDS.filter((c) => c.name.slice(1).startsWith(query))
+        : [];
+
+  /* menu switches reset the active row; runs in an effect so autoplay
+   * steps and user typing converge on the same reset path */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActive(0);
+    setEngaged(false);
+  }, [menu, query]);
+
+  /* a single highlight glides to the active row instead of each row
+   * toggling its own background \u2014 matches the gliding pill in the nav */
+  useLayoutEffect(() => {
+    const target = rowRefs.current[active];
+    if (target) setRowBox({ top: target.offsetTop, height: target.offsetHeight });
+  }, [menu, query, active, connected, rows.length]);
+
+  /* same gliding highlight in the model menu \u2014 floats to the hovered
+   * row, falling back to the currently-selected model */
+  const modelIndex = MODELS.findIndex((m) => m.key === model.key);
+  useLayoutEffect(() => {
+    if (!modelOpen) return;
+    const target = modelRowRefs.current[modelHovered ?? modelIndex];
+    if (target) setModelBox({ top: target.offsetTop, height: target.offsetHeight });
+  }, [modelOpen, modelHovered, modelIndex]);
+
+  /* clear the hovered row whenever the menu closes */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!modelOpen) setModelHovered(null);
+  }, [modelOpen]);
+
+  /* Build the shader with a pinned hue phase. createShader seeds its
+   * internal hueShift from Math.random(), which made the sweep a different
+   * colour on every reload \u2014 pin it so the rainbow is identical each time. */
+  const makeShader = () => {
+    const canvas = glimmRef.current;
+    if (!canvas) return null;
+    const random = Math.random;
+    Math.random = () => 0;
+    try {
+      return createShader({
+        canvas,
+        palette: RAINBOW,
+        direction: "ltr",
+        bandTight: 10,
+        swellAmount: 0.85,
+      });
+    } finally {
+      Math.random = random;
+    }
+  };
+
+  /* Glimm shader lives inside the composer, invisible at rest. Selecting
+   * the flagship model fires a one-shot rainbow sweep across the interior. */
+  useEffect(() => {
+    shaderRef.current = makeShader();
+    return () => {
+      shaderRef.current?.destroy();
+      shaderRef.current = null;
+    };
+  }, []);
+
+  const celebrate = () => {
+    if (sweepingRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Recreate the shader per sweep so uTime restarts at 0 \u2014 the hue phase
+    // (which drifts with time) is then identical on every trigger.
+    shaderRef.current?.destroy();
+    const shader = makeShader();
+    shaderRef.current = shader;
+    if (!shader) return;
+    sweepingRef.current = true;
+    const sweep = playSweep(shader, {
+      palette: RAINBOW,
+      direction: "ltr",
+      sweepMs: 950,
+      outroMs: 130,
+      peakAlpha: 1.3,
+      bandTight: 10,
+      brightness: 1.4,
+      swellAmount: 1,
+      waveSpeed: 1.3,
+      easing: "easeOutExpo",
+    });
+    sweep.done.finally(() => {
+      sweepingRef.current = false;
+    });
+  };
+
+  const selectModel = (next: (typeof MODELS)[number]) => {
+    setModel(next);
+    setModelOpen(false);
+    if (next.key === "sprinkles-5") celebrate();
+  };
+
+  /* autoplay: apply the current step, then advance after its hold */
+  useEffect(() => {
+    if (!auto) return;
+    const step = AUTO_STEPS[autoStep % AUTO_STEPS.length];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraft(step.draft);
+    if (step.active !== undefined) setActive(step.active);
+    if (step.connect !== undefined) setConnected(step.connect);
+    if (step.modelOpen !== undefined) setModelOpen(step.modelOpen);
+    if (step.model) {
+      const next = MODELS.find((m) => m.key === step.model);
+      if (next) selectModel(next);
+    }
+    const t = setTimeout(() => setAutoStep((s) => s + 1), step.hold);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, autoStep]);
+
+  /* dictation resolves after a beat, like a real transcript landing */
+  useEffect(() => {
+    if (!listening) return;
+    const t = setTimeout(() => {
+      setDraft((current) => (current ? \`\${current.trimEnd()} \${DICTATION}\` : DICTATION));
+      setListening(false);
+      inputRef.current?.focus();
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [listening]);
+
+  /* Move wrapped text above the controls, then grow to a compact maximum. */
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    const controls = controlsRef.current;
+    const measure = measureRef.current;
+    const modelButton = modelRef.current;
+    if (!input || !controls || !measure || !modelButton) return;
+
+    const fixedControlsWidth = 28 * 3 + modelButton.offsetWidth;
+    const inlineGaps = 4 * 4;
+    const inlineInputWidth = controls.clientWidth - fixedControlsWidth - inlineGaps;
+    const needsFullWidth = draft.includes("\\n") || measure.offsetWidth + 8 > inlineInputWidth;
+    if (needsFullWidth !== expanded) {
+      setExpanded(needsFullWidth);
+    }
+
+    const minHeight = 28;
+    const maxHeight = 100;
+    input.style.height = "0px";
+    const contentHeight = input.scrollHeight;
+    input.style.height = \`\${Math.min(Math.max(contentHeight, minHeight), maxHeight)}px\`;
+    input.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+  }, [draft, expanded]);
+
+  const closeMenus = () => {
+    setPlusOpen(false);
+    setModelOpen(false);
+  };
+
+  const pick = (row: { key: string; name: string }) => {
+    const source = SOURCES.find((s) => s.key === row.key);
+    if (source?.attach) {
+      setAttachments((current) => [...current, FILES[current.length % FILES.length]]);
+      if (token) setDraft(draft.slice(0, token.start));
+    } else if (menu === "at") {
+      setDraft(\`\${token ? draft.slice(0, token.start) : draft}@\${row.name} \`);
+    } else {
+      setDraft(\`\${token ? draft.slice(0, token.start) : draft}\${row.name} \`);
+    }
+    setPlusOpen(false);
+    setDismissed(false);
+    inputRef.current?.focus();
+  };
+
+  const canSend = draft.trim().length > 0 || attachments.length > 0;
+  const send = () => {
+    if (!canSend) return;
+    setDraft("");
+    setAttachments([]);
+    closeMenus();
+  };
+
+  return (
+    <div
+      className="flex min-h-[384px] w-full max-w-105 flex-col justify-end pb-8"
+      onPointerDownCapture={takeOver}
+      onKeyDownCapture={takeOver}
+    >
+      {/* composer is the anchor \u2014 menus grow up from its top edge */}
+      <div className="relative">
+      {/* \u2500\u2500 @ / slash menu \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+      {menu && (
+        <div
+          onMouseLeave={() => setEngaged(false)}
+          className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-[10px] bg-surface p-1 shadow-raised"
+          style={{ animation: "pop-in 180ms cubic-bezier(0.23,1,0.32,1) both", transformOrigin: "bottom center" }}
+        >
+          {/* single gliding highlight \u2014 appears once a row is hovered */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover"
+            style={{
+              top: rowBox?.top ?? 0,
+              height: rowBox?.height ?? 0,
+              opacity: rowBox && engaged && rows.length > 0 ? 1 : 0,
+              transition:
+                "top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease",
+            }}
+          />
+          {rows.map((row, i) => {
+            const source = menu === "at" ? SOURCES.find((s) => s.key === row.key) : undefined;
+            return (
+              <button
+                key={row.key}
+                type="button"
+                ref={(el) => {
+                  rowRefs.current[i] = el;
+                }}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => {
+                  setActive(i);
+                  setEngaged(true);
+                }}
+                onClick={() => pick(row)}
+                className="relative z-10 flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left"
+              >
+                {source && (
+                  <span className="flex size-5.5 shrink-0 items-center justify-center text-ink-2">
+                    {source.brand ? BRANDS[source.brand] : <Icon size={15}>{GLYPHS[source.glyph ?? "clip"]}</Icon>}
+                  </span>
+                )}
+                <span className="shrink-0 text-[12.5px] font-medium text-ink">
+                  {row.name}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-3">{row.desc}</span>
+                {source?.connect && (
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setConnected((current) => !current);
+                    }}
+                    className={\`shrink-0 text-[12px] font-medium transition-colors duration-100 \${
+                      connected ? "text-green" : "text-accent-ink hover:underline"
+                    }\`}
+                  >
+                    {connected ? "Connected" : "Connect"}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          {rows.length === 0 && (
+            <div className="flex h-9 items-center px-2 text-[12px] text-ink-3">
+              No matches for \u201C{query}\u201D
+            </div>
+          )}
+          <div className="mt-1 border-t border-line px-2 pt-1.5 pb-1 text-[11px] text-ink-3">
+            {menu === "at" ? "Type to search sources & files" : "Type to search commands"}
+          </div>
+        </div>
+      )}
+
+      {/* \u2500\u2500 model menu \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+      {modelOpen && (
+        <div
+          onMouseLeave={() => setModelHovered(null)}
+          className="absolute right-0 bottom-full z-10 mb-2 w-44 rounded-[10px] bg-surface p-1 shadow-raised"
+          style={{ animation: "pop-in 180ms cubic-bezier(0.23,1,0.32,1) both", transformOrigin: "bottom right" }}
+        >
+          {/* single gliding highlight \u2014 floats to the hovered / selected row */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-hover"
+            style={{
+              top: modelBox?.top ?? 0,
+              height: modelBox?.height ?? 0,
+              opacity: modelBox && modelHovered !== null ? 1 : 0,
+              transition:
+                "top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease",
+            }}
+          />
+          {MODELS.map((m, i) => (
+            <button
+              key={m.key}
+              type="button"
+              ref={(el) => {
+                modelRowRefs.current[i] = el;
+              }}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setModelHovered(i)}
+              onClick={() => {
+                selectModel(m);
+                inputRef.current?.focus();
+              }}
+              className="relative z-10 flex h-7.5 w-full items-center gap-2 rounded-[6px] px-2 text-left"
+            >
+              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{m.name}</span>
+              <span className="shrink-0 text-[11px] text-ink-3">{m.tag}</span>
+              <span className={\`shrink-0 text-ink \${m.key === model.key ? "" : "invisible"}\`}>
+                <Icon size={13} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></Icon>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* \u2500\u2500 composer \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+      <div
+        className={\`relative isolate flex flex-col gap-1.5 overflow-hidden border border-line bg-surface p-1.5 shadow-card transition-[border-color,border-radius] duration-150 focus-within:border-line-strong \${
+          pill ? (attachments.length > 0 || expanded ? "rounded-[24px]" : "rounded-full") : "rounded-[14px]"
+        }\`}
+      >
+        {/* rainbow glimm sweep \u2014 plays across the interior on model change.
+            explicit w/h: a <canvas> is a replaced element and won't stretch
+            to inset-0 alone, which feeds back into the shader's ResizeObserver. */}
+        <canvas
+          ref={glimmRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 h-full w-full"
+          style={{ borderRadius: "inherit" }}
+        />
+        <span
+          ref={measureRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute invisible whitespace-pre text-[13px] leading-[18px]"
+        >
+          {draft}
+        </span>
+
+        {attachments.length > 0 && (
+          <div className={\`flex flex-wrap gap-1.5 pt-0.5 \${pill ? "px-1" : "px-0.5"}\`}>
+            {attachments.map((file, i) => (
+              <span
+                key={\`\${file}-\${i}\`}
+                className={\`flex h-6.5 items-center gap-1.5 bg-field py-1 pr-1 pl-1.5 text-[11.5px] text-ink-2 shadow-hairline \${
+                  pill ? "rounded-full" : "rounded-chip"
+                }\`}
+                style={{ animation: "pop-in 200ms cubic-bezier(0.23,1,0.32,1) both" }}
+              >
+                <Icon size={12}><g><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></g></Icon>
+                <span className="max-w-36 truncate">{file}</span>
+                <button
+                  type="button"
+                  aria-label={\`Remove \${file}\`}
+                  onClick={() => setAttachments((current) => current.filter((_, j) => j !== i))}
+                  className={\`flex size-4 items-center justify-center text-ink-3 transition-colors duration-100 hover:bg-line/70 hover:text-ink \${
+                    pill ? "rounded-full" : "rounded-[4px]"
+                  }\`}
+                >
+                  <Icon size={10} strokeWidth={2.5}><path d="M18 6L6 18M6 6l12 12" /></Icon>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div
+          ref={controlsRef}
+          className={\`grid items-end gap-x-1 gap-y-1.5 \${
+            expanded
+              ? "grid-cols-[minmax(0,1fr)_auto_28px_28px]"
+              : "grid-cols-[28px_minmax(0,1fr)_auto_28px_28px]"
+          }\`}
+        >
+          <button
+            type="button"
+            aria-label="Add attachments and sources"
+            aria-expanded={plusOpen}
+            onClick={() => {
+              setModelOpen(false);
+              setPlusOpen((current) => !current);
+              inputRef.current?.focus();
+            }}
+            className={\`flex size-7 shrink-0 items-center justify-center justify-self-start text-ink-3 transition-[background-color,color,transform] duration-150 hover:bg-hover hover:text-ink active:scale-[0.94] \${
+              pill ? "rounded-full" : "rounded-[8px]"
+            } \${plusOpen ? "bg-hover text-ink" : ""} \${expanded ? "col-start-1 row-start-2" : "col-start-1 row-start-1"}\`}
+          >
+            <Icon size={16} strokeWidth={2}><path d="M12 5v14M5 12h14" /></Icon>
+          </button>
+
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setDismissed(false);
+              setPlusOpen(false);
+            }}
+            onKeyDown={(event) => {
+              if (menu && rows.length > 0) {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setEngaged(true);
+                  setActive((current) => (current + (event.key === "ArrowDown" ? 1 : rows.length - 1)) % rows.length);
+                  return;
+                }
+                if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
+                  event.preventDefault();
+                  pick(rows[active]);
+                  return;
+                }
+              }
+              if (event.key === "Escape") {
+                setDismissed(true);
+                closeMenus();
+                return;
+              }
+              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                send();
+              }
+            }}
+            placeholder={listening ? "Listening\u2026" : "Write a message\u2026"}
+            aria-label="Prompt"
+            className={\`min-h-7 min-w-0 w-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3 \${
+              expanded ? "col-span-full col-start-1 row-start-1" : "col-start-2 row-start-1"
+            }\`}
+          />
+
+          {/* model picker */}
+          <button
+            ref={modelRef}
+            type="button"
+            aria-expanded={modelOpen}
+            aria-label="Choose model"
+            onClick={() => {
+              setPlusOpen(false);
+              setModelOpen((current) => !current);
+            }}
+            className={\`flex h-7 shrink-0 items-center gap-1 px-1.5 text-[12px] font-medium text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink \${
+              pill ? "rounded-full" : "rounded-[8px]"
+            } \${expanded ? "col-start-2 row-start-2" : "col-start-3 row-start-1"}\`}
+          >
+            {model.name}
+            <span className="text-ink-3">
+              <Icon size={11} strokeWidth={2.4}><path d="M6 9l6 6 6-6" /></Icon>
+            </span>
+          </button>
+
+          {/* dictation */}
+          <button
+            type="button"
+            aria-label={listening ? "Stop dictation" : "Start dictation"}
+            aria-pressed={listening}
+            onClick={() => setListening((current) => !current)}
+            className={\`flex size-7 shrink-0 items-center justify-center transition-[background-color,color,transform] duration-150 active:scale-[0.94] \${
+              pill ? "rounded-full" : "rounded-[8px]"
+            } \${listening ? "bg-accent-tint text-accent-ink" : "text-ink-3 hover:bg-hover hover:text-ink"} \${
+              expanded ? "col-start-3 row-start-2" : "col-start-4 row-start-1"
+            }\`}
+          >
+            {listening ? (
+              <span className="flex h-3.5 items-center gap-[2.5px]">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-[2.5px] rounded-full bg-current"
+                    style={{ height: "100%", animation: \`eq-bounce 900ms ease-in-out \${i * 150}ms infinite\` }}
+                  />
+                ))}
+              </span>
+            ) : (
+              <Icon size={15} strokeWidth={2}><g><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" /></g></Icon>
+            )}
+          </button>
+
+          {/* send \u2014 tactile square (round in the pill variant) */}
+          <button
+            type="button"
+            aria-label="Send"
+            disabled={!canSend}
+            onClick={send}
+            className={\`flex size-7 shrink-0 items-center justify-center transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.94] \${
+              pill ? "rounded-full" : "rounded-[8px]"
+            } \${expanded ? "col-start-4 row-start-2" : "col-start-5 row-start-1"}\`}
+            style={{
+              background: canSend ? "var(--ink)" : "var(--line-strong)",
+              color: canSend ? "var(--surface)" : "var(--ink-2)",
+            }}
+          >
+            <Icon size={16} strokeWidth={2.4}><path d="M12 19V5M5 12l7-7 7 7" /></Icon>
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}`, skeleton: `/* Skeleton - quiet placeholders while data streams in.
+   CSS-only pulse; collapses to a static block under reduced motion. */
+
+export function Skeleton({
+  className = "",
+}: {
+  className?: string;
+}) {
+  return (
+    <div
+      aria-hidden
+      className={\`animate-pulse rounded-md bg-line-strong motion-reduce:animate-none \${className}\`}
+    />
+  );
+}
+`, table: `/* Table - dense data rows with sticky headers and mono cells.
+   Semantic primitives. The overflow wrapper keeps wide tables mobile-safe;
+   sticky column headers hold their place inside a height-constrained scroll
+   area. Server-safe. */
+
+export function Table({
+  children,
+  mono = false,
+  className = "",
+}: {
+  children: React.ReactNode;
+  mono?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={\`w-full overflow-x-auto \${className}\`}>
+      <table
+        className={\`w-full border-collapse text-left text-sm \${
+          mono ? "font-mono" : ""
+        }\`}
+      >
+        {children}
+      </table>
+    </div>
+  );
+}
+
+export function TableHeader({ children }: { children: React.ReactNode }) {
+  return <thead>{children}</thead>;
+}
+
+export function TableBody({ children }: { children: React.ReactNode }) {
+  return <tbody>{children}</tbody>;
+}
+
+export function TableRow({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <tr className={\`border-b border-line last:border-0 \${className}\`}>
+      {children}
+    </tr>
+  );
+}
+
+export function TableHead({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      className={\`sticky top-0 z-10 whitespace-nowrap bg-panel px-4 py-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted \${className}\`}
+    >
+      {children}
+    </th>
+  );
+}
+
+export function TableCell({
+  children,
+  mono = false,
+  className = "",
+}: {
+  children: React.ReactNode;
+  mono?: boolean;
+  className?: string;
+}) {
+  return (
+    <td
+      className={\`px-4 py-3 align-middle text-ink \${
+        mono ? "font-mono text-xs" : ""
+      } \${className}\`}
+    >
+      {children}
+    </td>
+  );
+}`, tabs: `"use client";
+
+import { useState } from "react";
+
+export function Tabs({
+  items,
+}: {
+  items: { label: string; content: React.ReactNode }[];
+}) {
+  const [active, setActive] = useState(0);
+
+  return (
+    <div className="w-full">
+      <div
+        role="tablist"
+        className="flex items-center gap-1 border-b border-line"
+      >
+        {items.map((item, i) => (
+          <button
+            key={item.label}
+            role="tab"
+            aria-selected={active === i}
+            onClick={() => setActive(i)}
+            className={\`relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors \${
+              active === i
+                ? "text-ink"
+                : "text-muted hover:text-ink"
+            }\`}
+          >
+            {item.label}
+            <span
+              aria-hidden
+              className={\`absolute inset-x-0 bottom-0 h-0.5 bg-ink transition-transform duration-300 \${
+                active === i ? "scale-x-100" : "scale-x-0"
+              }\`}
+            />
+          </button>
+        ))}
+      </div>
+      <div className="pt-6 font-mono text-xs leading-6 text-muted">
+        {items[active]?.content}
+      </div>
+    </div>
+  );
+}
+`, toast: `"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+/* Toast - transient feedback, stacked and auto-dismissing.
+   Provider + viewport + hook. Fixed bottom-right stack, entrance via a mounted
+   transition (reduced-motion safe), auto-dismiss timer per toast. */
+
+export type ToastOptions = {
+  title: string;
+  description?: string;
+  /** auto-dismiss delay in ms (default 4000). */
+  duration?: number;
+};
+
+type ToastItem = {
+  id: number;
+  title: string;
+  description?: string;
+};
+
+type ToastContextValue = {
+  toasts: ToastItem[];
+  toast: (options: ToastOptions) => number;
+  dismiss: (id: number) => void;
+};
+
+const ToastContext = createContext<ToastContextValue | null>(null);
+
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const nextId = useRef(1);
+  const timers = useRef<Set<number>>(new Set());
+
+  /* clear every pending dismissal timer on unmount so no toast lingers */
+  useEffect(
+    () => () => {
+      timers.current.forEach((h) => window.clearTimeout(h));
+      timers.current.clear();
+    },
+    []
+  );
+
+  const dismiss = useCallback((id: number) => {
+    setToasts((t) => t.filter((item) => item.id !== id));
+  }, []);
+
+  const toast = useCallback(
+    (options: ToastOptions) => {
+      const id = nextId.current++;
+      setToasts((t) => [
+        ...t,
+        { id, title: options.title, description: options.description },
+      ]);
+      const handle = window.setTimeout(
+        () => dismiss(id),
+        options.duration ?? 4000
+      );
+      timers.current.add(handle);
+      return id;
+    },
+    [dismiss]
+  );
+
+  const value = useMemo(
+    () => ({ toasts, toast, dismiss }),
+    [toasts, toast, dismiss]
+  );
+
+  return (
+    <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
+  );
+}
+
+export function useToast() {
+  const ctx = useContext(ToastContext);
+  if (!ctx) throw new Error("useToast must be used within a ToastProvider");
+  return ctx;
+}
+
+export function ToastViewport({ className = "" }: { className?: string }) {
+  const { toasts, dismiss } = useToast();
+  return (
+    <div
+      aria-live="polite"
+      className={\`pointer-events-none fixed right-4 bottom-4 z-[110] flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2.5 \${className}\`}
+    >
+      {toasts.map((t) => (
+        <ToastCard key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+      ))}
+    </div>
+  );
+}
+
+function ToastCard({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastItem;
+  onDismiss: () => void;
+}) {
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div
+      className={\`pointer-events-auto flex items-start justify-between gap-3 rounded-md border border-line bg-panel/90 px-4 py-3 backdrop-blur-sm transition-all duration-300 ease-out motion-reduce:transition-none \${
+        entered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+      }\`}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-ink">{toast.title}</p>
+        {toast.description ? (
+          <p className="mt-0.5 text-xs leading-5 text-muted">
+            {toast.description}
+          </p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss notification"
+        className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink"
+      >
+        close
+      </button>
+    </div>
+  );
+}`, toggle: `"use client";
+
+import { useState } from "react";
+
+export function Toggle({
+  label = "Toggle",
+  defaultOn = false,
+}: {
+  label?: string;
+  defaultOn?: boolean;
+}) {
+  const [on, setOn] = useState(defaultOn);
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={() => setOn((v) => !v)}
+      className={\`relative h-7 w-13 shrink-0 rounded-full border transition-colors duration-300 \${
+        on
+          ? "border-ink bg-ink"
+          : "border-line-strong bg-panel"
+      }\`}
+    >
+      <span
+        aria-hidden
+        className={\`absolute top-1/2 size-5 -translate-y-1/2 rounded-full transition-all duration-300 \${
+          on
+            ? "left-[calc(100%-1.5rem)] bg-canvas"
+            : "left-1 bg-dim"
+        }\`}
+      />
+    </button>
+  );
+}
+`, tooltip: `"use client";
+
+import { cloneElement, isValidElement, useEffect, useId, useRef, useState } from "react";
+
+/* Tooltip - hover and focus-triggered inline annotation.
+   No vendor positioning: absolute against a relative wrapper. The trigger is
+   cloned to carry pointer + keyboard handlers and the aria-describedby wiring,
+   so focus reaches the real control. */
+
+const SIDES = {
+  top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+  bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+  left: "right-full top-1/2 -translate-y-1/2 mr-2",
+  right: "left-full top-1/2 -translate-y-1/2 ml-2",
+} as const;
+
+type TriggerProps = {
+  onMouseEnter?: (e: React.MouseEvent<HTMLElement>) => void;
+  onMouseLeave?: (e: React.MouseEvent<HTMLElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLElement>) => void;
+  "aria-describedby"?: string;
+};
+
+export function Tooltip({
+  label,
+  children,
+  side = "top",
+  delayMs = 150,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  side?: keyof typeof SIDES;
+  delayMs?: number;
+  className?: string;
+}) {
+  const id = useId();
+  const [show, setShow] = useState(false);
+  const timer = useRef<number | null>(null);
+
+  const enter = () => {
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setShow(true), delayMs);
+  };
+  const leave = () => {
+    if (timer.current) window.clearTimeout(timer.current);
+    setShow(false);
+  };
+
+  useEffect(
+    () => () => {
+      if (timer.current) window.clearTimeout(timer.current);
+    },
+    []
+  );
+
+  const trigger = isValidElement<TriggerProps>(children)
+    ? cloneElement(children, {
+        onMouseEnter: enter,
+        onMouseLeave: leave,
+        onFocus: enter,
+        onBlur: leave,
+        "aria-describedby": id,
+      })
+    : children;
+
+  return (
+    <span className={\`relative inline-flex \${className}\`}>
+      {trigger}
+      {show ? (
+        <span
+          id={id}
+          role="tooltip"
+          className={\`pointer-events-none absolute z-[80] max-w-[16rem] rounded-md border border-line bg-panel px-2.5 py-1.5 text-center font-mono text-[10px] leading-4 text-ink shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] \${SIDES[side]}\`}
+        >
+          {label}
+        </span>
+      ) : null}
+    </span>
+  );
+}` };
+        async function k({ params: a2 }) {
+          let { slug: b2 } = await a2, c2 = e.ALL_COMPONENTS.find((a3) => a3.slug === b2);
+          return c2 ? { title: `${c2.name} - meroUI`, description: c2.blurb } : { title: "Not found - meroUI" };
+        }
+        __name(k, "k");
+        async function l({ params: a2 }) {
+          let { slug: k2 } = await a2, m = e.ALL_COMPONENTS.find((a3) => a3.slug === k2);
+          m || (0, c.notFound)();
+          let n = f[k2];
+          return (0, b.jsxs)("div", { className: "flex max-w-[56rem] flex-col", children: [(0, b.jsxs)(d.default, { href: "/docs", className: "font-mono text-[11px] uppercase tracking-[0.24em] text-faint transition-colors hover:text-ink", children: [(0, b.jsx)("span", { className: "text-dim", children: "/" }), "components", (0, b.jsx)("span", { className: "text-dim", children: "/" }), (0, b.jsx)("span", { className: "text-muted", children: m.slug })] }), (0, b.jsxs)("h1", { className: "mt-4 text-4xl font-semibold tracking-tight md:text-5xl", children: [m.name, "."] }), (0, b.jsx)("p", { className: "mt-3 max-w-xl text-base leading-7 text-muted", children: m.blurb }), (0, b.jsx)(i.ComponentToolbar, { source: (e.ALL_COMPONENTS.find((a3) => a3.slug === k2 && a3.built) ? j[k2] ?? null : null) ?? "", children: (0, b.jsx)("div", { className: m.slug === "prompt-bar" ? "flex min-h-[28rem] items-center justify-center rounded-md border border-line bg-canvas/40 p-8" : "flex h-56 items-center justify-center rounded-md border border-line bg-canvas/40 p-8", children: (0, b.jsx)(g.ComponentPreview, { slug: m.slug }) }) }), (0, b.jsx)("h2", { className: "mt-14 text-2xl font-semibold tracking-tight", children: "Install." }), (0, b.jsx)("div", { className: "mt-4", children: (0, b.jsx)(h.CopyBlock, { code: `npx meroui add ${m.slug}`, lang: "bash" }) }), (0, b.jsx)("h2", { className: "mt-12 text-2xl font-semibold tracking-tight", children: "Usage." }), (0, b.jsx)("div", { className: "mt-4", children: (0, b.jsx)(h.CopyBlock, { code: n.usage, lang: "tsx" }) }), (0, b.jsx)("h2", { className: "mt-12 text-2xl font-semibold tracking-tight", children: "Props." }), (0, b.jsx)("div", { className: "mt-4 overflow-hidden rounded-md border border-line", children: (0, b.jsxs)("table", { className: "w-full border-collapse text-left", children: [(0, b.jsx)("thead", { children: (0, b.jsxs)("tr", { className: "border-b border-line bg-panel/60", children: [(0, b.jsx)("th", { className: "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint", children: "name" }), (0, b.jsx)("th", { className: "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint", children: "type" }), (0, b.jsx)("th", { className: "hidden px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint sm:table-cell", children: "description" })] }) }), (0, b.jsx)("tbody", { children: n.props.map((a3) => (0, b.jsxs)("tr", { className: "border-b border-line/60 last:border-0", children: [(0, b.jsx)("td", { className: "px-4 py-3 font-mono text-sm text-ink", children: a3.name }), (0, b.jsx)("td", { className: "px-4 py-3 font-mono text-xs text-faint", children: a3.type }), (0, b.jsx)("td", { className: "hidden px-4 py-3 text-sm text-muted sm:table-cell", children: a3.desc })] }, a3.name)) })] }) })] });
+        }
+        __name(l, "l");
+        a.s(["default", 0, l, "generateMetadata", 0, k, "generateStaticParams", 0, function() {
+          return e.ALL_COMPONENTS.map((a2) => ({ slug: a2.slug }));
+        }], 94659);
+      }, 53257, (a) => {
+        a.n(a.i(94659));
+      }];
+    } });
     require_src_components_1xhgq9l = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_components_1xhgq9l._.js"(exports, module) {
       "use strict";
       module.exports = [79556, (a) => {
@@ -55333,7 +57716,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
       }, 18519, (a) => {
         "use strict";
         var b = a.i(87924), c = a.i(72131), d = a.i(50944), e = a.i(38246);
-        let f = [{ id: "overview", label: "Overview" }, { id: "installation", label: "Installation" }, { id: "components", label: "Components" }], g = [{ title: "Feedback", items: [{ slug: "button", name: "Button", blurb: "Solid, ghost, quiet. Three weights for any action.", built: true, glyph: "B" }, { slug: "badge", name: "Badge", blurb: "Solid, outline, or dot with an optional live pulse.", built: true, glyph: "\u25C6" }, { slug: "progress", name: "Progress", blurb: "Accessible progressbar with a mono label and value.", built: true, glyph: "\u25AE" }, { slug: "skeleton", name: "Skeleton", blurb: "Quiet placeholders while data streams in.", built: true, glyph: "\u25A4" }, { slug: "toast", name: "Toast", blurb: "Transient feedback, stacked and auto-dismissing.", built: true, glyph: "\u25CC" }] }, { title: "Controls", items: [{ slug: "input", name: "Input", blurb: "Labeled text field, keyboard-first and autofill-aware.", built: true, glyph: "\u2328" }, { slug: "toggle", name: "Toggle", blurb: "Switch with a visible checked state and focus ring.", built: true, glyph: "\u25C9" }, { slug: "tabs", name: "Tabs", blurb: "Tablist with an animated underline, pure keyboard.", built: true, glyph: "\u2263" }] }, { title: "Display", items: [{ slug: "card", name: "Card", blurb: "A hairline-bordered surface for grouped content.", built: true, glyph: "\u25A2" }, { slug: "table", name: "Table", blurb: "Dense data rows with sticky headers and mono cells.", built: true, glyph: "\u25A6" }, { slug: "modal", name: "Modal", blurb: "Focus-trapped dialog with escape and backdrop.", built: true, glyph: "\u25FB" }, { slug: "tooltip", name: "Tooltip", blurb: "Hover and focus-triggered inline annotation.", built: true, glyph: "\u24D8" }] }], h = g.flatMap((a2) => a2.items);
+        let f = [{ id: "overview", label: "Overview" }, { id: "installation", label: "Installation" }, { id: "components", label: "Components" }], g = [{ title: "Feedback", items: [{ slug: "button", name: "Button", blurb: "Solid, ghost, quiet. Three weights for any action.", built: true, glyph: "B" }, { slug: "badge", name: "Badge", blurb: "Solid, outline, or dot with an optional live pulse.", built: true, glyph: "\u25C6" }, { slug: "progress", name: "Progress", blurb: "Accessible progressbar with a mono label and value.", built: true, glyph: "\u25AE" }, { slug: "skeleton", name: "Skeleton", blurb: "Quiet placeholders while data streams in.", built: true, glyph: "\u25A4" }, { slug: "toast", name: "Toast", blurb: "Transient feedback, stacked and auto-dismissing.", built: true, glyph: "\u25CC" }] }, { title: "Controls", items: [{ slug: "input", name: "Input", blurb: "Labeled text field, keyboard-first and autofill-aware.", built: true, glyph: "\u2328" }, { slug: "toggle", name: "Toggle", blurb: "Switch with a visible checked state and focus ring.", built: true, glyph: "\u25C9" }, { slug: "tabs", name: "Tabs", blurb: "Tablist with an animated underline, pure keyboard.", built: true, glyph: "\u2263" }, { slug: "prompt-bar", name: "Prompt Bar", blurb: "Composer with @ sources, / commands, dictation and a model picker.", built: true, glyph: "\u270E" }] }, { title: "Display", items: [{ slug: "card", name: "Card", blurb: "A hairline-bordered surface for grouped content.", built: true, glyph: "\u25A2" }, { slug: "table", name: "Table", blurb: "Dense data rows with sticky headers and mono cells.", built: true, glyph: "\u25A6" }, { slug: "modal", name: "Modal", blurb: "Focus-trapped dialog with escape and backdrop.", built: true, glyph: "\u25FB" }, { slug: "tooltip", name: "Tooltip", blurb: "Hover and focus-triggered inline annotation.", built: true, glyph: "\u24D8" }] }], h = g.flatMap((a2) => a2.items);
         h.filter((a2) => a2.built).length;
         var i = a.i(79556);
         let j = f.map((a2) => a2.id);
@@ -55409,7 +57792,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         }], 18519);
       }];
     } });
-    require_src_components_1xqkxja = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_components_1xqkxja._.js"(exports, module) {
+    require_src_components_ui_1ga4d_c = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_components_ui_1ga4d_c._.js"(exports, module) {
       "use strict";
       module.exports = [55486, (a) => {
         "use strict";
@@ -55439,146 +57822,21 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         a.s(["Progress", 0, function({ value: a2, label: c }) {
           return (0, b.jsxs)("div", { className: "flex w-full flex-col gap-2", children: [c ? (0, b.jsxs)("div", { className: "flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted", children: [(0, b.jsx)("span", { children: c }), (0, b.jsxs)("span", { className: "text-muted", children: [a2, "%"] })] }) : null, (0, b.jsx)("div", { className: "h-1.5 w-full overflow-hidden rounded-full bg-line-strong", role: "progressbar", "aria-label": c ?? "Progress", "aria-valuenow": a2, "aria-valuemin": 0, "aria-valuemax": 100, children: (0, b.jsx)("div", { className: "progress-grow h-full rounded-full bg-ink", style: { width: `${a2}%` } }) })] });
         }]);
-      }, 84757, (a) => {
+      }, 84757, 77316, (a) => {
         "use strict";
         var b = a.i(87924), c = a.i(72131);
         a.s(["Tabs", 0, function({ items: a2 }) {
           let [d, e] = (0, c.useState)(0);
           return (0, b.jsxs)("div", { className: "w-full", children: [(0, b.jsx)("div", { role: "tablist", className: "flex items-center gap-1 border-b border-line", children: a2.map((a3, c2) => (0, b.jsxs)("button", { role: "tab", "aria-selected": d === c2, onClick: /* @__PURE__ */ __name(() => e(c2), "onClick"), className: `relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors ${d === c2 ? "text-ink" : "text-muted hover:text-ink"}`, children: [a3.label, (0, b.jsx)("span", { "aria-hidden": true, className: `absolute inset-x-0 bottom-0 h-0.5 bg-ink transition-transform duration-300 ${d === c2 ? "scale-x-100" : "scale-x-0"}` })] }, a3.label)) }), (0, b.jsx)("div", { className: "pt-6 font-mono text-xs leading-6 text-muted", children: a2[d]?.content })] });
-        }]);
-      }, 77316, (a) => {
-        "use strict";
-        var b = a.i(87924), c = a.i(72131);
-        a.s(["Toggle", 0, function({ label: a2 = "Toggle", defaultOn: d = false }) {
+        }], 84757), a.s(["Toggle", 0, function({ label: a2 = "Toggle", defaultOn: d = false }) {
           let [e, f] = (0, c.useState)(d);
           return (0, b.jsx)("button", { type: "button", role: "switch", "aria-checked": e, "aria-label": a2, onClick: /* @__PURE__ */ __name(() => f((a3) => !a3), "onClick"), className: `relative h-7 w-13 shrink-0 rounded-full border transition-colors duration-300 ${e ? "border-ink bg-ink" : "border-line-strong bg-panel"}`, children: (0, b.jsx)("span", { "aria-hidden": true, className: `absolute top-1/2 size-5 -translate-y-1/2 rounded-full transition-all duration-300 ${e ? "left-[calc(100%-1.5rem)] bg-canvas" : "left-1 bg-dim"}` }) });
-        }]);
-      }, 41578, (a) => {
+        }], 77316);
+      }, 15720, (a) => {
         "use strict";
-        var b = a.i(87924), c = a.i(72131), d = a.i(55486), e = a.i(96438), f = a.i(94988), g = a.i(90231), h = a.i(84757), i = a.i(77316);
-        function j({ className: a2 = "" }) {
+        var b = a.i(87924);
+        a.s(["Skeleton", 0, function({ className: a2 = "" }) {
           return (0, b.jsx)("div", { "aria-hidden": true, className: `animate-pulse rounded-md bg-line-strong motion-reduce:animate-none ${a2}` });
-        }
-        __name(j, "j");
-        function k({ children: a2, className: c2 = "" }) {
-          return (0, b.jsx)("tr", { className: `border-b border-line last:border-0 ${c2}`, children: a2 });
-        }
-        __name(k, "k");
-        function l({ children: a2, className: c2 = "" }) {
-          return (0, b.jsx)("th", { scope: "col", className: `sticky top-0 z-10 whitespace-nowrap bg-panel px-4 py-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted ${c2}`, children: a2 });
-        }
-        __name(l, "l");
-        function m({ children: a2, mono: c2 = false, className: d2 = "" }) {
-          return (0, b.jsx)("td", { className: `px-4 py-3 align-middle text-ink ${c2 ? "font-mono text-xs" : ""} ${d2}`, children: a2 });
-        }
-        __name(m, "m");
-        let n = (0, c.createContext)(null);
-        function o() {
-          let a2 = (0, c.useContext)(n);
-          if (!a2) throw Error("useToast must be used within a ToastProvider");
-          return a2;
-        }
-        __name(o, "o");
-        function p({ className: a2 = "" }) {
-          let { toasts: c2, dismiss: d2 } = o();
-          return (0, b.jsx)("div", { "aria-live": "polite", className: `pointer-events-none fixed right-4 bottom-4 z-[110] flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2.5 ${a2}`, children: c2.map((a3) => (0, b.jsx)(q, { toast: a3, onDismiss: /* @__PURE__ */ __name(() => d2(a3.id), "onDismiss") }, a3.id)) });
-        }
-        __name(p, "p");
-        function q({ toast: a2, onDismiss: d2 }) {
-          let [e2, f2] = (0, c.useState)(false);
-          return (0, c.useEffect)(() => {
-            let a3 = requestAnimationFrame(() => f2(true));
-            return () => cancelAnimationFrame(a3);
-          }, []), (0, b.jsxs)("div", { className: `pointer-events-auto flex items-start justify-between gap-3 rounded-md border border-line bg-panel/90 px-4 py-3 backdrop-blur-sm transition-all duration-300 ease-out motion-reduce:transition-none ${e2 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`, children: [(0, b.jsxs)("div", { className: "min-w-0", children: [(0, b.jsx)("p", { className: "text-sm font-medium text-ink", children: a2.title }), a2.description ? (0, b.jsx)("p", { className: "mt-0.5 text-xs leading-5 text-muted", children: a2.description }) : null] }), (0, b.jsx)("button", { type: "button", onClick: d2, "aria-label": "Dismiss notification", className: "shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink", children: "close" })] });
-        }
-        __name(q, "q");
-        let r = { top: "bottom-full left-1/2 -translate-x-1/2 mb-2", bottom: "top-full left-1/2 -translate-x-1/2 mt-2", left: "right-full top-1/2 -translate-y-1/2 mr-2", right: "left-full top-1/2 -translate-y-1/2 ml-2" };
-        var s = a.i(35112);
-        function t({ open: a2, onClose: d2, title: e2, description: f2, children: g2, footer: h2 }) {
-          let i2 = (0, c.useId)(), j2 = (0, c.useId)(), k2 = (0, c.useRef)(null), l2 = (0, c.useRef)(null), m2 = (0, c.useRef)(d2), [n2, o2] = (0, c.useState)(false), [p2, q2] = (0, c.useState)(false);
-          return (0, c.useEffect)(() => o2(true), []), (0, c.useEffect)(() => {
-            m2.current = d2;
-          }, [d2]), (0, c.useEffect)(() => {
-            if (!a2 || !n2) return;
-            l2.current = document.activeElement;
-            let b2 = k2.current, c2 = /* @__PURE__ */ __name(() => b2 ? Array.from(b2.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')) : [], "c2");
-            c2()[0]?.focus();
-            let d3 = document.body.style.overflow;
-            document.body.style.overflow = "hidden", requestAnimationFrame(() => q2(true));
-            let e3 = /* @__PURE__ */ __name((a3) => {
-              if (a3.key === "Escape") return void m2.current();
-              if (a3.key !== "Tab") return;
-              let b3 = c2();
-              if (b3.length === 0) return;
-              let d4 = b3[0], e4 = b3[b3.length - 1];
-              b3.includes(document.activeElement) ? a3.shiftKey && document.activeElement === d4 ? (a3.preventDefault(), e4.focus()) : a3.shiftKey || document.activeElement !== e4 || (a3.preventDefault(), d4.focus()) : (a3.preventDefault(), d4.focus());
-            }, "e3");
-            return document.addEventListener("keydown", e3), () => {
-              document.removeEventListener("keydown", e3), document.body.style.overflow = d3, q2(false), l2.current?.focus();
-            };
-          }, [a2, n2]), n2 && a2 ? (0, s.createPortal)((0, b.jsxs)("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4", children: [(0, b.jsx)("div", { "aria-hidden": true, onClick: /* @__PURE__ */ __name(() => m2.current(), "onClick"), className: "absolute inset-0 bg-scrim/80" }), (0, b.jsxs)("div", { ref: k2, role: "dialog", "aria-modal": "true", "aria-labelledby": i2, "aria-describedby": f2 ? j2 : void 0, className: `relative w-full max-w-md rounded-md border border-line bg-panel shadow-[0_40px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-300 ease-out motion-reduce:transition-none ${p2 ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-[0.98] opacity-0"}`, children: [(0, b.jsxs)("div", { className: "flex items-start justify-between gap-4 border-b border-line px-6 py-5", children: [(0, b.jsxs)("div", { children: [(0, b.jsx)("h2", { id: i2, className: "text-xl font-semibold tracking-tight text-ink", children: e2 }), f2 ? (0, b.jsx)("p", { id: j2, className: "mt-1 text-sm leading-6 text-muted", children: f2 }) : null] }), (0, b.jsx)("button", { type: "button", onClick: /* @__PURE__ */ __name(() => m2.current(), "onClick"), "aria-label": "Close dialog", className: "shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-ink", children: "close" })] }), (0, b.jsx)("div", { className: "max-h-[60vh] overflow-y-auto px-6 py-5", children: g2 }), h2 ? (0, b.jsx)("div", { className: "flex items-center justify-end gap-3 border-t border-line px-6 py-4", children: h2 }) : null] })] }), document.body) : null;
-        }
-        __name(t, "t");
-        let u = { button: (0, b.jsxs)("div", { className: "flex flex-wrap items-center justify-center gap-2", children: [(0, b.jsx)(e.Button, { size: "sm", children: "Deploy" }), (0, b.jsx)(e.Button, { size: "sm", variant: "ghost", children: "Cancel" })] }), badge: (0, b.jsxs)("div", { className: "flex flex-wrap items-center justify-center gap-2", children: [(0, b.jsx)(d.Badge, { variant: "dot", pulse: true, children: "v1.0.0" }), (0, b.jsx)(d.Badge, { children: "stable" })] }), progress: (0, b.jsx)("div", { className: "w-full max-w-[11rem]", children: (0, b.jsx)(g.Progress, { value: 72, label: "Shipped" }) }), toggle: (0, b.jsxs)("div", { className: "flex flex-col items-center gap-3", children: [(0, b.jsx)(i.Toggle, { defaultOn: true, label: "Autoplay" }), (0, b.jsx)(i.Toggle, { label: "Haptics" })] }), input: (0, b.jsx)("div", { className: "w-full max-w-[11rem]", children: (0, b.jsx)(f.Input, { label: "Email", placeholder: "you@ship.dev" }) }), tabs: (0, b.jsx)(h.Tabs, { items: [{ label: "App", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "rsc by default" }) }, { label: "Page", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "streamed" }) }, { label: "Data", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "server action" }) }] }), card: (0, b.jsxs)(function({ className: a2 = "", children: c2 }) {
-          return (0, b.jsx)("div", { className: `rounded-md border border-line bg-panel/60 ${a2}`, children: c2 });
-        }, { className: "w-full max-w-[12rem]", children: [(0, b.jsx)(function({ className: a2 = "", children: c2 }) {
-          return (0, b.jsx)("div", { className: `flex flex-col gap-1.5 p-6 ${a2}`, children: c2 });
-        }, { children: (0, b.jsx)(function({ className: a2 = "", children: c2 }) {
-          return (0, b.jsx)("h3", { className: `text-lg font-semibold tracking-tight text-ink ${a2}`, children: c2 });
-        }, { children: "Ship it" }) }), (0, b.jsx)(function({ className: a2 = "", children: c2 }) {
-          return (0, b.jsx)("div", { className: `p-6 pt-0 ${a2}`, children: c2 });
-        }, { children: (0, b.jsx)("p", { className: "text-xs leading-5 text-muted", children: "One file at a time." }) })] }), skeleton: (0, b.jsxs)("div", { className: "w-24 flex flex-col gap-2", children: [(0, b.jsx)(j, { className: "h-2 w-full" }), (0, b.jsx)(j, { className: "h-2 w-3/4" }), (0, b.jsx)(j, { className: "h-2 w-1/2" })] }), table: (0, b.jsxs)(function({ children: a2, mono: c2 = false, className: d2 = "" }) {
-          return (0, b.jsx)("div", { className: `w-full overflow-x-auto ${d2}`, children: (0, b.jsx)("table", { className: `w-full border-collapse text-left text-sm ${c2 ? "font-mono" : ""}`, children: a2 }) });
-        }, { className: "max-w-[12rem]", children: [(0, b.jsx)(function({ children: a2 }) {
-          return (0, b.jsx)("thead", { children: a2 });
-        }, { children: (0, b.jsxs)(k, { children: [(0, b.jsx)(l, { children: "name" }), (0, b.jsx)(l, { children: "count" })] }) }), (0, b.jsxs)(function({ children: a2 }) {
-          return (0, b.jsx)("tbody", { children: a2 });
-        }, { children: [(0, b.jsxs)(k, { children: [(0, b.jsx)(m, { mono: true, children: "button" }), (0, b.jsx)(m, { mono: true, children: "84" })] }), (0, b.jsxs)(k, { children: [(0, b.jsx)(m, { mono: true, children: "modal" }), (0, b.jsx)(m, { mono: true, children: "3" })] })] })] }), tooltip: (0, b.jsx)(function({ label: a2, children: d2, side: e2 = "top", delayMs: f2 = 150, className: g2 = "" }) {
-          let h2 = (0, c.useId)(), [i2, j2] = (0, c.useState)(false), k2 = (0, c.useRef)(null), l2 = /* @__PURE__ */ __name(() => {
-            k2.current && window.clearTimeout(k2.current), k2.current = window.setTimeout(() => j2(true), f2);
-          }, "l2"), m2 = /* @__PURE__ */ __name(() => {
-            k2.current && window.clearTimeout(k2.current), j2(false);
-          }, "m2");
-          (0, c.useEffect)(() => () => {
-            k2.current && window.clearTimeout(k2.current);
-          }, []);
-          let n2 = (0, c.isValidElement)(d2) ? (0, c.cloneElement)(d2, { onMouseEnter: l2, onMouseLeave: m2, onFocus: l2, onBlur: m2, "aria-describedby": h2 }) : d2;
-          return (0, b.jsxs)("span", { className: `relative inline-flex ${g2}`, children: [n2, i2 ? (0, b.jsx)("span", { id: h2, role: "tooltip", className: `pointer-events-none absolute z-[80] max-w-[16rem] rounded-md border border-line bg-panel px-2.5 py-1.5 text-center font-mono text-[10px] leading-4 text-ink shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] ${r[e2]}`, children: a2 }) : null] });
-        }, { label: "hover + focus", side: "top", children: (0, b.jsx)(e.Button, { size: "sm", variant: "ghost", children: "Tip" }) }), modal: (0, b.jsx)("div", { className: "flex items-center justify-center", children: (0, b.jsx)(function() {
-          let [a2, d2] = (0, c.useState)(false);
-          return (0, b.jsxs)(b.Fragment, { children: [(0, b.jsx)(e.Button, { size: "sm", onClick: /* @__PURE__ */ __name(() => d2(true), "onClick"), children: "Open" }), (0, b.jsx)(t, { open: a2, onClose: /* @__PURE__ */ __name(() => d2(false), "onClose"), title: "Dialog", description: "A focus-trapped surface.", children: (0, b.jsx)("p", { className: "text-sm leading-6 text-muted", children: "Escape closes it, the backdrop closes it, Tab stays inside, and focus returns to the trigger when it closes." }) })] });
-        }, {}) }), toast: (0, b.jsx)(function({ children: a2 }) {
-          let [d2, e2] = (0, c.useState)([]), f2 = (0, c.useRef)(1), g2 = (0, c.useRef)(/* @__PURE__ */ new Set());
-          (0, c.useEffect)(() => () => {
-            g2.current.forEach((a3) => window.clearTimeout(a3)), g2.current.clear();
-          }, []);
-          let h2 = (0, c.useCallback)((a3) => {
-            e2((b2) => b2.filter((b3) => b3.id !== a3));
-          }, []), i2 = (0, c.useCallback)((a3) => {
-            let b2 = f2.current++;
-            e2((c3) => [...c3, { id: b2, title: a3.title, description: a3.description }]);
-            let c2 = window.setTimeout(() => h2(b2), a3.duration ?? 4e3);
-            return g2.current.add(c2), b2;
-          }, [h2]), j2 = (0, c.useMemo)(() => ({ toasts: d2, toast: i2, dismiss: h2 }), [d2, i2, h2]);
-          return (0, b.jsx)(n.Provider, { value: j2, children: a2 });
-        }, { children: (0, b.jsx)("div", { className: "flex items-center justify-center", children: (0, b.jsx)(function() {
-          let { toast: a2 } = o();
-          return (0, b.jsxs)(b.Fragment, { children: [(0, b.jsx)(e.Button, { size: "sm", onClick: /* @__PURE__ */ __name(() => a2({ title: "Component added", description: "copied to src/components/ui" }), "onClick"), children: "Notify" }), (0, b.jsx)(p, {})] });
-        }, {}) }) }) };
-        a.s(["ComponentPreview", 0, function({ slug: a2 }) {
-          return (0, b.jsx)(b.Fragment, { children: u[a2] ?? null });
-        }], 41578);
-      }, 55563, (a) => {
-        "use strict";
-        var b = a.i(87924), c = a.i(72131);
-        a.s(["CopyBlock", 0, function({ code: a2 }) {
-          let [d, e] = (0, c.useState)(false), f = /* @__PURE__ */ __name(async () => {
-            try {
-              await navigator.clipboard.writeText(a2), e(true), window.setTimeout(() => e(false), 1600);
-            } catch {
-            }
-          }, "f");
-          return (0, b.jsxs)("div", { className: "group relative overflow-hidden rounded-md border border-code-border bg-code", children: [(0, b.jsx)("button", { type: "button", onClick: f, className: "absolute right-2 top-2 rounded-full border border-code-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-code-muted transition-colors hover:border-code-ink/70 hover:text-code-ink", children: d ? "copied" : "copy" }), (0, b.jsx)("pre", { className: "overflow-x-auto p-4 font-mono text-[12.5px] leading-relaxed text-code-ink", children: (0, b.jsx)("code", { children: a2 }) })] });
         }]);
       }];
     } });
@@ -55893,7 +58151,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         a.n(b);
       }, 85287, (a) => {
         "use strict";
-        let b = [{ title: "Feedback", items: [{ slug: "button", name: "Button", blurb: "Solid, ghost, quiet. Three weights for any action.", built: true, glyph: "B" }, { slug: "badge", name: "Badge", blurb: "Solid, outline, or dot with an optional live pulse.", built: true, glyph: "\u25C6" }, { slug: "progress", name: "Progress", blurb: "Accessible progressbar with a mono label and value.", built: true, glyph: "\u25AE" }, { slug: "skeleton", name: "Skeleton", blurb: "Quiet placeholders while data streams in.", built: true, glyph: "\u25A4" }, { slug: "toast", name: "Toast", blurb: "Transient feedback, stacked and auto-dismissing.", built: true, glyph: "\u25CC" }] }, { title: "Controls", items: [{ slug: "input", name: "Input", blurb: "Labeled text field, keyboard-first and autofill-aware.", built: true, glyph: "\u2328" }, { slug: "toggle", name: "Toggle", blurb: "Switch with a visible checked state and focus ring.", built: true, glyph: "\u25C9" }, { slug: "tabs", name: "Tabs", blurb: "Tablist with an animated underline, pure keyboard.", built: true, glyph: "\u2263" }] }, { title: "Display", items: [{ slug: "card", name: "Card", blurb: "A hairline-bordered surface for grouped content.", built: true, glyph: "\u25A2" }, { slug: "table", name: "Table", blurb: "Dense data rows with sticky headers and mono cells.", built: true, glyph: "\u25A6" }, { slug: "modal", name: "Modal", blurb: "Focus-trapped dialog with escape and backdrop.", built: true, glyph: "\u25FB" }, { slug: "tooltip", name: "Tooltip", blurb: "Hover and focus-triggered inline annotation.", built: true, glyph: "\u24D8" }] }], c = b.flatMap((a2) => a2.items);
+        let b = [{ title: "Feedback", items: [{ slug: "button", name: "Button", blurb: "Solid, ghost, quiet. Three weights for any action.", built: true, glyph: "B" }, { slug: "badge", name: "Badge", blurb: "Solid, outline, or dot with an optional live pulse.", built: true, glyph: "\u25C6" }, { slug: "progress", name: "Progress", blurb: "Accessible progressbar with a mono label and value.", built: true, glyph: "\u25AE" }, { slug: "skeleton", name: "Skeleton", blurb: "Quiet placeholders while data streams in.", built: true, glyph: "\u25A4" }, { slug: "toast", name: "Toast", blurb: "Transient feedback, stacked and auto-dismissing.", built: true, glyph: "\u25CC" }] }, { title: "Controls", items: [{ slug: "input", name: "Input", blurb: "Labeled text field, keyboard-first and autofill-aware.", built: true, glyph: "\u2328" }, { slug: "toggle", name: "Toggle", blurb: "Switch with a visible checked state and focus ring.", built: true, glyph: "\u25C9" }, { slug: "tabs", name: "Tabs", blurb: "Tablist with an animated underline, pure keyboard.", built: true, glyph: "\u2263" }, { slug: "prompt-bar", name: "Prompt Bar", blurb: "Composer with @ sources, / commands, dictation and a model picker.", built: true, glyph: "\u270E" }] }, { title: "Display", items: [{ slug: "card", name: "Card", blurb: "A hairline-bordered surface for grouped content.", built: true, glyph: "\u25A2" }, { slug: "table", name: "Table", blurb: "Dense data rows with sticky headers and mono cells.", built: true, glyph: "\u25A6" }, { slug: "modal", name: "Modal", blurb: "Focus-trapped dialog with escape and backdrop.", built: true, glyph: "\u25FB" }, { slug: "tooltip", name: "Tooltip", blurb: "Hover and focus-triggered inline annotation.", built: true, glyph: "\u24D8" }] }], c = b.flatMap((a2) => a2.items);
         c.filter((a2) => a2.built).length, a.s(["ALL_COMPONENTS", 0, c, "COMPONENT_GROUPS", 0, b]);
       }, 10585, (a) => {
         a.v("/_next/static/media/favicon.2vob68tjqpejf.ico" + (globalThis.NEXT_CLIENT_ASSET_SUFFIX || ""));
@@ -65487,7 +67745,7 @@ Read more: https://nextjs.org/docs/messages/failed-to-find-server-action`), "__N
         var b = a.i(7997), c = a.i(54056), d = a.i(48201);
         let e = [{ label: "Features", href: "#features" }, { label: "Install", href: "#install" }, { label: "Changelog", href: "#changelog" }];
         a.s(["Navbar", 0, function() {
-          return (0, b.jsx)("header", { className: "fixed inset-x-0 top-0 z-40 mix-blend-difference", children: (0, b.jsxs)("nav", { className: "mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10", children: [(0, b.jsxs)("a", { href: "#top", className: "flex items-center gap-2.5", children: [(0, b.jsx)("span", { className: "flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas", children: "m" }), (0, b.jsx)("span", { className: "font-mono text-sm font-semibold tracking-tight text-ink", children: "meroUI" })] }), (0, b.jsx)("div", { className: "hidden items-center gap-8 md:flex", children: e.map((a2) => (0, b.jsx)("a", { href: a2.href, className: "font-mono text-[11px] uppercase tracking-[0.18em] text-muted transition-colors hover:text-ink", children: a2.label }, a2.href)) }), (0, b.jsxs)("div", { className: "flex items-center gap-3", children: [(0, b.jsx)(d.ThemeToggle, {}), (0, b.jsxs)("div", { className: "hidden items-center gap-2 md:flex", children: [(0, b.jsx)(c.Button, { href: "/docs", variant: "ghost", size: "sm", children: "Docs" }), (0, b.jsx)(c.Button, { href: "/templates", variant: "ghost", size: "sm", children: "Templates" })] }), (0, b.jsx)(c.Button, { href: "/docs", size: "sm", children: "Get started" })] })] }) });
+          return (0, b.jsx)("header", { className: "fixed inset-x-0 top-0 z-40", children: (0, b.jsxs)("nav", { className: "mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10", children: [(0, b.jsxs)("a", { href: "#top", className: "flex items-center gap-2.5", children: [(0, b.jsx)("span", { className: "flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas", children: "m" }), (0, b.jsx)("span", { className: "font-mono text-sm font-semibold tracking-tight text-ink", children: "meroUI" })] }), (0, b.jsx)("div", { className: "hidden items-center gap-8 md:flex", children: e.map((a2) => (0, b.jsx)("a", { href: a2.href, className: "font-mono text-[11px] uppercase tracking-[0.18em] text-muted transition-colors hover:text-ink", children: a2.label }, a2.href)) }), (0, b.jsxs)("div", { className: "flex items-center gap-3", children: [(0, b.jsx)(d.ThemeToggle, {}), (0, b.jsxs)("div", { className: "hidden items-center gap-2 md:flex", children: [(0, b.jsx)(c.Button, { href: "/docs", variant: "ghost", size: "sm", children: "Docs" }), (0, b.jsx)(c.Button, { href: "/templates", variant: "ghost", size: "sm", children: "Templates" })] }), (0, b.jsx)(c.Button, { href: "/docs", size: "sm", children: "Get started" })] })] }) });
         }]);
       }, 10585, (a) => {
         a.v("/_next/static/media/favicon.2vob68tjqpejf.ico" + (globalThis.NEXT_CLIENT_ASSET_SUFFIX || ""));
@@ -65880,7 +68138,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         a.s(["__next_app__", 0, M, "handler", 0, O, "routeModule", 0, N], 51442), a.i(51442), a.s(["ClientPageRoot", () => F.ClientPageRoot, "ClientSegmentRoot", () => F.ClientSegmentRoot, "Fragment", () => F.Fragment, "HTTPAccessFallbackBoundary", () => F.HTTPAccessFallbackBoundary, "InstantValidation", () => F.InstantValidation, "LayoutRouter", () => F.LayoutRouter, "LoadingBoundaryProvider", () => F.LoadingBoundaryProvider, "Postpone", () => F.Postpone, "RenderFromTemplateContext", () => F.RenderFromTemplateContext, "RootLayoutBoundary", () => F.RootLayoutBoundary, "SegmentViewNode", () => F.SegmentViewNode, "SegmentViewStateNode", () => F.SegmentViewStateNode, "__next_app__", 0, M, "actionAsyncStorage", () => F.actionAsyncStorage, "captureOwnerStack", () => F.captureOwnerStack, "collectPrefetchHints", () => F.collectPrefetchHints, "collectSegmentData", () => F.collectSegmentData, "createElement", () => F.createElement, "createMetadataComponents", () => F.createMetadataComponents, "createPrerenderParamsForClientSegment", () => F.createPrerenderParamsForClientSegment, "createPrerenderSearchParamsForClientPage", () => F.createPrerenderSearchParamsForClientPage, "createServerParamsForServerSegment", () => F.createServerParamsForServerSegment, "createServerSearchParamsForServerPage", () => F.createServerSearchParamsForServerPage, "createTemporaryReferenceSet", () => F.createTemporaryReferenceSet, "decodeAction", () => F.decodeAction, "decodeFormState", () => F.decodeFormState, "decodeReply", () => F.decodeReply, "handler", 0, O, "patchFetch", () => F.patchFetch, "preconnect", () => F.preconnect, "preloadFont", () => F.preloadFont, "preloadStyle", () => F.preloadStyle, "prerender", () => F.prerender, "renderToReadableStream", () => F.renderToReadableStream, "routeModule", 0, N, "serverHooks", () => F.serverHooks, "taintObjectReference", () => F.taintObjectReference, "workAsyncStorage", () => F.workAsyncStorage, "workUnitAsyncStorage", () => F.workUnitAsyncStorage], 99726);
       }];
     } });
-    require_src_components_1qz_9jm = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_components_1qz-9jm._.js"(exports, module) {
+    require_src_components_0khwjt7 = __commonJS3({ ".open-next/server-functions/default/.next/server/chunks/ssr/src_components_0khwjt7._.js"(exports, module) {
       "use strict";
       module.exports = [79556, (a) => {
         "use strict";
@@ -65907,13 +68165,16 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
           let l = `inline-flex items-center justify-center gap-2 rounded-full font-mono font-medium uppercase tracking-[0.12em] transition-all duration-200 active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${d[f]} ${e[g]} ${j}`;
           return h && !i ? (0, b.jsx)(c.default, { href: h, className: l, children: a2 }) : (0, b.jsx)("button", { className: l, disabled: i, ...k, children: a2 });
         }]);
-      }, 77316, (a) => {
+      }, 84757, 77316, (a) => {
         "use strict";
         var b = a.i(87924), c = a.i(72131);
-        a.s(["Toggle", 0, function({ label: a2 = "Toggle", defaultOn: d = false }) {
+        a.s(["Tabs", 0, function({ items: a2 }) {
+          let [d, e] = (0, c.useState)(0);
+          return (0, b.jsxs)("div", { className: "w-full", children: [(0, b.jsx)("div", { role: "tablist", className: "flex items-center gap-1 border-b border-line", children: a2.map((a3, c2) => (0, b.jsxs)("button", { role: "tab", "aria-selected": d === c2, onClick: /* @__PURE__ */ __name(() => e(c2), "onClick"), className: `relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors ${d === c2 ? "text-ink" : "text-muted hover:text-ink"}`, children: [a3.label, (0, b.jsx)("span", { "aria-hidden": true, className: `absolute inset-x-0 bottom-0 h-0.5 bg-ink transition-transform duration-300 ${d === c2 ? "scale-x-100" : "scale-x-0"}` })] }, a3.label)) }), (0, b.jsx)("div", { className: "pt-6 font-mono text-xs leading-6 text-muted", children: a2[d]?.content })] });
+        }], 84757), a.s(["Toggle", 0, function({ label: a2 = "Toggle", defaultOn: d = false }) {
           let [e, f] = (0, c.useState)(d);
           return (0, b.jsx)("button", { type: "button", role: "switch", "aria-checked": e, "aria-label": a2, onClick: /* @__PURE__ */ __name(() => f((a3) => !a3), "onClick"), className: `relative h-7 w-13 shrink-0 rounded-full border transition-colors duration-300 ${e ? "border-ink bg-ink" : "border-line-strong bg-panel"}`, children: (0, b.jsx)("span", { "aria-hidden": true, className: `absolute top-1/2 size-5 -translate-y-1/2 rounded-full transition-all duration-300 ${e ? "left-[calc(100%-1.5rem)] bg-canvas" : "left-1 bg-dim"}` }) });
-        }]);
+        }], 77316);
       }, 94988, (a) => {
         "use strict";
         var b = a.i(87924);
@@ -65934,12 +68195,11 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         a.s(["Progress", 0, function({ value: a2, label: c }) {
           return (0, b.jsxs)("div", { className: "flex w-full flex-col gap-2", children: [c ? (0, b.jsxs)("div", { className: "flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted", children: [(0, b.jsx)("span", { children: c }), (0, b.jsxs)("span", { className: "text-muted", children: [a2, "%"] })] }) : null, (0, b.jsx)("div", { className: "h-1.5 w-full overflow-hidden rounded-full bg-line-strong", role: "progressbar", "aria-label": c ?? "Progress", "aria-valuenow": a2, "aria-valuemin": 0, "aria-valuemax": 100, children: (0, b.jsx)("div", { className: "progress-grow h-full rounded-full bg-ink", style: { width: `${a2}%` } }) })] });
         }]);
-      }, 84757, (a) => {
+      }, 15720, (a) => {
         "use strict";
-        var b = a.i(87924), c = a.i(72131);
-        a.s(["Tabs", 0, function({ items: a2 }) {
-          let [d, e] = (0, c.useState)(0);
-          return (0, b.jsxs)("div", { className: "w-full", children: [(0, b.jsx)("div", { role: "tablist", className: "flex items-center gap-1 border-b border-line", children: a2.map((a3, c2) => (0, b.jsxs)("button", { role: "tab", "aria-selected": d === c2, onClick: /* @__PURE__ */ __name(() => e(c2), "onClick"), className: `relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors ${d === c2 ? "text-ink" : "text-muted hover:text-ink"}`, children: [a3.label, (0, b.jsx)("span", { "aria-hidden": true, className: `absolute inset-x-0 bottom-0 h-0.5 bg-ink transition-transform duration-300 ${d === c2 ? "scale-x-100" : "scale-x-0"}` })] }, a3.label)) }), (0, b.jsx)("div", { className: "pt-6 font-mono text-xs leading-6 text-muted", children: a2[d]?.content })] });
+        var b = a.i(87924);
+        a.s(["Skeleton", 0, function({ className: a2 = "" }) {
+          return (0, b.jsx)("div", { "aria-hidden": true, className: `animate-pulse rounded-md bg-line-strong motion-reduce:animate-none ${a2}` });
         }]);
       }];
     } });
@@ -65947,84 +68207,41 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
       "use strict";
       module.exports = [9264, (a) => {
         "use strict";
-        var b = a.i(87924), c = a.i(72131);
+        var b = a.i(87924), c = a.i(72131), d = a.i(96438), e = a.i(77316), f = a.i(94988), g = a.i(55486), h = a.i(90231), i = a.i(84757), j = a.i(15720);
         a.i(18079);
-        var d = a.i(26304), e = a.i(81783), f = a.i(93556), g = a.i(96438), h = a.i(77316), i = a.i(94988), j = a.i(55486), k = a.i(90231);
-        function l({ children: a2, strength: e2 = 0.35, className: f2 }) {
-          let g2 = (0, c.useRef)(null);
+        var k = a.i(26304);
+        function l({ children: a2, strength: d2 = 0.35, className: e2 }) {
+          let f2 = (0, c.useRef)(null);
           return (0, c.useEffect)(() => {
-            let a3 = g2.current;
+            let a3 = f2.current;
             if (!a3 || window.matchMedia("(prefers-reduced-motion: reduce)").matches || !window.matchMedia("(pointer: fine)").matches) return;
-            let b2 = d.gsap.quickTo(a3, "x", { duration: 0.5, ease: "power3.out" }), c2 = d.gsap.quickTo(a3, "y", { duration: 0.5, ease: "power3.out" }), f3 = /* @__PURE__ */ __name((d2) => {
-              let f4 = a3.getBoundingClientRect();
-              b2((d2.clientX - (f4.left + f4.width / 2)) * e2), c2((d2.clientY - (f4.top + f4.height / 2)) * e2);
-            }, "f3"), h2 = /* @__PURE__ */ __name(() => {
+            let b2 = k.gsap.quickTo(a3, "x", { duration: 0.5, ease: "power3.out" }), c2 = k.gsap.quickTo(a3, "y", { duration: 0.5, ease: "power3.out" }), e3 = /* @__PURE__ */ __name((e4) => {
+              let f3 = a3.getBoundingClientRect();
+              b2((e4.clientX - (f3.left + f3.width / 2)) * d2), c2((e4.clientY - (f3.top + f3.height / 2)) * d2);
+            }, "e3"), g2 = /* @__PURE__ */ __name(() => {
               b2(0), c2(0);
-            }, "h2");
-            return a3.addEventListener("pointermove", f3), a3.addEventListener("pointerleave", h2), () => {
-              a3.removeEventListener("pointermove", f3), a3.removeEventListener("pointerleave", h2);
+            }, "g2");
+            return a3.addEventListener("pointermove", e3), a3.addEventListener("pointerleave", g2), () => {
+              a3.removeEventListener("pointermove", e3), a3.removeEventListener("pointerleave", g2);
             };
-          }, [e2]), (0, b.jsx)("div", { ref: g2, className: f2, children: a2 });
+          }, [d2]), (0, b.jsx)("div", { ref: f2, className: e2, children: a2 });
         }
         __name(l, "l");
-        let m = "meroUI";
-        function n({ index: a2, label: c2, children: d2 }) {
-          return (0, b.jsx)("div", { className: "ring-card absolute top-1/2 left-1/2 w-32 will-change-transform md:w-36", children: (0, b.jsxs)("div", { className: "rounded-md border border-line bg-panel p-3.5", children: [(0, b.jsxs)("div", { className: "mb-3 flex items-center justify-between border-b border-line pb-2", children: [(0, b.jsx)("span", { className: "font-mono text-[9px] uppercase tracking-[0.2em] text-ink", children: c2 }), (0, b.jsx)("span", { className: "font-mono text-[9px] text-dim", children: a2 })] }), d2] }) });
+        let m = [{ text: "typescript", className: "left-[6%] top-[22%]", float: 6.5 }, { text: "rsc", className: "right-[5%] top-[30%] lg:right-[34%]" }, { text: "a11y", className: "left-[8%] bottom-[24%]", float: 8 }, { text: "zero-config", className: "right-[7%] bottom-[16%] lg:right-[38%]" }, { text: "tree-shaken", className: "left-[42%] top-[12%] hidden lg:block" }];
+        function n({ index: a2, label: c2, delay: d2, children: e2 }) {
+          return (0, b.jsx)("div", { className: "hero-anim flex", style: { animationDelay: `${d2}ms` }, children: (0, b.jsxs)("div", { className: "flex h-full w-full flex-col gap-3 rounded-lg border border-line bg-panel/70 p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised", children: [(0, b.jsxs)("div", { className: "mb-0.5 flex items-center justify-between border-b border-line pb-2.5", children: [(0, b.jsx)("span", { className: "font-mono text-[9px] uppercase tracking-[0.22em] text-ink", children: c2 }), (0, b.jsx)("span", { className: "font-mono text-[9px] text-dim", children: a2 })] }), e2] }) });
         }
         __name(n, "n");
-        let o = [{ text: "typescript", z: -60, x: "12%", y: "24%", size: "text-[10px]" }, { text: "rsc", z: -120, x: "83%", y: "32%", size: "text-[11px]" }, { text: "a11y", z: -80, x: "7%", y: "70%", size: "text-[10px]" }, { text: "zero-config", z: -160, x: "87%", y: "74%", size: "text-[9px]" }, { text: "tree-shaken", z: -200, x: "48%", y: "10%", size: "text-[9px]" }];
         a.s(["Hero", 0, function() {
-          let a2 = (0, c.useRef)(null);
+          let [a2, k2] = (0, c.useState)(false);
           return (0, c.useEffect)(() => {
-            let b2 = a2.current;
-            if (!b2) return;
-            let c2 = window.matchMedia("(prefers-reduced-motion: reduce)").matches, g2 = [], h2 = d.gsap.context(() => {
-              let a3 = d.gsap.utils.toArray(".ring-card"), h3 = b2.querySelector(".ring-spin");
-              if (!h3) return;
-              let i2 = 360 / a3.length, j2 = 300, k2 = 0, l2 = /* @__PURE__ */ __name(() => {
-                a3.forEach((a4, b3) => {
-                  let c3;
-                  d.gsap.set(a4, { transform: (c3 = (b3 * i2 + k2) % 360, `translate(-50%, -50%) rotateY(${c3}deg) translateZ(${j2}px) rotateY(${-c3}deg)`) });
-                });
-              }, "l2"), m2 = /* @__PURE__ */ __name(() => {
-                j2 = Math.min(360, Math.max(190, 0.36 * Math.min(innerWidth, 1024))), l2();
-              }, "m2"), n2 = /* @__PURE__ */ __name(() => l2(), "n2"), o2 = null, p = null;
-              if (c2) l2();
-              else {
-                let a4 = { value: 0 };
-                o2 = d.gsap.to(a4, { value: 360, duration: 46, ease: "none", repeat: -1, onUpdate: /* @__PURE__ */ __name(() => {
-                  k2 = a4.value;
-                }, "onUpdate") }), p = f.Draggable.create(h3, { type: "rotation", inertia: true, cursor: "grab", activeCursor: "grabbing", onDragStart: /* @__PURE__ */ __name(() => o2?.pause(), "onDragStart"), onRelease: /* @__PURE__ */ __name(() => {
-                  o2?.play();
-                }, "onRelease") })[0], d.gsap.ticker.add(n2);
-              }
-              m2();
-              let q = /* @__PURE__ */ __name(() => {
-                m2(), e.ScrollTrigger.refresh();
-              }, "q");
-              if (window.addEventListener("resize", q), g2.push(() => window.removeEventListener("resize", q)), c2) d.gsap.set([".hero-char", ".hero-ghost-inner", ".hero-sub", ".hero-cta", ".hero-hint", ".hero-ring", ".hero-chip", ".hero-meta"], { opacity: 1 });
-              else {
-                let a4 = d.gsap.timeline({ paused: true, defaults: { ease: "power4.out" } });
-                a4.from(".hero-eyebrow", { y: 14, opacity: 0, duration: 0.6 }).from(".hero-char", { rotationX: -100, opacity: 0, transformOrigin: "50% 0%", duration: 1.05, stagger: 0.06 }, "-=0.3").from(".hero-ghost-inner", { opacity: 0, duration: 0.8 }, "-=0.7").from(".hero-sub", { y: 22, opacity: 0, duration: 0.7 }, "-=0.6").from(".hero-cta", { y: 22, opacity: 0, duration: 0.6, stagger: 0.1 }, "-=0.5").from(".hero-hint", { opacity: 0, duration: 0.5 }, "-=0.2").from(".hero-ring", { y: 60, duration: 1 }, "-=0.4").from(".hero-chip", { opacity: 0, y: 20, duration: 0.6, stagger: 0.08 }, "-=0.6").from(".hero-meta", { opacity: 0, duration: 0.5, stagger: 0.1 }, "-=0.8");
-                let b3 = /* @__PURE__ */ __name(() => a4.play(), "b3"), c3 = /* @__PURE__ */ __name(() => b3(), "c3");
-                window.addEventListener("mero:ready", c3), g2.push(() => window.removeEventListener("mero:ready", c3));
-                let e2 = window.setTimeout(b3, 2600);
-                g2.push(() => window.clearTimeout(e2));
-              }
-              d.gsap.matchMedia().add("(pointer: fine) and (min-width: 768px)", () => {
-                let a4 = d.gsap.quickTo(".hero-scene", "rotationY", { duration: 0.7, ease: "power3.out" }), b3 = d.gsap.quickTo(".hero-scene", "rotationX", { duration: 0.7, ease: "power3.out" }), c3 = d.gsap.quickTo(".hero-ghost-inner", "x", { duration: 1, ease: "power3.out" }), e2 = d.gsap.quickTo(".hero-ghost-inner", "y", { duration: 1, ease: "power3.out" }), f2 = /* @__PURE__ */ __name((d2) => {
-                  let f3 = d2.clientX / innerWidth - 0.5, g3 = d2.clientY / innerHeight - 0.5;
-                  a4(6 * f3), b3(-(5 * g3)), c3(-(46 * f3)), e2(-(28 * g3));
-                }, "f2");
-                return window.addEventListener("pointermove", f2), () => window.removeEventListener("pointermove", f2);
-              }), c2 || d.gsap.to(b2, { yPercent: -6, opacity: 0.9, ease: "none", scrollTrigger: { trigger: b2, start: "top top", end: "bottom top", scrub: true } }), g2.push(() => {
-                o2?.kill(), p?.kill(), c2 || d.gsap.ticker.remove(n2);
-              });
-            }, b2);
+            let a3 = /* @__PURE__ */ __name(() => k2(true), "a3");
+            window.addEventListener("mero:ready", a3);
+            let b2 = window.setTimeout(a3, 2600);
             return () => {
-              g2.forEach((a3) => a3()), h2.revert(), e.ScrollTrigger.refresh();
+              window.removeEventListener("mero:ready", a3), window.clearTimeout(b2);
             };
-          }, []), (0, b.jsxs)("section", { ref: a2, id: "top", className: "relative flex min-h-[100dvh] flex-col overflow-hidden pt-20 [perspective:1400px] md:pt-24", children: [(0, b.jsx)("span", { className: "hero-meta pointer-events-none absolute left-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block", children: "v1.0.0 \xB7 React 19 \xB7 TypeScript 5" }), (0, b.jsx)("span", { className: "hero-meta pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block", children: "Built for Next.js 16" }), o.map((a3) => (0, b.jsx)("span", { className: `hero-chip pointer-events-none absolute hidden font-mono uppercase tracking-[0.24em] text-dim md:block ${a3.size}`, style: { left: a3.x, top: a3.y, transform: `translateZ(${a3.z}px)` }, children: a3.text }, a3.text)), (0, b.jsxs)("div", { className: "hero-scene preserve-3d mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center px-6 md:px-10", children: [(0, b.jsx)("p", { className: "hero-eyebrow mb-5 font-mono text-[11px] uppercase tracking-[0.3em] text-muted", children: "React + TypeScript \xB7 For Next.js 16" }), (0, b.jsxs)("h1", { "aria-label": "meroUI", className: "preserve-3d relative text-center text-[clamp(3.25rem,11.5vw,10rem)] font-semibold leading-[0.95] tracking-[-0.04em]", children: [(0, b.jsx)("span", { "aria-hidden": true, className: "preserve-3d pointer-events-none absolute inset-0", style: { transform: "translateZ(-90px)" }, children: (0, b.jsx)("span", { className: "hero-ghost-inner flex h-full items-center justify-center text-outline-soft", children: m }) }), (0, b.jsx)("span", { className: "preserve-3d relative inline-flex [perspective:800px]", children: m.split("").map((a3, c2) => (0, b.jsx)("span", { "aria-hidden": true, className: "hero-char backface-hidden inline-block pb-[0.06em] will-change-transform", children: a3 }, c2)) })] }), (0, b.jsx)("p", { className: "hero-sub mt-5 max-w-[34rem] text-balance text-center text-base leading-relaxed text-muted md:text-lg", children: "Type-safe components that ship in one command. Zero config. Zero rework." }), (0, b.jsxs)("div", { className: "mt-7 flex flex-wrap items-center justify-center gap-4", children: [(0, b.jsx)(l, { className: "hero-cta", strength: 0.3, children: (0, b.jsx)(g.Button, { href: "/docs", size: "lg", children: "Get started" }) }), (0, b.jsx)(l, { className: "hero-cta", strength: 0.3, children: (0, b.jsx)(g.Button, { href: "#features", variant: "ghost", size: "lg", children: "Browse features" }) })] }), (0, b.jsx)("p", { className: "hero-hint mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-dim", children: "Drag the ring to spin \xB7 08 components in orbit" }), (0, b.jsx)("div", { className: "hero-ring relative mt-2 h-52 w-full md:h-56", children: (0, b.jsx)("div", { className: "ring-tilt preserve-3d absolute inset-0 [transform:rotateX(-14deg)]", children: (0, b.jsx)("div", { className: "ring-spin preserve-3d absolute inset-0", children: (0, b.jsxs)("div", { className: "ring-auto preserve-3d absolute inset-0", children: [(0, b.jsx)(n, { index: "01", label: "Button", children: (0, b.jsxs)("div", { className: "flex flex-col gap-2", children: [(0, b.jsx)(g.Button, { size: "sm", children: "Deploy" }), (0, b.jsx)(g.Button, { size: "sm", variant: "ghost", children: "Cancel" })] }) }), (0, b.jsx)(n, { index: "02", label: "Toggle", children: (0, b.jsxs)("div", { className: "flex flex-col gap-3", children: [(0, b.jsx)(h.Toggle, { defaultOn: true, label: "Autoplay" }), (0, b.jsx)(h.Toggle, { label: "Haptics" })] }) }), (0, b.jsx)(n, { index: "03", label: "Input", children: (0, b.jsx)(i.Input, { id: "ring-email", label: "Email", placeholder: "you@ship.dev" }) }), (0, b.jsx)(n, { index: "04", label: "Progress", children: (0, b.jsxs)("div", { className: "flex flex-col gap-3", children: [(0, b.jsx)(k.Progress, { value: 72, label: "Shipped" }), (0, b.jsx)(j.Badge, { variant: "dot", pulse: true, children: "v1.0.0" })] }) }), (0, b.jsx)(n, { index: "05", label: "Tabs", children: (0, b.jsx)("div", { className: "flex gap-1", children: ["App", "Page", "Data"].map((a3, c2) => (0, b.jsx)("span", { className: `rounded-sm px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] ${c2 === 0 ? "bg-ink text-canvas" : "text-faint"}`, children: a3 }, a3)) }) }), (0, b.jsx)(n, { index: "06", label: "Skeleton", children: (0, b.jsxs)("div", { className: "flex flex-col gap-2", children: [(0, b.jsx)("div", { className: "h-2 w-3/4 animate-pulse rounded-sm bg-line-strong" }), (0, b.jsx)("div", { className: "h-2 w-full animate-pulse rounded-sm bg-line-strong" }), (0, b.jsx)("div", { className: "h-2 w-1/2 animate-pulse rounded-sm bg-line-strong" })] }) }), (0, b.jsx)(n, { index: "07", label: "Toast", children: (0, b.jsxs)("div", { className: "flex items-center gap-2 rounded-md border border-line px-2.5 py-2", children: [(0, b.jsx)("span", { className: "dot-pulse size-1.5 rounded-full bg-ink" }), (0, b.jsx)("span", { className: "font-mono text-[9px] text-ink", children: "Component added" })] }) }), (0, b.jsx)(n, { index: "08", label: "CLI", children: (0, b.jsx)("p", { className: "caret font-mono text-[10px] leading-5 text-ink", children: "$ npx meroui add" }) })] }) }) }) })] })] });
+          }, []), (0, b.jsxs)("section", { id: "top", className: `relative flex min-h-[100dvh] flex-col overflow-hidden pt-20 md:pt-24 ${a2 ? "is-ready" : ""}`, children: [(0, b.jsx)("span", { className: "hero-anim pointer-events-none absolute left-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block", children: "v1.0.0 \xB7 React 19 \xB7 TypeScript 5" }), (0, b.jsx)("span", { className: "hero-anim pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block", children: "Built for Next.js 16" }), m.map((a3) => (0, b.jsx)("span", { className: `hero-anim pointer-events-none absolute hidden font-mono uppercase tracking-[0.24em] text-dim md:block ${a3.className} ${a3.float ? "hero-float" : ""}`, style: a3.float ? { animationDuration: `${a3.float}s` } : void 0, children: a3.text }, a3.text)), (0, b.jsxs)("div", { className: "mx-auto grid w-full max-w-6xl flex-1 items-center gap-16 px-6 pb-24 pt-8 md:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-12", children: [(0, b.jsxs)("div", { className: "flex flex-col items-center text-center lg:items-start lg:text-left", children: [(0, b.jsx)("p", { className: "hero-anim font-mono text-[11px] uppercase tracking-[0.3em] text-muted", children: "React + TypeScript \xB7 For Next.js 16" }), (0, b.jsxs)("h1", { "aria-label": "meroUI", className: "hero-anim mt-5 text-[clamp(3.5rem,10vw,7.75rem)] font-semibold leading-[0.95] tracking-[-0.045em]", style: { animationDelay: "80ms" }, children: [(0, b.jsx)("span", { className: "text-ink", children: "meroUI" }), (0, b.jsx)("span", { className: "text-dim", children: "." })] }), (0, b.jsx)("p", { className: "hero-anim mt-6 max-w-[30rem] text-balance text-base leading-relaxed text-muted md:text-lg", style: { animationDelay: "160ms" }, children: "Type-safe components that ship in one command. Zero config. Zero rework." }), (0, b.jsxs)("div", { className: "hero-anim mt-8 flex flex-wrap items-center justify-center gap-4 lg:justify-start", style: { animationDelay: "240ms" }, children: [(0, b.jsx)(l, { strength: 0.3, children: (0, b.jsx)(d.Button, { href: "/docs", size: "lg", children: "Get started" }) }), (0, b.jsx)(l, { strength: 0.3, children: (0, b.jsx)(d.Button, { href: "#features", variant: "ghost", size: "lg", children: "Browse features" }) })] }), (0, b.jsx)("p", { className: "hero-anim mt-9 font-mono text-[10px] uppercase tracking-[0.3em] text-dim", style: { animationDelay: "320ms" }, children: "13 components \xB7 one command" })] }), (0, b.jsxs)("div", { className: "grid grid-cols-2 gap-3 sm:gap-3.5", children: [(0, b.jsx)(n, { index: "01", label: "Button", delay: 200, children: (0, b.jsxs)("div", { className: "flex flex-col items-start gap-2", children: [(0, b.jsx)(d.Button, { size: "sm", children: "Deploy" }), (0, b.jsxs)("div", { className: "flex w-full items-center justify-between gap-2", children: [(0, b.jsx)(d.Button, { size: "sm", variant: "ghost", children: "Cancel" }), (0, b.jsx)(g.Badge, { children: "stable" })] })] }) }), (0, b.jsx)(n, { index: "02", label: "Toggle", delay: 290, children: (0, b.jsxs)("div", { className: "flex flex-col gap-3", children: [(0, b.jsx)(e.Toggle, { defaultOn: true, label: "Autoplay" }), (0, b.jsx)(e.Toggle, { label: "Haptics" })] }) }), (0, b.jsx)("div", { className: "col-span-2", children: (0, b.jsx)(n, { index: "03", label: "Input", delay: 380, children: (0, b.jsx)(f.Input, { id: "hero-email", label: "Email", placeholder: "you@ship.dev" }) }) }), (0, b.jsx)(n, { index: "04", label: "Progress", delay: 470, children: (0, b.jsxs)("div", { className: "flex flex-col gap-4", children: [(0, b.jsx)(h.Progress, { value: 72, label: "Shipped" }), (0, b.jsx)(g.Badge, { variant: "dot", pulse: true, children: "v1.0.0" })] }) }), (0, b.jsx)(n, { index: "05", label: "Tabs", delay: 560, children: (0, b.jsx)(i.Tabs, { items: [{ label: "App", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "rsc" }) }, { label: "Page", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "streamed" }) }, { label: "Data", content: (0, b.jsx)("span", { className: "font-mono text-[10px] text-muted", children: "action" }) }] }) }), (0, b.jsx)("div", { className: "col-span-2", children: (0, b.jsx)("div", { className: "hero-anim flex", style: { animationDelay: "650ms" }, children: (0, b.jsxs)("div", { className: "flex w-full flex-col gap-3 rounded-lg border border-line bg-panel/70 p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised", children: [(0, b.jsxs)("div", { className: "mb-0.5 flex items-center justify-between border-b border-line pb-2.5", children: [(0, b.jsx)("span", { className: "font-mono text-[9px] uppercase tracking-[0.22em] text-ink", children: "CLI" }), (0, b.jsx)("span", { className: "font-mono text-[9px] text-dim", children: "06" })] }), (0, b.jsx)("p", { className: "caret font-mono text-[12px] leading-6 text-ink", children: "$ npx meroui add" }), (0, b.jsxs)("div", { className: "flex items-center gap-2.5", children: [(0, b.jsx)(j.Skeleton, { className: "h-1.5 w-1/4" }), (0, b.jsx)(j.Skeleton, { className: "h-1.5 w-1/3" })] })] }) }) })] })] })] });
         }], 9264);
       }, 71672, (a) => {
         "use strict";
@@ -66313,7 +68530,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         var b = a.i(7997), c = a.i(54056), d = a.i(48201);
         let e = [{ label: "Features", href: "#features" }, { label: "Install", href: "#install" }, { label: "Changelog", href: "#changelog" }];
         a.s(["Navbar", 0, function() {
-          return (0, b.jsx)("header", { className: "fixed inset-x-0 top-0 z-40 mix-blend-difference", children: (0, b.jsxs)("nav", { className: "mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10", children: [(0, b.jsxs)("a", { href: "#top", className: "flex items-center gap-2.5", children: [(0, b.jsx)("span", { className: "flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas", children: "m" }), (0, b.jsx)("span", { className: "font-mono text-sm font-semibold tracking-tight text-ink", children: "meroUI" })] }), (0, b.jsx)("div", { className: "hidden items-center gap-8 md:flex", children: e.map((a2) => (0, b.jsx)("a", { href: a2.href, className: "font-mono text-[11px] uppercase tracking-[0.18em] text-muted transition-colors hover:text-ink", children: a2.label }, a2.href)) }), (0, b.jsxs)("div", { className: "flex items-center gap-3", children: [(0, b.jsx)(d.ThemeToggle, {}), (0, b.jsxs)("div", { className: "hidden items-center gap-2 md:flex", children: [(0, b.jsx)(c.Button, { href: "/docs", variant: "ghost", size: "sm", children: "Docs" }), (0, b.jsx)(c.Button, { href: "/templates", variant: "ghost", size: "sm", children: "Templates" })] }), (0, b.jsx)(c.Button, { href: "/docs", size: "sm", children: "Get started" })] })] }) });
+          return (0, b.jsx)("header", { className: "fixed inset-x-0 top-0 z-40", children: (0, b.jsxs)("nav", { className: "mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10", children: [(0, b.jsxs)("a", { href: "#top", className: "flex items-center gap-2.5", children: [(0, b.jsx)("span", { className: "flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas", children: "m" }), (0, b.jsx)("span", { className: "font-mono text-sm font-semibold tracking-tight text-ink", children: "meroUI" })] }), (0, b.jsx)("div", { className: "hidden items-center gap-8 md:flex", children: e.map((a2) => (0, b.jsx)("a", { href: a2.href, className: "font-mono text-[11px] uppercase tracking-[0.18em] text-muted transition-colors hover:text-ink", children: a2.label }, a2.href)) }), (0, b.jsxs)("div", { className: "flex items-center gap-3", children: [(0, b.jsx)(d.ThemeToggle, {}), (0, b.jsxs)("div", { className: "hidden items-center gap-2 md:flex", children: [(0, b.jsx)(c.Button, { href: "/docs", variant: "ghost", size: "sm", children: "Docs" }), (0, b.jsx)(c.Button, { href: "/templates", variant: "ghost", size: "sm", children: "Templates" })] }), (0, b.jsx)(c.Button, { href: "/docs", size: "sm", children: "Get started" })] })] }) });
         }]);
       }, 10585, (a) => {
         a.v("/_next/static/media/favicon.2vob68tjqpejf.ico" + (globalThis.NEXT_CLIENT_ASSET_SUFFIX || ""));
@@ -66804,10 +69021,10 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
       }
       __name(installCompressedModuleFactories, "installCompressedModuleFactories");
       var turbopackQueues = /* @__PURE__ */ Symbol("turbopack queues"), turbopackExports = /* @__PURE__ */ Symbol("turbopack exports"), turbopackError = /* @__PURE__ */ Symbol("turbopack error");
-      function resolveQueue3(queue) {
+      function resolveQueue32(queue) {
         queue && queue.status !== 1 && (queue.status = 1, queue.forEach((fn) => fn.queueCount--), queue.forEach((fn) => fn.queueCount-- ? fn.queueCount++ : fn()));
       }
-      __name(resolveQueue3, "resolveQueue3");
+      __name(resolveQueue32, "resolveQueue3");
       function wrapDeps(deps) {
         return deps.map((dep) => {
           if (dep !== null && typeof dep == "object") {
@@ -66815,9 +69032,9 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             if (isPromise(dep)) {
               let queue = Object.assign([], { status: 0 }), obj = { [turbopackExports]: {}, [turbopackQueues]: (fn) => fn(queue) };
               return dep.then((res) => {
-                obj[turbopackExports] = res, resolveQueue3(queue);
+                obj[turbopackExports] = res, resolveQueue32(queue);
               }, (err) => {
-                obj[turbopackError] = err, resolveQueue3(queue);
+                obj[turbopackError] = err, resolveQueue32(queue);
               }), obj;
             }
           }
@@ -66849,7 +69066,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         }
         __name(handleAsyncDependencies, "handleAsyncDependencies");
         function asyncResult(err) {
-          err ? reject(promise[turbopackError] = err) : resolve(promise[turbopackExports]), resolveQueue3(queue);
+          err ? reject(promise[turbopackError] = err) : resolve(promise[turbopackExports]), resolveQueue32(queue);
         }
         __name(asyncResult, "asyncResult");
         body(handleAsyncDependencies, asyncResult), queue && queue.status === -1 && (queue.status = 0);
@@ -66960,8 +69177,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         } catch (cause) {
           let errorMessage = `Failed to load chunk ${chunkPath}`;
           sourcePath && (errorMessage += ` from runtime for chunk ${sourcePath}`);
-          let error22 = new Error(errorMessage, { cause });
-          throw error22.name = "ChunkLoadError", error22;
+          let error32 = new Error(errorMessage, { cause });
+          throw error32.name = "ChunkLoadError", error32;
         }
       }
       __name(loadRuntimeChunkPath, "loadRuntimeChunkPath");
@@ -66974,8 +69191,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             let resolved = path22.resolve(RUNTIME_ROOT, chunkPath), chunkModules = requireChunk(chunkPath);
             installCompressedModuleFactories(chunkModules, 0, moduleFactories), entry = loadedChunk;
           } catch (cause) {
-            let errorMessage = `Failed to load chunk ${chunkPath} from module ${this.m.id}`, error22 = new Error(errorMessage, { cause });
-            error22.name = "ChunkLoadError", entry = Promise.reject(error22);
+            let errorMessage = `Failed to load chunk ${chunkPath} from module ${this.m.id}`, error32 = new Error(errorMessage, { cause });
+            error32.name = "ChunkLoadError", entry = Promise.reject(error32);
           }
           chunkCache.set(chunkPath, entry);
         }
@@ -67028,8 +69245,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         let context = new Context(module1, exports2);
         try {
           moduleFactory(context, module1, exports2);
-        } catch (error22) {
-          throw module1.error = error22, error22;
+        } catch (error32) {
+          throw module1.error = error32, error32;
         }
         return module1.loaded = true, module1.namespaceObject && module1.exports !== module1.namespaceObject && interopEsm(module1.exports, module1.namespaceObject), module1;
       }
@@ -67091,10 +69308,12 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             return require_node_modules_next_dist_esm_build_templates_app_page_18uzvmz();
           case "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js":
             return require_src_lib_gsap_ts_1_gaps3();
-          case "server/chunks/ssr/[root-of-the-server]__021_9y7._.js":
-            return require_root_of_the_server_021_9y7();
+          case "server/chunks/ssr/[root-of-the-server]__059qs8j._.js":
+            return require_root_of_the_server_059qs8j();
           case "server/chunks/ssr/_0t0wyzn._.js":
             return require_t0wyzn();
+          case "server/chunks/ssr/_1e5ewtu._.js":
+            return require_e5ewtu();
           case "server/chunks/ssr/_next-internal_server_app_(docs)_components_[slug]_page_actions_11glm31.js":
             return require_next_internal_server_app_docs_components_slug_page_actions_11glm31();
           case "server/chunks/ssr/node_modules_next_dist_1enzot_._.js":
@@ -67105,10 +69324,12 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             return require_node_modules_next_dist_client_components_builtin_global_error_0_o_goa();
           case "server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0mdkioj.js":
             return require_node_modules_next_dist_esm_build_templates_app_page_0mdkioj();
+          case "server/chunks/ssr/src_1lsw0x_._.js":
+            return require_src_1lsw0x();
           case "server/chunks/ssr/src_components_1xhgq9l._.js":
             return require_src_components_1xhgq9l();
-          case "server/chunks/ssr/src_components_1xqkxja._.js":
-            return require_src_components_1xqkxja();
+          case "server/chunks/ssr/src_components_ui_1ga4d_c._.js":
+            return require_src_components_ui_1ga4d_c();
           case "server/chunks/ssr/[root-of-the-server]__0-zvk4v._.js":
             return require_root_of_the_server_0_zvk4v();
           case "server/chunks/ssr/_next-internal_server_app_(docs)_components_page_actions_15l1dpx.js":
@@ -67145,8 +69366,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             return require_next_internal_server_app_page_actions_0hhsz1j();
           case "server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0dq5iwc.js":
             return require_node_modules_next_dist_esm_build_templates_app_page_0dq5iwc();
-          case "server/chunks/ssr/src_components_1qz-9jm._.js":
-            return require_src_components_1qz_9jm();
+          case "server/chunks/ssr/src_components_0khwjt7._.js":
+            return require_src_components_0khwjt7();
           case "server/chunks/ssr/src_components_sections_1ta2tx8._.js":
             return require_src_components_sections_1ta2tx8();
           case "server/chunks/ssr/[root-of-the-server]__0qmyssd._.js":
@@ -67360,10 +69581,10 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
       }
       __name(installCompressedModuleFactories, "installCompressedModuleFactories");
       var turbopackQueues = /* @__PURE__ */ Symbol("turbopack queues"), turbopackExports = /* @__PURE__ */ Symbol("turbopack exports"), turbopackError = /* @__PURE__ */ Symbol("turbopack error");
-      function resolveQueue3(queue) {
+      function resolveQueue32(queue) {
         queue && queue.status !== 1 && (queue.status = 1, queue.forEach((fn) => fn.queueCount--), queue.forEach((fn) => fn.queueCount-- ? fn.queueCount++ : fn()));
       }
-      __name(resolveQueue3, "resolveQueue3");
+      __name(resolveQueue32, "resolveQueue3");
       function wrapDeps(deps) {
         return deps.map((dep) => {
           if (dep !== null && typeof dep == "object") {
@@ -67371,9 +69592,9 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             if (isPromise(dep)) {
               let queue = Object.assign([], { status: 0 }), obj = { [turbopackExports]: {}, [turbopackQueues]: (fn) => fn(queue) };
               return dep.then((res) => {
-                obj[turbopackExports] = res, resolveQueue3(queue);
+                obj[turbopackExports] = res, resolveQueue32(queue);
               }, (err) => {
-                obj[turbopackError] = err, resolveQueue3(queue);
+                obj[turbopackError] = err, resolveQueue32(queue);
               }), obj;
             }
           }
@@ -67405,7 +69626,7 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         }
         __name(handleAsyncDependencies, "handleAsyncDependencies");
         function asyncResult(err) {
-          err ? reject(promise[turbopackError] = err) : resolve(promise[turbopackExports]), resolveQueue3(queue);
+          err ? reject(promise[turbopackError] = err) : resolve(promise[turbopackExports]), resolveQueue32(queue);
         }
         __name(asyncResult, "asyncResult");
         body(handleAsyncDependencies, asyncResult), queue && queue.status === -1 && (queue.status = 0);
@@ -67516,8 +69737,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         } catch (cause) {
           let errorMessage = `Failed to load chunk ${chunkPath}`;
           sourcePath && (errorMessage += ` from runtime for chunk ${sourcePath}`);
-          let error22 = new Error(errorMessage, { cause });
-          throw error22.name = "ChunkLoadError", error22;
+          let error32 = new Error(errorMessage, { cause });
+          throw error32.name = "ChunkLoadError", error32;
         }
       }
       __name(loadRuntimeChunkPath, "loadRuntimeChunkPath");
@@ -67530,8 +69751,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             let resolved = path22.resolve(RUNTIME_ROOT, chunkPath), chunkModules = requireChunk(chunkPath);
             installCompressedModuleFactories(chunkModules, 0, moduleFactories), entry = loadedChunk;
           } catch (cause) {
-            let errorMessage = `Failed to load chunk ${chunkPath} from module ${this.m.id}`, error22 = new Error(errorMessage, { cause });
-            error22.name = "ChunkLoadError", entry = Promise.reject(error22);
+            let errorMessage = `Failed to load chunk ${chunkPath} from module ${this.m.id}`, error32 = new Error(errorMessage, { cause });
+            error32.name = "ChunkLoadError", entry = Promise.reject(error32);
           }
           chunkCache.set(chunkPath, entry);
         }
@@ -67584,8 +69805,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
         let context = new Context(module1, exports2);
         try {
           moduleFactory(context, module1, exports2);
-        } catch (error22) {
-          throw module1.error = error22, error22;
+        } catch (error32) {
+          throw module1.error = error32, error32;
         }
         return module1.loaded = true, module1.namespaceObject && module1.exports !== module1.namespaceObject && interopEsm(module1.exports, module1.namespaceObject), module1;
       }
@@ -67647,10 +69868,12 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             return require_node_modules_next_dist_esm_build_templates_app_page_18uzvmz();
           case "server/chunks/ssr/src_lib_gsap_ts_1_gaps3._.js":
             return require_src_lib_gsap_ts_1_gaps3();
-          case "server/chunks/ssr/[root-of-the-server]__021_9y7._.js":
-            return require_root_of_the_server_021_9y7();
+          case "server/chunks/ssr/[root-of-the-server]__059qs8j._.js":
+            return require_root_of_the_server_059qs8j();
           case "server/chunks/ssr/_0t0wyzn._.js":
             return require_t0wyzn();
+          case "server/chunks/ssr/_1e5ewtu._.js":
+            return require_e5ewtu();
           case "server/chunks/ssr/_next-internal_server_app_(docs)_components_[slug]_page_actions_11glm31.js":
             return require_next_internal_server_app_docs_components_slug_page_actions_11glm31();
           case "server/chunks/ssr/node_modules_next_dist_1enzot_._.js":
@@ -67661,10 +69884,12 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             return require_node_modules_next_dist_client_components_builtin_global_error_0_o_goa();
           case "server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0mdkioj.js":
             return require_node_modules_next_dist_esm_build_templates_app_page_0mdkioj();
+          case "server/chunks/ssr/src_1lsw0x_._.js":
+            return require_src_1lsw0x();
           case "server/chunks/ssr/src_components_1xhgq9l._.js":
             return require_src_components_1xhgq9l();
-          case "server/chunks/ssr/src_components_1xqkxja._.js":
-            return require_src_components_1xqkxja();
+          case "server/chunks/ssr/src_components_ui_1ga4d_c._.js":
+            return require_src_components_ui_1ga4d_c();
           case "server/chunks/ssr/[root-of-the-server]__0-zvk4v._.js":
             return require_root_of_the_server_0_zvk4v();
           case "server/chunks/ssr/_next-internal_server_app_(docs)_components_page_actions_15l1dpx.js":
@@ -67701,8 +69926,8 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
             return require_next_internal_server_app_page_actions_0hhsz1j();
           case "server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0dq5iwc.js":
             return require_node_modules_next_dist_esm_build_templates_app_page_0dq5iwc();
-          case "server/chunks/ssr/src_components_1qz-9jm._.js":
-            return require_src_components_1qz_9jm();
+          case "server/chunks/ssr/src_components_0khwjt7._.js":
+            return require_src_components_0khwjt7();
           case "server/chunks/ssr/src_components_sections_1ta2tx8._.js":
             return require_src_components_sections_1ta2tx8();
           case "server/chunks/ssr/[root-of-the-server]__0qmyssd._.js":
@@ -67726,10 +69951,11 @@ see more here https://nextjs.org/docs/messages/app-static-to-dynamic-error`), "_
     require_page = __commonJS3({ ".open-next/server-functions/default/.next/server/app/(docs)/components/[slug]/page.js"(exports, module) {
       "use strict";
       var R = require_turbopack_runtime2()("server/app/(docs)/components/[slug]/page.js");
-      R.c("server/chunks/ssr/[root-of-the-server]__021_9y7._.js");
-      R.c("server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0mdkioj.js");
+      R.c("server/chunks/ssr/[root-of-the-server]__059qs8j._.js");
+      R.c("server/chunks/ssr/src_1lsw0x_._.js");
       R.c("server/chunks/ssr/node_modules_next_dist_0gqiype._.js");
       R.c("server/chunks/ssr/node_modules_next_dist_1ypm6fc._.js");
+      R.c("server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0mdkioj.js");
       R.c("server/chunks/ssr/[root-of-the-server]__0-0c8y-._.js");
       R.c("server/chunks/ssr/[root-of-the-server]__0kl59ms._.js");
       R.c("server/chunks/ssr/[root-of-the-server]__1qd0jbu._.js");
@@ -68209,7 +70435,7 @@ Read more: https://nextjs.org/docs/messages/failed-to-find-server-action`), "__N
       function getCloneableBody(readable, sizeLimit) {
         let buffered = null, endPromise = new Promise((resolve, reject) => {
           readable.on("end", resolve), readable.on("error", reject);
-        }).catch((error22) => ({ error: error22 }));
+        }).catch((error32) => ({ error: error32 }));
         return { async finalize() {
           if (buffered) {
             let res = await endPromise;
@@ -68830,8 +71056,8 @@ Read more: https://nextjs.org/docs/messages/failed-to-find-server-action`), "__N
           try {
             var _this_cacheHandler;
             !ctx.fetchCache && ctx.cacheControl && this.cacheControls.set((0, _toroute.toRoute)(pathname), ctx.cacheControl), await ((_this_cacheHandler = this.cacheHandler) == null ? void 0 : _this_cacheHandler.set(pathname, data, ctx));
-          } catch (error22) {
-            console.warn("Failed to update prerender cache for", pathname, error22);
+          } catch (error32) {
+            console.warn("Failed to update prerender cache for", pathname, error32);
           }
         }
       };
@@ -68964,8 +71190,8 @@ Read more: https://nextjs.org/docs/messages/failed-to-find-server-action`), "__N
           if (this.resWriter) return this.resWriter(chunk);
           let buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
           if (this.maximumResponseBody !== void 0 && (this.totalSize += buffer.byteLength, this.totalSize > this.maximumResponseBody)) {
-            let error22 = Object.defineProperty(new Error(`Response body exceeded maximum size of ${this.maximumResponseBody} bytes`), "__NEXT_ERROR_CODE", { value: "E1143", enumerable: false, configurable: true });
-            return error22.code = "ERR_MAX_BODY_SIZE_EXCEEDED", this.destroy(error22), true;
+            let error32 = Object.defineProperty(new Error(`Response body exceeded maximum size of ${this.maximumResponseBody} bytes`), "__NEXT_ERROR_CODE", { value: "E1143", enumerable: false, configurable: true });
+            return error32.code = "ERR_MAX_BODY_SIZE_EXCEEDED", this.destroy(error32), true;
           }
           return this.buffers.push(buffer), true;
         }
@@ -69214,9 +71440,9 @@ Read more: https://nextjs.org/docs/messages/failed-to-find-server-action`), "__N
         return h1 ^= key.length, h1 ^= h1 >>> 16, h1 = 2246822507 * (h1 & 65535) + ((2246822507 * (h1 >>> 16) & 65535) << 16) & 4294967295, h1 ^= h1 >>> 13, h1 = 3266489909 * (h1 & 65535) + ((3266489909 * (h1 >>> 16) & 65535) << 16) & 4294967295, (h1 ^ h1 >>> 16) >>> 0;
       }
       __name(murmurhash3_32_gc, "murmurhash3_32_gc");
-      function handleErrorInNextTick(error22) {
+      function handleErrorInNextTick(error32) {
         setTimeout(function() {
-          throw error22;
+          throw error32;
         });
       }
       __name(handleErrorInNextTick, "handleErrorInNextTick");
@@ -69252,8 +71478,8 @@ Read more: https://nextjs.org/docs/messages/failed-to-find-server-action`), "__N
         return chunk.byteLength;
       }
       __name(byteLengthOfChunk, "byteLengthOfChunk");
-      function closeWithError(destination, error22) {
-        typeof destination.error == "function" ? destination.error(error22) : destination.close();
+      function closeWithError(destination, error32) {
+        typeof destination.error == "function" ? destination.error(error32) : destination.close();
       }
       __name(closeWithError, "closeWithError");
       var assign = Object.assign, hasOwnProperty = Object.prototype.hasOwnProperty, VALID_ATTRIBUTE_NAME_REGEX = RegExp("^[:A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD][:A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\-.0-9\\u00B7\\u0300-\\u036F\\u203F-\\u2040]*$"), illegalAttributeNameCache = {}, validatedAttributeNameCache = {};
@@ -70817,10 +73043,10 @@ performance.now();setTimeout(w,2300>q&&2E3<q?2300-q:500)})])},types:[]});z.ready
                 var fulfilledThenable = thenable;
                 fulfilledThenable.status = "fulfilled", fulfilledThenable.value = fulfilledValue;
               }
-            }, function(error22) {
+            }, function(error32) {
               if (thenable.status === "pending") {
                 var rejectedThenable = thenable;
-                rejectedThenable.status = "rejected", rejectedThenable.reason = error22;
+                rejectedThenable.status = "rejected", rejectedThenable.reason = error32;
               }
             })), thenable.status) {
               case "fulfilled":
@@ -71014,11 +73240,11 @@ See https://react.dev/link/invalid-hook-call for tips about how to debug and fix
       }, "getCacheForType"), cacheSignal: /* @__PURE__ */ __name(function() {
         throw Error("Not implemented.");
       }, "cacheSignal") };
-      function prepareStackTrace(error22, structuredStackTrace) {
-        error22 = (error22.name || "Error") + ": " + (error22.message || "");
-        for (var i = 0; i < structuredStackTrace.length; i++) error22 += `
+      function prepareStackTrace(error32, structuredStackTrace) {
+        error32 = (error32.name || "Error") + ": " + (error32.message || "");
+        for (var i = 0; i < structuredStackTrace.length; i++) error32 += `
     at ` + structuredStackTrace[i].toString();
-        return error22;
+        return error32;
       }
       __name(prepareStackTrace, "prepareStackTrace");
       var prefix, suffix;
@@ -71156,11 +73382,11 @@ See https://react.dev/link/invalid-hook-call for tips about how to debug and fix
         return (500 < boundary.byteSize || hasSuspenseyContent(boundary.contentState)) && boundary.contentPreamble === null;
       }
       __name(isEligibleForOutlining, "isEligibleForOutlining");
-      function defaultErrorHandler(error22) {
-        if (typeof error22 == "object" && error22 !== null && typeof error22.environmentName == "string") {
-          var JSCompiler_inline_result = error22.environmentName;
-          error22 = [error22].slice(0), typeof error22[0] == "string" ? error22.splice(0, 1, "\x1B[0m\x1B[7m%c%s\x1B[0m%c " + error22[0], "background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px", " " + JSCompiler_inline_result + " ", "") : error22.splice(0, 0, "\x1B[0m\x1B[7m%c%s\x1B[0m%c", "background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px", " " + JSCompiler_inline_result + " ", ""), error22.unshift(console), JSCompiler_inline_result = bind.apply(console.error, error22), JSCompiler_inline_result();
-        } else console.error(error22);
+      function defaultErrorHandler(error32) {
+        if (typeof error32 == "object" && error32 !== null && typeof error32.environmentName == "string") {
+          var JSCompiler_inline_result = error32.environmentName;
+          error32 = [error32].slice(0), typeof error32[0] == "string" ? error32.splice(0, 1, "\x1B[0m\x1B[7m%c%s\x1B[0m%c " + error32[0], "background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px", " " + JSCompiler_inline_result + " ", "") : error32.splice(0, 0, "\x1B[0m\x1B[7m%c%s\x1B[0m%c", "background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px", " " + JSCompiler_inline_result + " ", ""), error32.unshift(console), JSCompiler_inline_result = bind.apply(console.error, error32), JSCompiler_inline_result();
+        } else console.error(error32);
         return null;
       }
       __name(defaultErrorHandler, "defaultErrorHandler");
@@ -71257,13 +73483,13 @@ Error generating stack: ` + x.message + `
         }, "get") }), errorInfo;
       }
       __name(getThrownInfo, "getThrownInfo");
-      function logRecoverableError(request, error22, errorInfo) {
-        if (request = request.onError, error22 = request(error22, errorInfo), error22 == null || typeof error22 == "string") return error22;
+      function logRecoverableError(request, error32, errorInfo) {
+        if (request = request.onError, error32 = request(error32, errorInfo), error32 == null || typeof error32 == "string") return error32;
       }
       __name(logRecoverableError, "logRecoverableError");
-      function fatalError(request, error22) {
+      function fatalError(request, error32) {
         var onShellError = request.onShellError, onFatalError = request.onFatalError;
-        onShellError(error22), onFatalError(error22), request.destination !== null ? (request.status = 14, closeWithError(request.destination, error22)) : (request.status = 13, request.fatalError = error22);
+        onShellError(error32), onFatalError(error32), request.destination !== null ? (request.status = 14, closeWithError(request.destination, error32)) : (request.status = 13, request.fatalError = error32);
       }
       __name(fatalError, "fatalError");
       function finishSuspenseListRow(request, row) {
@@ -71587,8 +73813,8 @@ Error generating stack: ` + x.message + `
                               props.status = 1, request.completedBoundaries.push(props);
                               break b;
                             }
-                          } catch (error22) {
-                            props.status = 4, childNodes = getThrownInfo(task.componentStack), replay = logRecoverableError(request, error22, childNodes), props.errorDigest = replay, task.replay.pendingTasks--, request.clientRenderedBoundaries.push(props);
+                          } catch (error32) {
+                            props.status = 4, childNodes = getThrownInfo(task.componentStack), replay = logRecoverableError(request, error32, childNodes), props.errorDigest = replay, task.replay.pendingTasks--, request.clientRenderedBoundaries.push(props);
                           } finally {
                             task.blockedBoundary = parentBoundary, task.hoistableState = parentHoistableState, task.replay = previousReplaySet, task.keyPath = prevKeyPath, task.formatContext = prevContext, task.row = prevRow;
                           }
@@ -71644,8 +73870,8 @@ Error generating stack: ` + x.message + `
               } catch (x) {
                 if (typeof x == "object" && x !== null && (x === SuspenseException || typeof x.then == "function")) throw x;
                 task.replay.pendingTasks--, children = getThrownInfo(task.componentStack);
-                var boundary = task.blockedBoundary, error22 = x;
-                children = logRecoverableError(request, error22, children), abortRemainingReplayNodes(request, boundary, childIndex, node, error22, children);
+                var boundary = task.blockedBoundary, error32 = x;
+                children = logRecoverableError(request, error32, children), abortRemainingReplayNodes(request, boundary, childIndex, node, error32, children);
               }
               task.replay = replay, replayNodes.splice(j, 1);
               break;
@@ -71750,10 +73976,10 @@ Error generating stack: ` + x.message + `
         segment !== null && (segment.status = 3, finishedTask(this, boundary, task.row, segment));
       }
       __name(abortTaskSoft, "abortTaskSoft");
-      function abortRemainingReplayNodes(request$jscomp$0, boundary, nodes, slots, error22, errorDigest$jscomp$0) {
+      function abortRemainingReplayNodes(request$jscomp$0, boundary, nodes, slots, error32, errorDigest$jscomp$0) {
         for (var i = 0; i < nodes.length; i++) {
           var node = nodes[i];
-          if (node.length === 4) abortRemainingReplayNodes(request$jscomp$0, boundary, node[2], node[3], error22, errorDigest$jscomp$0);
+          if (node.length === 4) abortRemainingReplayNodes(request$jscomp$0, boundary, node[2], node[3], error32, errorDigest$jscomp$0);
           else {
             node = node[5];
             var request = request$jscomp$0, errorDigest = errorDigest$jscomp$0, resumedBoundary = createSuspenseBoundary(request, null, /* @__PURE__ */ new Set(), null, null);
@@ -71766,7 +73992,7 @@ Error generating stack: ` + x.message + `
         }
       }
       __name(abortRemainingReplayNodes, "abortRemainingReplayNodes");
-      function abortTask(task, request, error22) {
+      function abortTask(task, request, error32) {
         var boundary = task.blockedBoundary, segment = task.blockedSegment;
         if (segment !== null) {
           if (segment.status === 6) return;
@@ -71776,21 +74002,21 @@ Error generating stack: ` + x.message + `
         if (boundary === null) {
           if (request.status !== 13 && request.status !== 14) {
             if (boundary = task.replay, boundary === null) {
-              request.trackedPostpones !== null && segment !== null ? (boundary = request.trackedPostpones, logRecoverableError(request, error22, errorInfo), trackPostpone(request, boundary, task, segment), finishedTask(request, null, task.row, segment)) : (logRecoverableError(request, error22, errorInfo), fatalError(request, error22));
+              request.trackedPostpones !== null && segment !== null ? (boundary = request.trackedPostpones, logRecoverableError(request, error32, errorInfo), trackPostpone(request, boundary, task, segment), finishedTask(request, null, task.row, segment)) : (logRecoverableError(request, error32, errorInfo), fatalError(request, error32));
               return;
             }
-            boundary.pendingTasks--, boundary.pendingTasks === 0 && 0 < boundary.nodes.length && (segment = logRecoverableError(request, error22, errorInfo), abortRemainingReplayNodes(request, null, boundary.nodes, boundary.slots, error22, segment)), request.pendingRootTasks--, request.pendingRootTasks === 0 && completeShell(request);
+            boundary.pendingTasks--, boundary.pendingTasks === 0 && 0 < boundary.nodes.length && (segment = logRecoverableError(request, error32, errorInfo), abortRemainingReplayNodes(request, null, boundary.nodes, boundary.slots, error32, segment)), request.pendingRootTasks--, request.pendingRootTasks === 0 && completeShell(request);
           }
         } else {
           var trackedPostpones$64 = request.trackedPostpones;
           if (boundary.status !== 4) {
-            if (trackedPostpones$64 !== null && segment !== null) return logRecoverableError(request, error22, errorInfo), trackPostpone(request, trackedPostpones$64, task, segment), boundary.fallbackAbortableTasks.forEach(function(fallbackTask) {
-              return abortTask(fallbackTask, request, error22);
+            if (trackedPostpones$64 !== null && segment !== null) return logRecoverableError(request, error32, errorInfo), trackPostpone(request, trackedPostpones$64, task, segment), boundary.fallbackAbortableTasks.forEach(function(fallbackTask) {
+              return abortTask(fallbackTask, request, error32);
             }), boundary.fallbackAbortableTasks.clear(), finishedTask(request, boundary, task.row, segment);
-            boundary.status = 4, segment = logRecoverableError(request, error22, errorInfo), boundary.status = 4, boundary.errorDigest = segment, untrackBoundary(request, boundary), boundary.parentFlushed && request.clientRenderedBoundaries.push(boundary);
+            boundary.status = 4, segment = logRecoverableError(request, error32, errorInfo), boundary.status = 4, boundary.errorDigest = segment, untrackBoundary(request, boundary), boundary.parentFlushed && request.clientRenderedBoundaries.push(boundary);
           }
           boundary.pendingTasks--, segment = boundary.row, segment !== null && --segment.pendingTasks === 0 && finishSuspenseListRow(request, segment), boundary.fallbackAbortableTasks.forEach(function(fallbackTask) {
-            return abortTask(fallbackTask, request, error22);
+            return abortTask(fallbackTask, request, error32);
           }), boundary.fallbackAbortableTasks.clear();
         }
         task = task.row, task !== null && --task.pendingTasks === 0 && finishSuspenseListRow(request, task), request.allPendingTasks--, request.allPendingTasks === 0 && completeAll(request);
@@ -71815,8 +74041,8 @@ Error generating stack: ` + x.message + `
               onHeaders(linkHeader ? { Link: linkHeader } : {});
             }
           }
-        } catch (error22) {
-          logRecoverableError(request, error22, {});
+        } catch (error32) {
+          logRecoverableError(request, error32, {});
         }
       }
       __name(safelyEmitEarlyPreloads, "safelyEmitEarlyPreloads");
@@ -71936,8 +74162,8 @@ Error generating stack: ` + x.message + `
               }
             }
             pingedTasks.splice(0, i), request$jscomp$2.destination !== null && flushCompletedQueues(request$jscomp$2, request$jscomp$2.destination);
-          } catch (error22) {
-            logRecoverableError(request$jscomp$2, error22, {}), fatalError(request$jscomp$2, error22);
+          } catch (error32) {
+            logRecoverableError(request$jscomp$2, error32, {}), fatalError(request$jscomp$2, error32);
           } finally {
             currentResumableState = prevResumableState, ReactSharedInternals.H = prevDispatcher, ReactSharedInternals.A = prevAsyncDispatcher, prevDispatcher === HooksDispatcher && switchContext(prevContext), currentRequest = prevRequest;
           }
@@ -72174,8 +74400,8 @@ Error generating stack: ` + x.message + `
           request.destination = destination;
           try {
             flushCompletedQueues(request, destination);
-          } catch (error22) {
-            logRecoverableError(request, error22, {}), fatalError(request, error22);
+          } catch (error32) {
+            logRecoverableError(request, error32, {}), fatalError(request, error32);
           }
         }
       }
@@ -72185,9 +74411,9 @@ Error generating stack: ` + x.message + `
         try {
           var abortableTasks = request.abortableTasks;
           if (0 < abortableTasks.size) {
-            var error22 = reason === void 0 ? Error("The render was aborted by the server without a reason.") : typeof reason == "object" && reason !== null && typeof reason.then == "function" ? Error("The render was aborted by the server with a promise.") : reason;
-            request.fatalError = error22, abortableTasks.forEach(function(task) {
-              return abortTask(task, request, error22);
+            var error32 = reason === void 0 ? Error("The render was aborted by the server without a reason.") : typeof reason == "object" && reason !== null && typeof reason.then == "function" ? Error("The render was aborted by the server with a promise.") : reason;
+            request.fatalError = error32, abortableTasks.forEach(function(task) {
+              return abortTask(task, request, error32);
             }), abortableTasks.clear();
           }
           request.destination !== null && flushCompletedQueues(request, request.destination);
@@ -72270,9 +74496,9 @@ Learn more: https://react.dev/warnings/version-mismatch`));
               request.destination = null, abort(request, reason);
             }, "cancel") }, { highWaterMark: 0 });
             stream2.allReady = allReady, resolve(stream2);
-          }, function(error22) {
+          }, function(error32) {
             allReady.catch(function() {
-            }), reject(error22);
+            }), reject(error32);
           }, onFatalError, options ? options.onPostpone : void 0, options ? options.formState : void 0);
           if (options && options.signal) {
             var signal = options.signal;
@@ -72298,9 +74524,9 @@ Learn more: https://react.dev/warnings/version-mismatch`));
               request.destination = null, abort(request, reason);
             }, "cancel") }, { highWaterMark: 0 });
             stream2.allReady = allReady, resolve(stream2);
-          }, function(error22) {
+          }, function(error32) {
             allReady.catch(function() {
-            }), reject(error22);
+            }), reject(error32);
           }, onFatalError, options ? options.onPostpone : void 0);
           if (options && options.signal) {
             var signal = options.signal;
@@ -75878,8 +78104,8 @@ Try changing the value to '${Math.ceil(e10.revalidate)}' or using \`Math.ceil()\
         return isPostpone;
       }, "get") });
       var REACT_POSTPONE_TYPE = /* @__PURE__ */ Symbol.for("react.postpone");
-      function isPostpone(error22) {
-        return typeof error22 == "object" && error22 !== null && error22.$$typeof === REACT_POSTPONE_TYPE;
+      function isPostpone(error32) {
+        return typeof error32 == "object" && error32 !== null && error32.$$typeof === REACT_POSTPONE_TYPE;
       }
       __name(isPostpone, "isPostpone");
     } });
@@ -75913,36 +78139,36 @@ Try changing the value to '${Math.ceil(e10.revalidate)}' or using \`Math.ceil()\
         return getStackWithoutErrorMessage;
       }, "getStackWithoutErrorMessage") });
       var invalidServerComponentReactHooks = ["useDeferredValue", "useEffect", "useEffectEvent", "useImperativeHandle", "useInsertionEffect", "useLayoutEffect", "useReducer", "useRef", "useState", "useSyncExternalStore", "useTransition", "experimental_useOptimistic", "useOptimistic"];
-      function setMessage(error22, message) {
-        if (error22.message = message, error22.stack) {
-          let lines = error22.stack.split(`
+      function setMessage(error32, message) {
+        if (error32.message = message, error32.stack) {
+          let lines = error32.stack.split(`
 `);
-          lines[0] = message, error22.stack = lines.join(`
+          lines[0] = message, error32.stack = lines.join(`
 `);
         }
       }
       __name(setMessage, "setMessage");
-      function getStackWithoutErrorMessage(error22) {
-        let stack = error22.stack;
+      function getStackWithoutErrorMessage(error32) {
+        let stack = error32.stack;
         return stack ? stack.replace(/^[^\n]*\n/, "") : "";
       }
       __name(getStackWithoutErrorMessage, "getStackWithoutErrorMessage");
-      function formatServerError(error22) {
-        if (typeof error22?.message == "string") {
-          if (error22.message.includes("Class extends value undefined is not a constructor or null")) {
+      function formatServerError(error32) {
+        if (typeof error32?.message == "string") {
+          if (error32.message.includes("Class extends value undefined is not a constructor or null")) {
             let addedMessage = "This might be caused by a React Class Component being rendered in a Server Component, React Class Components only works in Client Components. Read more: https://nextjs.org/docs/messages/class-component-in-server-component";
-            if (error22.message.includes(addedMessage)) return;
-            setMessage(error22, `${error22.message}
+            if (error32.message.includes(addedMessage)) return;
+            setMessage(error32, `${error32.message}
 
 ${addedMessage}`);
             return;
           }
-          if (error22.message.includes("createContext is not a function")) {
-            setMessage(error22, 'createContext only works in Client Components. Add the "use client" directive at the top of the file to use it. Read more: https://nextjs.org/docs/messages/context-in-server-component');
+          if (error32.message.includes("createContext is not a function")) {
+            setMessage(error32, 'createContext only works in Client Components. Add the "use client" directive at the top of the file to use it. Read more: https://nextjs.org/docs/messages/context-in-server-component');
             return;
           }
-          for (let clientHook of invalidServerComponentReactHooks) if (new RegExp(`\\b${clientHook}\\b.*is not a function`).test(error22.message)) {
-            setMessage(error22, `${clientHook} only works in Client Components. Add the "use client" directive at the top of the file to use it. Read more: https://nextjs.org/docs/messages/react-client-hook-in-server-component`);
+          for (let clientHook of invalidServerComponentReactHooks) if (new RegExp(`\\b${clientHook}\\b.*is not a function`).test(error32.message)) {
+            setMessage(error32, `${clientHook} only works in Client Components. Add the "use client" directive at the top of the file to use it. Read more: https://nextjs.org/docs/messages/react-client-hook-in-server-component`);
             return;
           }
         }
@@ -76616,9 +78842,9 @@ ${addedMessage}`);
                 case "info":
                   return log;
                 case "warning":
-                  return warn22;
+                  return warn32;
                 case "error":
-                  return error22;
+                  return error32;
               }
             }
           }, p = class {
@@ -76647,7 +78873,7 @@ ${addedMessage}`);
             console.log(e3, ...t3);
           }
           __name(log, "log");
-          function warn22(e3, ...t3) {
+          function warn32(e3, ...t3) {
             if (f) {
               process.stderr.write((0, c.format)(e3, ...t3) + `
 `);
@@ -76655,8 +78881,8 @@ ${addedMessage}`);
             }
             console.warn(e3, ...t3);
           }
-          __name(warn22, "warn2");
-          function error22(e3, ...t3) {
+          __name(warn32, "warn3");
+          function error32(e3, ...t3) {
             if (f) {
               process.stderr.write((0, c.format)(e3, ...t3) + `
 `);
@@ -76664,7 +78890,7 @@ ${addedMessage}`);
             }
             console.error(e3, ...t3);
           }
-          __name(error22, "error2");
+          __name(error32, "error3");
           function getVariable(e3) {
             return f ? process.env[e3] : globalThis[e3]?.toString();
           }
@@ -77218,8 +79444,8 @@ ${addedMessage}`);
               if (bubblingResult) throw err;
               if ((0, _iserror.default)(err) && err.code === "ENOENT") return await this.render404(req, res, parsed), true;
               if (err instanceof _utils.DecodeError) return res.statusCode = 400, await this.renderError(err, req, res, parsed.pathname || ""), true;
-              let error22 = (0, _iserror.getProperError)(err);
-              return console.error(error22), res.statusCode = 500, await this.renderError(error22, req, res, parsed.pathname || ""), true;
+              let error32 = (0, _iserror.getProperError)(err);
+              return console.error(error32), res.statusCode = 500, await this.renderError(error32, req, res, parsed.pathname || ""), true;
             }
             return result.finished;
           }, (0, _globalbehaviors.installGlobalBehaviors)(this.nextConfig), this.renderOpts.prefetchHints = this.getPrefetchHints();
@@ -77537,13 +79763,18 @@ ${addedMessage}`);
     __name(getResponseBody2, "getResponseBody");
     __name(isUserWorkerFirst2, "isUserWorkerFirst");
     __name(defineCloudflareConfig2, "defineCloudflareConfig");
-    __name(resolveIncrementalCache2, "resolveIncrementalCache");
-    __name(resolveTagCache2, "resolveTagCache");
-    __name(resolveQueue2, "resolveQueue");
+    __name(resolveIncrementalCache3, "resolveIncrementalCache");
+    __name(resolveTagCache3, "resolveTagCache");
+    __name(resolveQueue3, "resolveQueue");
     __name(resolveCdnInvalidation2, "resolveCdnInvalidation");
+    __name(isOpenNextError6, "isOpenNextError");
+    __name(debug6, "debug");
+    __name(warn6, "warn");
+    __name(error6, "error");
+    __name(getOpenNextErrorLogLevel6, "getOpenNextErrorLogLevel");
     init_open_next_config2 = __esm3({ ".open-next/server-functions/default/open-next.config.mjs"() {
       "use strict";
-      cloudflareContextSymbol2 = /* @__PURE__ */ Symbol.for("__cloudflare-context__");
+      __defProp22 = Object.defineProperty, __defNormalProp2 = /* @__PURE__ */ __name((obj, key, value) => key in obj ? __defProp22(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value, "__defNormalProp"), __publicField2 = /* @__PURE__ */ __name((obj, key, value) => __defNormalProp2(obj, typeof key != "symbol" ? key + "" : key, value), "__publicField"), cloudflareContextSymbol2 = /* @__PURE__ */ Symbol.for("__cloudflare-context__");
       initOpenNextCloudflareForDevErrorMsg2 = `
 
 ERROR: \`getCloudflareContext\` has been called without having called \`initOpenNextCloudflareForDev\` from the Next.js config file.
@@ -77573,7 +79804,47 @@ You should update your Next.js config file as shown below:
         return { type: "core", statusCode: response.status, headers: Object.fromEntries(response.headers.entries()), body: getResponseBody2(method, response), isBase64Encoded: false };
       } };
       asset_resolver_default2 = resolver3;
-      open_next_config_default2 = defineCloudflareConfig2();
+      IgnorableError4 = class extends Error {
+        static {
+          __name(this, "IgnorableError");
+        }
+        constructor(message) {
+          super(message), __publicField2(this, "__openNextInternal", true), __publicField2(this, "canIgnore", true), __publicField2(this, "logLevel", 0), this.name = "IgnorableError";
+        }
+      };
+      DOWNPLAYED_ERROR_LOGS6 = [{ clientName: "S3Client", commandName: "GetObjectCommand", errorName: "NoSuchKey" }], isDownplayedErrorLog6 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS6.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
+      debugCache4 = /* @__PURE__ */ __name((name, ...args) => {
+        process.env.NEXT_PRIVATE_DEBUG_CACHE && console.log(`[${name}] `, ...args);
+      }, "debugCache"), FALLBACK_BUILD_ID2 = "no-build-id", CACHE_DIR2 = "cdn-cgi/_next_cache", NAME2 = "cf-static-assets-incremental-cache", StaticAssetsIncrementalCache2 = class {
+        static {
+          __name(this, "StaticAssetsIncrementalCache");
+        }
+        constructor() {
+          __publicField2(this, "name", NAME2);
+        }
+        async get(key, cacheType) {
+          let assets = getCloudflareContext2().env.ASSETS;
+          if (!assets) throw new IgnorableError4("No Static Assets");
+          debugCache4("StaticAssetsIncrementalCache", `get ${key}`);
+          try {
+            let response = await assets.fetch(this.getAssetUrl(key, cacheType));
+            return response.ok ? { value: await response.json(), lastModified: globalThis.__BUILD_TIMESTAMP_MS__ } : (await response.body?.cancel(), null);
+          } catch (e) {
+            return error6("Failed to get from cache", e), null;
+          }
+        }
+        async set(key, _value, cacheType) {
+          error6(`StaticAssetsIncrementalCache: Failed to set to read-only cache key=${key} type=${cacheType}`);
+        }
+        async delete() {
+          error6("StaticAssetsIncrementalCache: Failed to delete from read-only cache");
+        }
+        getAssetUrl(key, cacheType) {
+          if (cacheType === "composable") throw new Error("Composable cache is not supported in static assets incremental cache");
+          let buildId = process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID2;
+          return `http://assets.local/${(cacheType === "fetch" ? `${CACHE_DIR2}/__fetch/${buildId}/${key}` : `${CACHE_DIR2}/${buildId}/${key}.cache`).replace(/\/+/g, "/")}`;
+        }
+      }, static_assets_incremental_cache_default2 = new StaticAssetsIncrementalCache2(), open_next_config_default2 = defineCloudflareConfig2({ enableCacheInterception: true, incrementalCache: static_assets_incremental_cache_default2 });
     } });
     import_next_server = __toESM2(require_next_server(), 1);
     globalThis.monorepoPackagePath = "";
@@ -77581,7 +79852,7 @@ You should update your Next.js config file as shown below:
     globalThis.openNextVersion = "4.1.0";
     globalThis.nextVersion = "16.2.12";
     __create22 = Object.create;
-    __defProp22 = Object.defineProperty;
+    __defProp32 = Object.defineProperty;
     __getOwnPropDesc22 = Object.getOwnPropertyDescriptor;
     __getOwnPropNames22 = Object.getOwnPropertyNames;
     __getProtoOf22 = Object.getPrototypeOf;
@@ -77593,20 +79864,20 @@ You should update your Next.js config file as shown below:
       return mod3 || (0, cb[__getOwnPropNames22(cb)[0]])((mod3 = { exports: {} }).exports, mod3), mod3.exports;
     }, "__commonJS2");
     __export3 = /* @__PURE__ */ __name((target, all) => {
-      for (var name in all) __defProp22(target, name, { get: all[name], enumerable: true });
+      for (var name in all) __defProp32(target, name, { get: all[name], enumerable: true });
     }, "__export3");
     __copyProps22 = /* @__PURE__ */ __name((to, from, except, desc) => {
-      if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames22(from)) !__hasOwnProp22.call(to, key) && key !== except && __defProp22(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc22(from, key)) || desc.enumerable });
+      if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames22(from)) !__hasOwnProp22.call(to, key) && key !== except && __defProp32(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc22(from, key)) || desc.enumerable });
       return to;
     }, "__copyProps2");
     __reExport = /* @__PURE__ */ __name((target, mod3, secondTarget) => (__copyProps22(target, mod3, "default"), secondTarget && __copyProps22(secondTarget, mod3, "default")), "__reExport");
-    __toESM22 = /* @__PURE__ */ __name((mod3, isNodeMode, target) => (target = mod3 != null ? __create22(__getProtoOf22(mod3)) : {}, __copyProps22(isNodeMode || !mod3 || !mod3.__esModule ? __defProp22(target, "default", { value: mod3, enumerable: true }) : target, mod3)), "__toESM2");
-    __toCommonJS2 = /* @__PURE__ */ __name((mod3) => __copyProps22(__defProp22({}, "__esModule", { value: true }), mod3), "__toCommonJS2");
-    __name(isOpenNextError5, "isOpenNextError");
+    __toESM22 = /* @__PURE__ */ __name((mod3, isNodeMode, target) => (target = mod3 != null ? __create22(__getProtoOf22(mod3)) : {}, __copyProps22(isNodeMode || !mod3 || !mod3.__esModule ? __defProp32(target, "default", { value: mod3, enumerable: true }) : target, mod3)), "__toESM2");
+    __toCommonJS2 = /* @__PURE__ */ __name((mod3) => __copyProps22(__defProp32({}, "__esModule", { value: true }), mod3), "__toCommonJS2");
+    __name(isOpenNextError22, "isOpenNextError2");
     init_error2 = __esm22({ "node_modules/@opennextjs/aws/dist/utils/error.js"() {
-      IgnorableError2 = class extends Error {
+      IgnorableError22 = class extends Error {
         static {
-          __name(this, "IgnorableError");
+          __name(this, "IgnorableError2");
         }
         __openNextInternal = true;
         canIgnore = true;
@@ -77614,7 +79885,7 @@ You should update your Next.js config file as shown below:
         constructor(message) {
           super(message), this.name = "IgnorableError";
         }
-      }, FatalError2 = class extends Error {
+      }, FatalError3 = class extends Error {
         static {
           __name(this, "FatalError");
         }
@@ -77626,12 +79897,12 @@ You should update your Next.js config file as shown below:
         }
       };
     } });
-    __name(debug5, "debug");
-    __name(warn5, "warn");
-    __name(error5, "error");
-    __name(getOpenNextErrorLogLevel5, "getOpenNextErrorLogLevel");
+    __name(debug22, "debug2");
+    __name(warn22, "warn2");
+    __name(error22, "error2");
+    __name(getOpenNextErrorLogLevel22, "getOpenNextErrorLogLevel2");
     init_logger2 = __esm22({ "node_modules/@opennextjs/aws/dist/adapters/logger.js"() {
-      init_error2(), DOWNPLAYED_ERROR_LOGS5 = [{ clientName: "S3Client", commandName: "GetObjectCommand", errorName: "NoSuchKey" }], isDownplayedErrorLog5 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS5.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
+      init_error2(), DOWNPLAYED_ERROR_LOGS22 = [{ clientName: "S3Client", commandName: "GetObjectCommand", errorName: "NoSuchKey" }], isDownplayedErrorLog22 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS22.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog2");
     } });
     __name(parseSetCookieHeader2, "parseSetCookieHeader");
     __name(getQueryFromIterator2, "getQueryFromIterator");
@@ -77643,7 +79914,7 @@ You should update your Next.js config file as shown below:
           if (value === void 0) continue;
           let keyLower = key.toLowerCase();
           if (keyLower === "location" && Array.isArray(value)) {
-            value.length === 1 || value[0] === value[1] ? result[keyLower] = value[0] : (warn5("Multiple different values for Location header found. Using the last one"), result[keyLower] = value[value.length - 1]);
+            value.length === 1 || value[0] === value[1] ? result[keyLower] = value[0] : (warn22("Multiple different values for Location header found. Using the last one"), result[keyLower] = value[value.length - 1]);
             continue;
           }
           result[keyLower] = convertHeader(value);
@@ -77893,46 +80164,46 @@ You should update your Next.js config file as shown below:
             callback();
           }, final(callback) {
             controller.close(), callback();
-          }, destroy(error22, callback) {
-            if (error22) controller.error(error22);
+          }, destroy(error222, callback) {
+            if (error222) controller.error(error222);
             else try {
               controller.close();
             } catch {
             }
-            callback(error22);
+            callback(error222);
           } });
         }, abortSignal, retainChunks: false };
         return ctx.waitUntil(handler32(internalEvent, { streamCreator, waitUntil: ctx.waitUntil.bind(ctx) })), promiseResponse;
       }, "handler"), cloudflare_node_default = { wrapper: handler3, name: "cloudflare-node", supportStreaming: true };
     } });
-    dummy_exports2 = {};
-    __export3(dummy_exports2, { default: /* @__PURE__ */ __name(() => dummy_default2, "default") });
-    init_dummy2 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/tagCache/dummy.js"() {
-      dummyTagCache = { name: "dummy", mode: "original", getByPath: /* @__PURE__ */ __name(async () => [], "getByPath"), getByTag: /* @__PURE__ */ __name(async () => [], "getByTag"), getLastModified: /* @__PURE__ */ __name(async (_, lastModified) => lastModified ?? Date.now(), "getLastModified"), writeTags: /* @__PURE__ */ __name(async () => {
-      }, "writeTags"), isStale: /* @__PURE__ */ __name(async (_path) => false, "isStale") }, dummy_default2 = dummyTagCache;
+    dummy_exports5 = {};
+    __export3(dummy_exports5, { default: /* @__PURE__ */ __name(() => dummy_default5, "default") });
+    init_dummy5 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/tagCache/dummy.js"() {
+      dummyTagCache2 = { name: "dummy", mode: "original", getByPath: /* @__PURE__ */ __name(async () => [], "getByPath"), getByTag: /* @__PURE__ */ __name(async () => [], "getByTag"), getLastModified: /* @__PURE__ */ __name(async (_, lastModified) => lastModified ?? Date.now(), "getLastModified"), writeTags: /* @__PURE__ */ __name(async () => {
+      }, "writeTags"), isStale: /* @__PURE__ */ __name(async (_path) => false, "isStale") }, dummy_default5 = dummyTagCache2;
     } });
     dummy_exports22 = {};
     __export3(dummy_exports22, { default: /* @__PURE__ */ __name(() => dummy_default22, "default") });
     init_dummy22 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/queue/dummy.js"() {
-      init_error2(), dummyQueue = { name: "dummy", send: /* @__PURE__ */ __name(async () => {
-        throw new FatalError2("Dummy queue is not implemented");
-      }, "send") }, dummy_default22 = dummyQueue;
+      init_error2(), dummyQueue2 = { name: "dummy", send: /* @__PURE__ */ __name(async () => {
+        throw new FatalError3("Dummy queue is not implemented");
+      }, "send") }, dummy_default22 = dummyQueue2;
     } });
-    dummy_exports3 = {};
-    __export3(dummy_exports3, { default: /* @__PURE__ */ __name(() => dummy_default3, "default") });
-    init_dummy3 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/incrementalCache/dummy.js"() {
-      init_error2(), dummyIncrementalCache = { name: "dummy", get: /* @__PURE__ */ __name(async () => {
-        throw new IgnorableError2('"Dummy" cache does not cache anything');
+    dummy_exports32 = {};
+    __export3(dummy_exports32, { default: /* @__PURE__ */ __name(() => dummy_default32, "default") });
+    init_dummy32 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/incrementalCache/dummy.js"() {
+      init_error2(), dummyIncrementalCache2 = { name: "dummy", get: /* @__PURE__ */ __name(async () => {
+        throw new IgnorableError22('"Dummy" cache does not cache anything');
       }, "get"), set: /* @__PURE__ */ __name(async () => {
-        throw new IgnorableError2('"Dummy" cache does not cache anything');
+        throw new IgnorableError22('"Dummy" cache does not cache anything');
       }, "set"), delete: /* @__PURE__ */ __name(async () => {
-        throw new IgnorableError2('"Dummy" cache does not cache anything');
-      }, "delete") }, dummy_default3 = dummyIncrementalCache;
+        throw new IgnorableError22('"Dummy" cache does not cache anything');
+      }, "delete") }, dummy_default32 = dummyIncrementalCache2;
     } });
-    dummy_exports4 = {};
-    __export3(dummy_exports4, { default: /* @__PURE__ */ __name(() => dummy_default4, "default") });
-    init_dummy4 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/assetResolver/dummy.js"() {
-      resolver22 = { name: "dummy" }, dummy_default4 = resolver22;
+    dummy_exports42 = {};
+    __export3(dummy_exports42, { default: /* @__PURE__ */ __name(() => dummy_default42, "default") });
+    init_dummy42 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/assetResolver/dummy.js"() {
+      resolver22 = { name: "dummy" }, dummy_default42 = resolver22;
     } });
     fetch_exports2 = {};
     __export3(fetch_exports2, { default: /* @__PURE__ */ __name(() => fetch_default2, "default") });
@@ -77945,10 +80216,10 @@ You should update your Next.js config file as shown below:
         }), { type: "core", headers: responseHeaders, statusCode: response.status, isBase64Encoded: true, body: response.body ?? emptyReadableStream2() };
       }, "proxy") }, fetch_default2 = fetchProxy2;
     } });
-    dummy_exports5 = {};
-    __export3(dummy_exports5, { default: /* @__PURE__ */ __name(() => dummy_default5, "default") });
-    init_dummy5 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/cdnInvalidation/dummy.js"() {
-      dummy_default5 = { name: "dummy", invalidatePaths: /* @__PURE__ */ __name((_) => Promise.resolve(), "invalidatePaths") };
+    dummy_exports52 = {};
+    __export3(dummy_exports52, { default: /* @__PURE__ */ __name(() => dummy_default52, "default") });
+    init_dummy52 = __esm22({ "node_modules/@opennextjs/aws/dist/overrides/cdnInvalidation/dummy.js"() {
+      dummy_default52 = { name: "dummy", invalidatePaths: /* @__PURE__ */ __name((_) => Promise.resolve(), "invalidatePaths") };
     } });
     init_logger2();
     __name(setNodeEnv, "setNodeEnv");
@@ -78078,7 +80349,7 @@ You should update your Next.js config file as shown below:
         this.headersSent || this.flushHeaders(), this._internalWrite(chunk, encoding), callback();
       }
       _flush(callback) {
-        this.headersSent || this.flushHeaders(), globalThis.__openNextAls?.getStore()?.pendingPromiseRunner.add(this.onEnd(this.headers)), this.streamCreator?.onFinish?.(this.bodyLength), this.bodyLength === 0 && process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true" && (debug5('Force writing "SOMETHING" to the response body'), this.push("SOMETHING")), callback();
+        this.headersSent || this.flushHeaders(), globalThis.__openNextAls?.getStore()?.pendingPromiseRunner.add(this.onEnd(this.headers)), this.streamCreator?.onFinish?.(this.bodyLength), this.bodyLength === 0 && process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true" && (debug22('Force writing "SOMETHING" to the response body'), this.push("SOMETHING")), callback();
       }
       setHeaders(headers) {
         return headers.forEach((value, key) => {
@@ -78158,8 +80429,8 @@ You should update your Next.js config file as shown below:
         this.promises.push(detachedPromise), promise.then(detachedPromise.resolve, detachedPromise.reject);
       }
       async await() {
-        debug5(`Awaiting ${this.promises.length} detached promises`), (await Promise.allSettled(this.promises.map((p) => p.promise))).filter((r) => r.status === "rejected").forEach((r) => {
-          error5(r.reason);
+        debug22(`Awaiting ${this.promises.length} detached promises`), (await Promise.allSettled(this.promises.map((p) => p.promise))).filter((r) => r.status === "rejected").forEach((r) => {
+          error22(r.reason);
         });
       }
     };
@@ -78170,12 +80441,12 @@ You should update your Next.js config file as shown below:
     globalThis.__dirname ??= "";
     NEXT_DIR2 = path3.join("", ".next");
     OPEN_NEXT_DIR2 = path3.join("", ".open-next");
-    debug5({ NEXT_DIR: NEXT_DIR2, OPEN_NEXT_DIR: OPEN_NEXT_DIR2 });
+    debug22({ NEXT_DIR: NEXT_DIR2, OPEN_NEXT_DIR: OPEN_NEXT_DIR2 });
     NextConfig2 = { env: {}, webpack: null, typescript: { ignoreBuildErrors: false }, typedRoutes: false, distDir: ".next", cleanDistDir: true, assetPrefix: "", cacheMaxMemorySize: 52428800, configOrigin: "next.config.ts", useFileSystemPublicRoutes: true, generateEtags: true, pageExtensions: ["tsx", "ts", "jsx", "js"], poweredByHeader: true, compress: true, images: { deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840], imageSizes: [32, 48, 64, 96, 128, 256, 384], path: "/_next/image", loader: "default", loaderFile: "", domains: [], disableStaticImages: false, minimumCacheTTL: 14400, formats: ["image/webp"], maximumRedirects: 3, maximumResponseBody: 5e7, dangerouslyAllowLocalIP: false, dangerouslyAllowSVG: false, contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;", contentDispositionType: "attachment", localPatterns: [{ pathname: "**", search: "" }], remotePatterns: [], qualities: [75], unoptimized: false, customCacheHandler: false }, devIndicators: { position: "bottom-left" }, onDemandEntries: { maxInactiveAge: 6e4, pagesBufferLength: 5 }, basePath: "", sassOptions: {}, trailingSlash: false, i18n: null, productionBrowserSourceMaps: false, excludeDefaultMomentLocales: true, reactProductionProfiling: false, reactStrictMode: null, reactMaxHeadersLength: 6e3, httpAgentOptions: { keepAlive: true }, logging: { serverFunctions: true, browserToTerminal: "warn" }, compiler: {}, expireTime: 31536e3, staticPageGenerationTimeout: 60, output: "standalone", modularizeImports: { "@mui/icons-material": { transform: "@mui/icons-material/{{member}}" }, lodash: { transform: "lodash/{{member}}" } }, outputFileTracingRoot: "/Users/shivrajtimilsena/projects/meroUI", cacheComponents: false, cacheLife: { default: { stale: 300, revalidate: 900, expire: 4294967294 }, seconds: { stale: 30, revalidate: 1, expire: 60 }, minutes: { stale: 300, revalidate: 60, expire: 3600 }, hours: { stale: 300, revalidate: 3600, expire: 86400 }, days: { stale: 300, revalidate: 86400, expire: 604800 }, weeks: { stale: 300, revalidate: 604800, expire: 2592e3 }, max: { stale: 300, revalidate: 2592e3, expire: 31536e3 } }, cacheHandlers: {}, experimental: { appNewScrollHandler: false, useSkewCookie: false, cssChunking: true, multiZoneDraftMode: false, appNavFailHandling: false, prerenderEarlyExit: true, serverMinification: true, linkNoTouchStart: false, caseSensitiveRoutes: false, cachedNavigations: false, partialFallbacks: false, dynamicOnHover: false, varyParams: false, prefetchInlining: false, preloadEntriesOnStart: true, clientRouterFilter: true, clientRouterFilterRedirects: false, fetchCacheKeyPrefix: "", proxyPrefetch: "flexible", optimisticClientCache: true, manualClientBasePath: false, cpus: 7, memoryBasedWorkersCount: false, imgOptConcurrency: null, imgOptTimeoutInSeconds: 7, imgOptMaxInputPixels: 268402689, imgOptSequentialRead: null, isrFlushToDisk: true, workerThreads: false, optimizeCss: false, nextScriptWorkers: false, scrollRestoration: false, externalDir: false, disableOptimizedLoading: false, gzipSize: true, craCompat: false, esmExternals: true, fullySpecified: false, swcTraceProfiling: false, forceSwcTransforms: false, largePageDataBytes: 128e3, typedEnv: false, parallelServerCompiles: false, parallelServerBuildTraces: false, ppr: false, authInterrupts: false, webpackMemoryOptimizations: false, optimizeServerReact: true, strictRouteTypes: false, useTypeScriptCli: false, viewTransition: false, removeUncaughtErrorAndRejectionListeners: false, validateRSCRequestHeaders: false, staleTimes: { dynamic: 0, static: 300 }, reactDebugChannel: true, serverComponentsHmrCache: true, staticGenerationMaxConcurrency: 8, staticGenerationMinPagesPerWorker: 25, transitionIndicator: false, gestureTransition: false, inlineCss: false, useCache: false, globalNotFound: false, browserDebugInfoInTerminal: "warn", lockDistDir: true, proxyClientMaxBodySize: 10485760, hideLogsAfterAbort: false, mcpServer: true, turbopackFileSystemCacheForDev: true, turbopackFileSystemCacheForBuild: false, turbopackInferModuleSideEffects: true, turbopackPluginRuntimeStrategy: "childProcesses", optimizePackageImports: ["lucide-react", "date-fns", "lodash-es", "ramda", "antd", "react-bootstrap", "ahooks", "@ant-design/icons", "@headlessui/react", "@headlessui-float/react", "@heroicons/react/20/solid", "@heroicons/react/24/solid", "@heroicons/react/24/outline", "@visx/visx", "@tremor/react", "rxjs", "@mui/material", "@mui/icons-material", "recharts", "react-use", "effect", "@effect/schema", "@effect/platform", "@effect/platform-node", "@effect/platform-browser", "@effect/platform-bun", "@effect/sql", "@effect/sql-mssql", "@effect/sql-mysql2", "@effect/sql-pg", "@effect/sql-sqlite-node", "@effect/sql-sqlite-bun", "@effect/sql-sqlite-wasm", "@effect/sql-sqlite-react-native", "@effect/rpc", "@effect/rpc-http", "@effect/typeclass", "@effect/experimental", "@effect/opentelemetry", "@material-ui/core", "@material-ui/icons", "@tabler/icons-react", "mui-core", "react-icons/ai", "react-icons/bi", "react-icons/bs", "react-icons/cg", "react-icons/ci", "react-icons/di", "react-icons/fa", "react-icons/fa6", "react-icons/fc", "react-icons/fi", "react-icons/gi", "react-icons/go", "react-icons/gr", "react-icons/hi", "react-icons/hi2", "react-icons/im", "react-icons/io", "react-icons/io5", "react-icons/lia", "react-icons/lib", "react-icons/lu", "react-icons/md", "react-icons/pi", "react-icons/ri", "react-icons/rx", "react-icons/si", "react-icons/sl", "react-icons/tb", "react-icons/tfi", "react-icons/ti", "react-icons/vsc", "react-icons/wi"], trustHostHeader: false, isExperimentalCompile: false }, htmlLimitedBots: "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight", bundlePagesRouterDependencies: false, configFileName: "next.config.ts", turbopack: { root: "/Users/shivrajtimilsena/projects/meroUI" }, distDirRoot: ".next" };
-    BuildId2 = "dQwrh8rvPnBuMCKErsfZ_";
+    BuildId2 = "h6FxDrRBln8Oc02cpmgYG";
     HtmlPages = ["/404", "/500"];
     RoutesManifest2 = { basePath: "", rewrites: { beforeFiles: [], afterFiles: [], fallback: [] }, redirects: [{ source: "/:path+/", destination: "/:path+", internal: true, priority: true, statusCode: 308, regex: "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$" }], routes: { static: [{ page: "/", regex: "^/(?:/)?$", routeKeys: {}, namedRegex: "^/(?:/)?$" }, { page: "/_global-error", regex: "^/_global\\-error(?:/)?$", routeKeys: {}, namedRegex: "^/_global\\-error(?:/)?$" }, { page: "/_not-found", regex: "^/_not\\-found(?:/)?$", routeKeys: {}, namedRegex: "^/_not\\-found(?:/)?$" }, { page: "/components", regex: "^/components(?:/)?$", routeKeys: {}, namedRegex: "^/components(?:/)?$" }, { page: "/docs", regex: "^/docs(?:/)?$", routeKeys: {}, namedRegex: "^/docs(?:/)?$" }, { page: "/favicon.ico", regex: "^/favicon\\.ico(?:/)?$", routeKeys: {}, namedRegex: "^/favicon\\.ico(?:/)?$" }, { page: "/templates", regex: "^/templates(?:/)?$", routeKeys: {}, namedRegex: "^/templates(?:/)?$" }], dynamic: [{ page: "/components/[slug]", regex: "^/components/([^/]+?)(?:/)?$", routeKeys: { nxtPslug: "nxtPslug" }, namedRegex: "^/components/(?<nxtPslug>[^/]+?)(?:/)?$" }], data: { static: [], dynamic: [] } }, locales: [] };
-    PrerenderManifest2 = { version: 4, routes: { "/": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_global-error": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_global-error", dataRoute: "/_global-error.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_not-found": { initialStatus: 404, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_not-found", dataRoute: "/_not-found.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components", dataRoute: "/components.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/badge": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/badge.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/button": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/button.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/card": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/card.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/input": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/input.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/modal": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/modal.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/progress": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/progress.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/skeleton": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/skeleton.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/table": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/table.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tabs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tabs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toast": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toast.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toggle": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toggle.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tooltip": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tooltip.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/docs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/docs", dataRoute: "/docs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/favicon.ico": { initialHeaders: { "cache-control": "public, max-age=0, must-revalidate", "content-type": "image/x-icon", "x-next-cache-tags": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico" }, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/favicon.ico", dataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/templates": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/templates", dataRoute: "/templates.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, dynamicRoutes: { "/components/[slug]": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], routeRegex: "^/components/([^/]+?)(?:/)?$", dataRoute: "/components/[slug].rsc", fallback: null, fallbackRootParams: [], fallbackRouteParams: [], dataRouteRegex: "^/components/([^/]+?)\\.rsc$", prefetchDataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, notFoundRoutes: [], preview: { previewModeId: "1dcb06c0c10fccb8fd565d67a878e458", previewModeSigningKey: "ad038de691be81bcc9c0e57c3b470d86bc767ce309cb5a110e1c287af5e6c3a3", previewModeEncryptionKey: "df499afa62d3dd6263bac86624edfdb2a99a8d978ccac3917e6713b74d9d9c02" } };
+    PrerenderManifest2 = { version: 4, routes: { "/": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_global-error": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_global-error", dataRoute: "/_global-error.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_not-found": { initialStatus: 404, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/_not-found", dataRoute: "/_not-found.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components", dataRoute: "/components.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/badge": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/badge.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/button": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/button.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/card": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/card.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/input": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/input.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/modal": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/modal.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/progress": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/progress.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/prompt-bar": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/prompt-bar.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/skeleton": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/skeleton.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/table": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/table.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tabs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tabs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toast": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toast.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toggle": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/toggle.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tooltip": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/components/[slug]", dataRoute: "/components/tooltip.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/docs": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/docs", dataRoute: "/docs.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/favicon.ico": { initialHeaders: { "cache-control": "public, max-age=0, must-revalidate", "content-type": "image/x-icon", "x-next-cache-tags": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico" }, experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/favicon.ico", dataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/templates": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], initialRevalidateSeconds: false, srcRoute: "/templates", dataRoute: "/templates.rsc", allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, dynamicRoutes: { "/components/[slug]": { experimentalBypassFor: [{ type: "header", key: "next-action" }, { type: "header", key: "content-type", value: "multipart/form-data;.*" }], routeRegex: "^/components/([^/]+?)(?:/)?$", dataRoute: "/components/[slug].rsc", fallback: null, fallbackRootParams: [], fallbackRouteParams: [], dataRouteRegex: "^/components/([^/]+?)\\.rsc$", prefetchDataRoute: null, allowHeader: ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, notFoundRoutes: [], preview: { previewModeId: "1dcb06c0c10fccb8fd565d67a878e458", previewModeSigningKey: "ad038de691be81bcc9c0e57c3b470d86bc767ce309cb5a110e1c287af5e6c3a3", previewModeEncryptionKey: "df499afa62d3dd6263bac86624edfdb2a99a8d978ccac3917e6713b74d9d9c02" } };
     MiddlewareManifest2 = { version: 3, middleware: {}, sortedMiddleware: [], functions: {} };
     AppPathRoutesManifest2 = { "/(docs)/components/[slug]/page": "/components/[slug]", "/(docs)/components/page": "/components", "/(docs)/docs/page": "/docs", "/_global-error/page": "/_global-error", "/_not-found/page": "/_not-found", "/favicon.ico/route": "/favicon.ico", "/page": "/", "/templates/page": "/templates" };
     FunctionsConfigManifest2 = { version: 1, functions: {} };
@@ -78261,19 +80532,19 @@ You should update your Next.js config file as shown below:
         return;
       }
       if (!("unstable_preloadEntries" in nextServer)) {
-        debug5("The current version of Next.js does not support route preloading. Skipping route preloading."), routesLoaded = true;
+        debug22("The current version of Next.js does not support route preloading. Skipping route preloading."), routesLoaded = true;
         return;
       }
       if (stage === "waitUntil" && routePreloadingBehavior === "withWaitUntil") {
         let waitUntil = globalThis.__openNextAls.getStore()?.waitUntil;
         if (!waitUntil) {
-          error5("You've tried to use the 'withWaitUntil' route preloading behavior, but the 'waitUntil' function is not available."), routesLoaded = true;
+          error22("You've tried to use the 'withWaitUntil' route preloading behavior, but the 'waitUntil' function is not available."), routesLoaded = true;
           return;
         }
-        debug5("Preloading entries with waitUntil"), waitUntil?.(nextServer.unstable_preloadEntries()), routesLoaded = true;
+        debug22("Preloading entries with waitUntil"), waitUntil?.(nextServer.unstable_preloadEntries()), routesLoaded = true;
       } else if (stage === "start" && routePreloadingBehavior === "onStart" || stage === "warmerEvent" && routePreloadingBehavior === "onWarmerEvent" || stage === "onDemand") {
         let startTimestamp = Date.now();
-        debug5("Preloading entries"), await nextServer.unstable_preloadEntries(), debug5("Preloading entries took", Date.now() - startTimestamp, "ms"), routesLoaded = true;
+        debug22("Preloading entries"), await nextServer.unstable_preloadEntries(), debug22("Preloading entries took", Date.now() - startTimestamp, "ms"), routesLoaded = true;
       }
     };
     requestHandler = /* @__PURE__ */ __name((metadata) => "getRequestHandlerWithMetadata" in nextServer ? nextServer.getRequestHandlerWithMetadata(metadata) : nextServer.getRequestHandler(), "requestHandler");
@@ -78297,10 +80568,10 @@ You should update your Next.js config file as shown below:
   }
 });
 
-// .wrangler/tmp/bundle-xD5IBI/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-NFZuLQ/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-xD5IBI/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-NFZuLQ/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // .open-next/worker.js
@@ -78345,14 +80616,14 @@ function error(...args) {
     return debug(...args);
   }
   if (args.some((arg) => isOpenNextError(arg))) {
-    const error22 = args.find((arg) => isOpenNextError(arg));
-    if (error22.logLevel < getOpenNextErrorLogLevel()) {
+    const error23 = args.find((arg) => isOpenNextError(arg));
+    if (error23.logLevel < getOpenNextErrorLogLevel()) {
       return;
     }
-    if (error22.logLevel === 0) {
+    if (error23.logLevel === 0) {
       return console.log(...args.map((arg) => isOpenNextError(arg) ? `${arg.name}: ${arg.message}` : arg));
     }
-    if (error22.logLevel === 1) {
+    if (error23.logLevel === 1) {
       return warn(...args.map((arg) => isOpenNextError(arg) ? `${arg.name}: ${arg.message}` : arg));
     }
     return console.error(...args);
@@ -79034,7 +81305,7 @@ function initRuntime() {
   };
   Object.assign(globalThis, {
     Request: CustomRequest,
-    __BUILD_TIMESTAMP_MS__: 1786453752762,
+    __BUILD_TIMESTAMP_MS__: 1786527759199,
     __NEXT_BASE_PATH__: "",
     __ASSETS_RUN_WORKER_FIRST__: false,
     __TRAILING_SLASH__: false,
@@ -79114,7 +81385,7 @@ import { parse as parseQs, stringify as stringifyQs } from "node:querystring";
 import path from "node:path";
 import { Transform } from "node:stream";
 import { ReadableStream as ReadableStream22 } from "node:stream/web";
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import path2 from "node:path";
 globalThis.Buffer = Buffer2;
 globalThis.AsyncLocalStorage = AsyncLocalStorage3;
@@ -79129,7 +81400,7 @@ globalThis.openNextDebug = false;
 globalThis.openNextVersion = "4.1.0";
 globalThis.nextVersion = "16.2.12";
 var __create = Object.create;
-var __defProp2 = Object.defineProperty;
+var __defProp3 = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames2 = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
@@ -79142,13 +81413,13 @@ var __commonJS2 = /* @__PURE__ */ __name((cb, mod3) => /* @__PURE__ */ __name(fu
 }, "__require"), "__commonJS");
 var __export2 = /* @__PURE__ */ __name((target, all) => {
   for (var name in all)
-    __defProp2(target, name, { get: all[name], enumerable: true });
+    __defProp3(target, name, { get: all[name], enumerable: true });
 }, "__export");
 var __copyProps = /* @__PURE__ */ __name((to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames2(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp2(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+        __defProp3(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
   }
   return to;
 }, "__copyProps");
@@ -79157,52 +81428,78 @@ var __toESM = /* @__PURE__ */ __name((mod3, isNodeMode, target) => (target = mod
   // file that has been converted to a CommonJS file using a Babel-
   // compatible transform (i.e. "__esModule" has not been set), then set
   // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod3 || !mod3.__esModule ? __defProp2(target, "default", { value: mod3, enumerable: true }) : target,
+  isNodeMode || !mod3 || !mod3.__esModule ? __defProp3(target, "default", { value: mod3, enumerable: true }) : target,
   mod3
 )), "__toESM");
-function isOpenNextError2(e) {
+function isOpenNextError3(e) {
   try {
     return "__openNextInternal" in e;
   } catch {
     return false;
   }
 }
-__name(isOpenNextError2, "isOpenNextError");
+__name(isOpenNextError3, "isOpenNextError");
+var IgnorableError2;
+var FatalError;
 var init_error = __esm2({
   "node_modules/@opennextjs/aws/dist/utils/error.js"() {
+    IgnorableError2 = class extends Error {
+      static {
+        __name(this, "IgnorableError");
+      }
+      __openNextInternal = true;
+      canIgnore = true;
+      logLevel = 0;
+      constructor(message) {
+        super(message);
+        this.name = "IgnorableError";
+      }
+    };
+    FatalError = class extends Error {
+      static {
+        __name(this, "FatalError");
+      }
+      __openNextInternal = true;
+      canIgnore = false;
+      logLevel = 2;
+      constructor(message) {
+        super(message);
+        this.name = "FatalError";
+      }
+    };
   }
 });
-function debug2(...args) {
+function debug3(...args) {
   if (globalThis.openNextDebug) {
     console.log(...args);
   }
 }
-__name(debug2, "debug");
-function warn2(...args) {
+__name(debug3, "debug");
+function warn3(...args) {
   console.warn(...args);
 }
-__name(warn2, "warn");
-function error2(...args) {
-  if (args.some((arg) => isDownplayedErrorLog2(arg))) {
-    return debug2(...args);
+__name(warn3, "warn");
+function error3(...args) {
+  if (args.some((arg) => isDownplayedErrorLog3(arg))) {
+    return debug3(...args);
   }
-  if (args.some((arg) => isOpenNextError2(arg))) {
-    const error22 = args.find((arg) => isOpenNextError2(arg));
-    if (error22.logLevel < getOpenNextErrorLogLevel2()) {
+  if (args.some((arg) => isOpenNextError3(arg))) {
+    const error23 = args.find((arg) => isOpenNextError3(arg));
+    if (error23.logLevel < getOpenNextErrorLogLevel3()) {
       return;
     }
-    if (error22.logLevel === 0) {
-      return console.log(...args.map((arg) => isOpenNextError2(arg) ? `${arg.name}: ${arg.message}` : arg));
+    if (error23.logLevel === 0) {
+      return console.log(...args.map((arg) => isOpenNextError3(arg) ? `${arg.name}: ${arg.message}` : arg));
     }
-    if (error22.logLevel === 1) {
-      return warn2(...args.map((arg) => isOpenNextError2(arg) ? `${arg.name}: ${arg.message}` : arg));
+    if (error23.logLevel === 1) {
+      return warn3(...args.map((arg) => isOpenNextError3(arg) ? `${arg.name}: ${arg.message}` : arg));
     }
     return console.error(...args);
   }
   console.error(...args);
 }
-__name(error2, "error");
-function getOpenNextErrorLogLevel2() {
+__name(error3, "error");
+function getOpenNextErrorLogLevel3() {
   const strLevel = process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1";
   switch (strLevel.toLowerCase()) {
     case "debug":
@@ -79215,20 +81512,20 @@ function getOpenNextErrorLogLevel2() {
       return 1;
   }
 }
-__name(getOpenNextErrorLogLevel2, "getOpenNextErrorLogLevel");
-var DOWNPLAYED_ERROR_LOGS2;
-var isDownplayedErrorLog2;
+__name(getOpenNextErrorLogLevel3, "getOpenNextErrorLogLevel");
+var DOWNPLAYED_ERROR_LOGS3;
+var isDownplayedErrorLog3;
 var init_logger = __esm2({
   "node_modules/@opennextjs/aws/dist/adapters/logger.js"() {
     init_error();
-    DOWNPLAYED_ERROR_LOGS2 = [
+    DOWNPLAYED_ERROR_LOGS3 = [
       {
         clientName: "S3Client",
         commandName: "GetObjectCommand",
         errorName: "NoSuchKey"
       }
     ];
-    isDownplayedErrorLog2 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS2.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
+    isDownplayedErrorLog3 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS3.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
   }
 });
 var require_dist = __commonJS2({
@@ -79665,6 +81962,78 @@ var init_cloudflare_edge = __esm2({
     };
   }
 });
+var dummy_exports = {};
+__export2(dummy_exports, {
+  default: /* @__PURE__ */ __name(() => dummy_default, "default")
+});
+var dummyTagCache;
+var dummy_default;
+var init_dummy = __esm2({
+  "node_modules/@opennextjs/aws/dist/overrides/tagCache/dummy.js"() {
+    dummyTagCache = {
+      name: "dummy",
+      mode: "original",
+      getByPath: /* @__PURE__ */ __name(async () => {
+        return [];
+      }, "getByPath"),
+      getByTag: /* @__PURE__ */ __name(async () => {
+        return [];
+      }, "getByTag"),
+      getLastModified: /* @__PURE__ */ __name(async (_, lastModified) => {
+        return lastModified ?? Date.now();
+      }, "getLastModified"),
+      writeTags: /* @__PURE__ */ __name(async () => {
+        return;
+      }, "writeTags"),
+      isStale: /* @__PURE__ */ __name(async (_path) => {
+        return false;
+      }, "isStale")
+    };
+    dummy_default = dummyTagCache;
+  }
+});
+var dummy_exports2 = {};
+__export2(dummy_exports2, {
+  default: /* @__PURE__ */ __name(() => dummy_default2, "default")
+});
+var dummyQueue;
+var dummy_default2;
+var init_dummy2 = __esm2({
+  "node_modules/@opennextjs/aws/dist/overrides/queue/dummy.js"() {
+    init_error();
+    dummyQueue = {
+      name: "dummy",
+      send: /* @__PURE__ */ __name(async () => {
+        throw new FatalError("Dummy queue is not implemented");
+      }, "send")
+    };
+    dummy_default2 = dummyQueue;
+  }
+});
+var dummy_exports3 = {};
+__export2(dummy_exports3, {
+  default: /* @__PURE__ */ __name(() => dummy_default3, "default")
+});
+var dummyIncrementalCache;
+var dummy_default3;
+var init_dummy3 = __esm2({
+  "node_modules/@opennextjs/aws/dist/overrides/incrementalCache/dummy.js"() {
+    init_error();
+    dummyIncrementalCache = {
+      name: "dummy",
+      get: /* @__PURE__ */ __name(async () => {
+        throw new IgnorableError2('"Dummy" cache does not cache anything');
+      }, "get"),
+      set: /* @__PURE__ */ __name(async () => {
+        throw new IgnorableError2('"Dummy" cache does not cache anything');
+      }, "set"),
+      delete: /* @__PURE__ */ __name(async () => {
+        throw new IgnorableError2('"Dummy" cache does not cache anything');
+      }, "delete")
+    };
+    dummy_default3 = dummyIncrementalCache;
+  }
+});
 var pattern_env_exports = {};
 __export2(pattern_env_exports, {
   default: /* @__PURE__ */ __name(() => pattern_env_default, "default")
@@ -79710,22 +82079,22 @@ var init_pattern_env = __esm2({
           for (const { key, patterns, regexes } of cachedPatterns) {
             for (const regex of regexes) {
               if (regex.test(_path)) {
-                debug2("Using origin", key, patterns);
+                debug3("Using origin", key, patterns);
                 return cachedOrigins[key];
               }
             }
           }
           if (_path.startsWith("/_next/image") && cachedOrigins.imageOptimizer) {
-            debug2("Using origin", "imageOptimizer", _path);
+            debug3("Using origin", "imageOptimizer", _path);
             return cachedOrigins.imageOptimizer;
           }
           if (cachedOrigins.default) {
-            debug2("Using default origin", cachedOrigins.default, _path);
+            debug3("Using default origin", cachedOrigins.default, _path);
             return cachedOrigins.default;
           }
           return false;
         } catch (e) {
-          error2("Error while resolving origin", e);
+          error3("Error while resolving origin", e);
           return false;
         }
       }, "resolve")
@@ -79733,18 +82102,18 @@ var init_pattern_env = __esm2({
     pattern_env_default = envLoader;
   }
 });
-var dummy_exports = {};
-__export2(dummy_exports, {
-  default: /* @__PURE__ */ __name(() => dummy_default, "default")
+var dummy_exports4 = {};
+__export2(dummy_exports4, {
+  default: /* @__PURE__ */ __name(() => dummy_default4, "default")
 });
 var resolver2;
-var dummy_default;
-var init_dummy = __esm2({
+var dummy_default4;
+var init_dummy4 = __esm2({
   "node_modules/@opennextjs/aws/dist/overrides/assetResolver/dummy.js"() {
     resolver2 = {
       name: "dummy"
     };
-    dummy_default = resolver2;
+    dummy_default4 = resolver2;
   }
 });
 function toReadableStream(value, isBase64) {
@@ -79916,11 +82285,11 @@ var DetachedPromiseRunner = class {
     promise.then(detachedPromise.resolve, detachedPromise.reject);
   }
   async await() {
-    debug2(`Awaiting ${this.promises.length} detached promises`);
+    debug3(`Awaiting ${this.promises.length} detached promises`);
     const results = await Promise.allSettled(this.promises.map((p) => p.promise));
     const rejectedPromises = results.filter((r) => r.status === "rejected");
     rejectedPromises.forEach((r) => {
-      error2(r.reason);
+      error3(r.reason);
     });
   }
 };
@@ -79988,6 +82357,30 @@ async function resolveWrapper(wrapper) {
   return m_1.default;
 }
 __name(resolveWrapper, "resolveWrapper");
+async function resolveTagCache2(tagCache) {
+  if (typeof tagCache === "function") {
+    return tagCache();
+  }
+  const m_1 = await Promise.resolve().then(() => (init_dummy(), dummy_exports));
+  return m_1.default;
+}
+__name(resolveTagCache2, "resolveTagCache");
+async function resolveQueue2(queue) {
+  if (typeof queue === "function") {
+    return queue();
+  }
+  const m_1 = await Promise.resolve().then(() => (init_dummy2(), dummy_exports2));
+  return m_1.default;
+}
+__name(resolveQueue2, "resolveQueue");
+async function resolveIncrementalCache2(incrementalCache) {
+  if (typeof incrementalCache === "function") {
+    return incrementalCache();
+  }
+  const m_1 = await Promise.resolve().then(() => (init_dummy3(), dummy_exports3));
+  return m_1.default;
+}
+__name(resolveIncrementalCache2, "resolveIncrementalCache");
 async function resolveOriginResolver(originResolver) {
   if (typeof originResolver === "function") {
     return originResolver();
@@ -80000,7 +82393,7 @@ async function resolveAssetResolver(assetResolver) {
   if (typeof assetResolver === "function") {
     return assetResolver();
   }
-  const m_1 = await Promise.resolve().then(() => (init_dummy(), dummy_exports));
+  const m_1 = await Promise.resolve().then(() => (init_dummy4(), dummy_exports4));
   return m_1.default;
 }
 __name(resolveAssetResolver, "resolveAssetResolver");
@@ -80019,7 +82412,7 @@ async function createGenericHandler(handler32) {
   const override = handlerConfig && "override" in handlerConfig ? handlerConfig.override : void 0;
   const converter22 = await resolveConverter(override?.converter);
   const { name, wrapper } = await resolveWrapper(override?.wrapper);
-  debug2("Using wrapper", name);
+  debug3("Using wrapper", name);
   return wrapper(handler32.handler, converter22);
 }
 __name(createGenericHandler, "createGenericHandler");
@@ -80027,12 +82420,12 @@ init_logger();
 globalThis.__dirname ??= "";
 var NEXT_DIR = path.join(__dirname, ".next");
 var OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
-debug2({ NEXT_DIR, OPEN_NEXT_DIR });
+debug3({ NEXT_DIR, OPEN_NEXT_DIR });
 var NextConfig = { "env": {}, "webpack": null, "typescript": { "ignoreBuildErrors": false }, "typedRoutes": false, "distDir": ".next", "cleanDistDir": true, "assetPrefix": "", "cacheMaxMemorySize": 52428800, "configOrigin": "next.config.ts", "useFileSystemPublicRoutes": true, "generateEtags": true, "pageExtensions": ["tsx", "ts", "jsx", "js"], "poweredByHeader": true, "compress": true, "images": { "deviceSizes": [640, 750, 828, 1080, 1200, 1920, 2048, 3840], "imageSizes": [32, 48, 64, 96, 128, 256, 384], "path": "/_next/image", "loader": "default", "loaderFile": "", "domains": [], "disableStaticImages": false, "minimumCacheTTL": 14400, "formats": ["image/webp"], "maximumRedirects": 3, "maximumResponseBody": 5e7, "dangerouslyAllowLocalIP": false, "dangerouslyAllowSVG": false, "contentSecurityPolicy": "script-src 'none'; frame-src 'none'; sandbox;", "contentDispositionType": "attachment", "localPatterns": [{ "pathname": "**", "search": "" }], "remotePatterns": [], "qualities": [75], "unoptimized": false, "customCacheHandler": false }, "devIndicators": { "position": "bottom-left" }, "onDemandEntries": { "maxInactiveAge": 6e4, "pagesBufferLength": 5 }, "basePath": "", "sassOptions": {}, "trailingSlash": false, "i18n": null, "productionBrowserSourceMaps": false, "excludeDefaultMomentLocales": true, "reactProductionProfiling": false, "reactStrictMode": null, "reactMaxHeadersLength": 6e3, "httpAgentOptions": { "keepAlive": true }, "logging": { "serverFunctions": true, "browserToTerminal": "warn" }, "compiler": {}, "expireTime": 31536e3, "staticPageGenerationTimeout": 60, "output": "standalone", "modularizeImports": { "@mui/icons-material": { "transform": "@mui/icons-material/{{member}}" }, "lodash": { "transform": "lodash/{{member}}" } }, "outputFileTracingRoot": "/Users/shivrajtimilsena/projects/meroUI", "cacheComponents": false, "cacheLife": { "default": { "stale": 300, "revalidate": 900, "expire": 4294967294 }, "seconds": { "stale": 30, "revalidate": 1, "expire": 60 }, "minutes": { "stale": 300, "revalidate": 60, "expire": 3600 }, "hours": { "stale": 300, "revalidate": 3600, "expire": 86400 }, "days": { "stale": 300, "revalidate": 86400, "expire": 604800 }, "weeks": { "stale": 300, "revalidate": 604800, "expire": 2592e3 }, "max": { "stale": 300, "revalidate": 2592e3, "expire": 31536e3 } }, "cacheHandlers": {}, "experimental": { "appNewScrollHandler": false, "useSkewCookie": false, "cssChunking": true, "multiZoneDraftMode": false, "appNavFailHandling": false, "prerenderEarlyExit": true, "serverMinification": true, "linkNoTouchStart": false, "caseSensitiveRoutes": false, "cachedNavigations": false, "partialFallbacks": false, "dynamicOnHover": false, "varyParams": false, "prefetchInlining": false, "preloadEntriesOnStart": true, "clientRouterFilter": true, "clientRouterFilterRedirects": false, "fetchCacheKeyPrefix": "", "proxyPrefetch": "flexible", "optimisticClientCache": true, "manualClientBasePath": false, "cpus": 7, "memoryBasedWorkersCount": false, "imgOptConcurrency": null, "imgOptTimeoutInSeconds": 7, "imgOptMaxInputPixels": 268402689, "imgOptSequentialRead": null, "isrFlushToDisk": true, "workerThreads": false, "optimizeCss": false, "nextScriptWorkers": false, "scrollRestoration": false, "externalDir": false, "disableOptimizedLoading": false, "gzipSize": true, "craCompat": false, "esmExternals": true, "fullySpecified": false, "swcTraceProfiling": false, "forceSwcTransforms": false, "largePageDataBytes": 128e3, "typedEnv": false, "parallelServerCompiles": false, "parallelServerBuildTraces": false, "ppr": false, "authInterrupts": false, "webpackMemoryOptimizations": false, "optimizeServerReact": true, "strictRouteTypes": false, "useTypeScriptCli": false, "viewTransition": false, "removeUncaughtErrorAndRejectionListeners": false, "validateRSCRequestHeaders": false, "staleTimes": { "dynamic": 0, "static": 300 }, "reactDebugChannel": true, "serverComponentsHmrCache": true, "staticGenerationMaxConcurrency": 8, "staticGenerationMinPagesPerWorker": 25, "transitionIndicator": false, "gestureTransition": false, "inlineCss": false, "useCache": false, "globalNotFound": false, "browserDebugInfoInTerminal": "warn", "lockDistDir": true, "proxyClientMaxBodySize": 10485760, "hideLogsAfterAbort": false, "mcpServer": true, "turbopackFileSystemCacheForDev": true, "turbopackFileSystemCacheForBuild": false, "turbopackInferModuleSideEffects": true, "turbopackPluginRuntimeStrategy": "childProcesses", "optimizePackageImports": ["lucide-react", "date-fns", "lodash-es", "ramda", "antd", "react-bootstrap", "ahooks", "@ant-design/icons", "@headlessui/react", "@headlessui-float/react", "@heroicons/react/20/solid", "@heroicons/react/24/solid", "@heroicons/react/24/outline", "@visx/visx", "@tremor/react", "rxjs", "@mui/material", "@mui/icons-material", "recharts", "react-use", "effect", "@effect/schema", "@effect/platform", "@effect/platform-node", "@effect/platform-browser", "@effect/platform-bun", "@effect/sql", "@effect/sql-mssql", "@effect/sql-mysql2", "@effect/sql-pg", "@effect/sql-sqlite-node", "@effect/sql-sqlite-bun", "@effect/sql-sqlite-wasm", "@effect/sql-sqlite-react-native", "@effect/rpc", "@effect/rpc-http", "@effect/typeclass", "@effect/experimental", "@effect/opentelemetry", "@material-ui/core", "@material-ui/icons", "@tabler/icons-react", "mui-core", "react-icons/ai", "react-icons/bi", "react-icons/bs", "react-icons/cg", "react-icons/ci", "react-icons/di", "react-icons/fa", "react-icons/fa6", "react-icons/fc", "react-icons/fi", "react-icons/gi", "react-icons/go", "react-icons/gr", "react-icons/hi", "react-icons/hi2", "react-icons/im", "react-icons/io", "react-icons/io5", "react-icons/lia", "react-icons/lib", "react-icons/lu", "react-icons/md", "react-icons/pi", "react-icons/ri", "react-icons/rx", "react-icons/si", "react-icons/sl", "react-icons/tb", "react-icons/tfi", "react-icons/ti", "react-icons/vsc", "react-icons/wi"], "trustHostHeader": false, "isExperimentalCompile": false }, "htmlLimitedBots": "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight", "bundlePagesRouterDependencies": false, "configFileName": "next.config.ts", "turbopack": { "root": "/Users/shivrajtimilsena/projects/meroUI" }, "distDirRoot": ".next" };
-var BuildId = "dQwrh8rvPnBuMCKErsfZ_";
+var BuildId = "h6FxDrRBln8Oc02cpmgYG";
 var RoutesManifest = { "basePath": "", "rewrites": { "beforeFiles": [], "afterFiles": [], "fallback": [] }, "redirects": [{ "source": "/:path+/", "destination": "/:path+", "internal": true, "priority": true, "statusCode": 308, "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$" }], "routes": { "static": [{ "page": "/", "regex": "^/(?:/)?$", "routeKeys": {}, "namedRegex": "^/(?:/)?$" }, { "page": "/_global-error", "regex": "^/_global\\-error(?:/)?$", "routeKeys": {}, "namedRegex": "^/_global\\-error(?:/)?$" }, { "page": "/_not-found", "regex": "^/_not\\-found(?:/)?$", "routeKeys": {}, "namedRegex": "^/_not\\-found(?:/)?$" }, { "page": "/components", "regex": "^/components(?:/)?$", "routeKeys": {}, "namedRegex": "^/components(?:/)?$" }, { "page": "/docs", "regex": "^/docs(?:/)?$", "routeKeys": {}, "namedRegex": "^/docs(?:/)?$" }, { "page": "/favicon.ico", "regex": "^/favicon\\.ico(?:/)?$", "routeKeys": {}, "namedRegex": "^/favicon\\.ico(?:/)?$" }, { "page": "/templates", "regex": "^/templates(?:/)?$", "routeKeys": {}, "namedRegex": "^/templates(?:/)?$" }], "dynamic": [{ "page": "/components/[slug]", "regex": "^/components/([^/]+?)(?:/)?$", "routeKeys": { "nxtPslug": "nxtPslug" }, "namedRegex": "^/components/(?<nxtPslug>[^/]+?)(?:/)?$" }], "data": { "static": [], "dynamic": [] } }, "locales": [] };
 var ConfigHeaders = [];
-var PrerenderManifest = { "version": 4, "routes": { "/": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/", "dataRoute": "/index.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_global-error": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/_global-error", "dataRoute": "/_global-error.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_not-found": { "initialStatus": 404, "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/_not-found", "dataRoute": "/_not-found.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components", "dataRoute": "/components.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/badge": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/badge.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/button": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/button.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/card": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/card.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/input": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/input.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/modal": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/modal.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/progress": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/progress.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/skeleton": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/skeleton.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/table": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/table.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tabs": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/tabs.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toast": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/toast.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toggle": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/toggle.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tooltip": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/tooltip.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/docs": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/docs", "dataRoute": "/docs.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/favicon.ico": { "initialHeaders": { "cache-control": "public, max-age=0, must-revalidate", "content-type": "image/x-icon", "x-next-cache-tags": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico" }, "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/favicon.ico", "dataRoute": null, "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/templates": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/templates", "dataRoute": "/templates.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, "dynamicRoutes": { "/components/[slug]": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "routeRegex": "^/components/([^/]+?)(?:/)?$", "dataRoute": "/components/[slug].rsc", "fallback": null, "fallbackRootParams": [], "fallbackRouteParams": [], "dataRouteRegex": "^/components/([^/]+?)\\.rsc$", "prefetchDataRoute": null, "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, "notFoundRoutes": [], "preview": { "previewModeId": "1dcb06c0c10fccb8fd565d67a878e458", "previewModeSigningKey": "ad038de691be81bcc9c0e57c3b470d86bc767ce309cb5a110e1c287af5e6c3a3", "previewModeEncryptionKey": "df499afa62d3dd6263bac86624edfdb2a99a8d978ccac3917e6713b74d9d9c02" } };
+var PrerenderManifest = { "version": 4, "routes": { "/": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/", "dataRoute": "/index.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_global-error": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/_global-error", "dataRoute": "/_global-error.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/_not-found": { "initialStatus": 404, "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/_not-found", "dataRoute": "/_not-found.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components", "dataRoute": "/components.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/badge": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/badge.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/button": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/button.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/card": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/card.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/input": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/input.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/modal": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/modal.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/progress": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/progress.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/prompt-bar": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/prompt-bar.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/skeleton": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/skeleton.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/table": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/table.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tabs": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/tabs.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toast": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/toast.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/toggle": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/toggle.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/components/tooltip": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/components/[slug]", "dataRoute": "/components/tooltip.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/docs": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/docs", "dataRoute": "/docs.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/favicon.ico": { "initialHeaders": { "cache-control": "public, max-age=0, must-revalidate", "content-type": "image/x-icon", "x-next-cache-tags": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico" }, "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/favicon.ico", "dataRoute": null, "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] }, "/templates": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "initialRevalidateSeconds": false, "srcRoute": "/templates", "dataRoute": "/templates.rsc", "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, "dynamicRoutes": { "/components/[slug]": { "experimentalBypassFor": [{ "type": "header", "key": "next-action" }, { "type": "header", "key": "content-type", "value": "multipart/form-data;.*" }], "routeRegex": "^/components/([^/]+?)(?:/)?$", "dataRoute": "/components/[slug].rsc", "fallback": null, "fallbackRootParams": [], "fallbackRouteParams": [], "dataRouteRegex": "^/components/([^/]+?)\\.rsc$", "prefetchDataRoute": null, "allowHeader": ["host", "x-matched-path", "x-prerender-revalidate", "x-prerender-revalidate-if-generated", "x-next-revalidated-tags", "x-next-revalidate-tag-token"] } }, "notFoundRoutes": [], "preview": { "previewModeId": "1dcb06c0c10fccb8fd565d67a878e458", "previewModeSigningKey": "ad038de691be81bcc9c0e57c3b470d86bc767ce309cb5a110e1c287af5e6c3a3", "previewModeEncryptionKey": "df499afa62d3dd6263bac86624edfdb2a99a8d978ccac3917e6713b74d9d9c02" } };
 var MiddlewareManifest = { "version": 3, "middleware": {}, "sortedMiddleware": [], "functions": {} };
 var AppPathRoutesManifest = { "/(docs)/components/[slug]/page": "/components/[slug]", "/(docs)/components/page": "/components", "/(docs)/docs/page": "/docs", "/_global-error/page": "/_global-error", "/_not-found/page": "/_not-found", "/favicon.ico/route": "/favicon.ico", "/page": "/", "/templates/page": "/templates" };
 var FunctionsConfigManifest = { "version": 1, "functions": {} };
@@ -80247,7 +82640,7 @@ function detectLocale(internalEvent, i18n) {
   }
   const cookiesLocale = getLocaleFromCookie(internalEvent.cookies);
   const preferredLocale = acceptLanguage(internalEvent.headers["accept-language"], i18n?.locales);
-  debug2({
+  debug3({
     cookiesLocale,
     preferredLocale,
     defaultLocale: i18n.defaultLocale,
@@ -80577,7 +82970,7 @@ async function computeCacheControl(path32, body, host, revalidate, lastModified,
     finalRevalidate = revalidate === false ? CACHE_ONE_YEAR : revalidate;
   }
   const age = Math.round((Date.now() - (lastModified ?? 0)) / 1e3);
-  const hash = /* @__PURE__ */ __name((str) => createHash("md5").update(str).digest("hex"), "hash");
+  const hash = /* @__PURE__ */ __name((str) => createHash2("md5").update(str).digest("hex"), "hash");
   const etag = hash(body);
   if (revalidate === 0) {
     return {
@@ -80592,7 +82985,7 @@ async function computeCacheControl(path32, body, host, revalidate, lastModified,
   const isStale2 = isStaleFromTime || isStaleFromTagCache;
   if (!isSSG || isStaleFromTagCache) {
     const sMaxAge = isStaleFromTagCache ? 1 : remainingTtl;
-    debug2("sMaxAge", {
+    debug3("sMaxAge", {
       finalRevalidate,
       age,
       lastModified,
@@ -80641,13 +83034,13 @@ function getBodyForAppRouter(event, cachedValue) {
       additionalHeaders: isSegmentResponse ? { [NEXT_PRERENDER_HEADER]: "1", [NEXT_POSTPONED_HEADER]: "2" } : {}
     };
   } catch (e) {
-    error2("Error while getting body for app router from cache:", e);
+    error3("Error while getting body for app router from cache:", e);
     return { body: cachedValue.rsc, additionalHeaders: {} };
   }
 }
 __name(getBodyForAppRouter, "getBodyForAppRouter");
 async function generateResult(event, localizedPath, cachedValue, lastModified, isStaleFromTagCache = false) {
-  debug2("Returning result from experimental cache");
+  debug3("Returning result from experimental cache");
   let body = "";
   let type = "application/octet-stream";
   let isDataRequest = false;
@@ -80704,7 +83097,7 @@ async function cacheInterceptor(event) {
   const cookies = event.headers.cookie || "";
   const hasPreviewData = cookies.includes("__prerender_bypass") || cookies.includes("__next_preview_data");
   if (hasPreviewData) {
-    debug2("Preview mode detected, passing through to handler");
+    debug3("Preview mode detected, passing through to handler");
     return event;
   }
   let localizedPath = localizePath(event);
@@ -80718,13 +83111,13 @@ async function cacheInterceptor(event) {
     return event;
   }
   const cacheKey = localizedPath === "/" ? "/index" : localizedPath;
-  debug2("Checking cache for", localizedPath, PrerenderManifest);
+  debug3("Checking cache for", localizedPath, PrerenderManifest);
   const isISR = Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) || Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) => new RegExp(dr.routeRegex).test(localizedPath));
-  debug2("isISR", isISR);
+  debug3("isISR", isISR);
   if (isISR) {
     try {
       const cachedData = await globalThis.incrementalCache.get(cacheKey);
-      debug2("cached data in interceptor", cachedData);
+      debug3("cached data in interceptor", cachedData);
       if (!cachedData?.value) {
         return event;
       }
@@ -80773,7 +83166,7 @@ async function cacheInterceptor(event) {
           return event;
       }
     } catch (e) {
-      debug2("Error while fetching cache", e);
+      debug3("Error while fetching cache", e);
       return event;
     }
   }
@@ -81247,7 +83640,7 @@ function checkHas(matcher, has, inverted = false) {
 }
 __name(checkHas, "checkHas");
 var getParamsFromSource = /* @__PURE__ */ __name((source) => (value) => {
-  debug2("value", value);
+  debug3("value", value);
   const _match = source(value);
   return _match ? _match.params : {};
 }, "getParamsFromSource");
@@ -81297,7 +83690,7 @@ function getNextConfigHeaders(event, configHeaders) {
           const value = convertMatch(_match, compile(h.value), h.value);
           requestHeaders[key] = value;
         } catch {
-          debug2(`Error matching header ${h.key} with value ${h.value}`);
+          debug3(`Error matching header ${h.key} with value ${h.value}`);
           requestHeaders[h.key] = h.value;
         }
       });
@@ -81318,11 +83711,11 @@ function handleRewrites(event, rewrites) {
   let finalQuery = query;
   let rewrittenUrl = url;
   const isExternalRewrite = isExternal(rewrite?.destination);
-  debug2("isExternalRewrite", isExternalRewrite);
+  debug3("isExternalRewrite", isExternalRewrite);
   if (rewrite) {
     const { pathname, protocol, hostname, queryString } = getUrlParts(rewrite.destination, isExternalRewrite);
     const pathToUse = rewrite.locale === false ? rawPath : localizedRawPath;
-    debug2("urlParts", { pathname, protocol, hostname, queryString });
+    debug3("urlParts", { pathname, protocol, hostname, queryString });
     const toDestinationPath = compile(escapeRegex(pathname, { isPath: true }));
     const toDestinationHost = compile(escapeRegex(hostname));
     const toDestinationQuery = compile(escapeRegex(queryString));
@@ -81359,7 +83752,7 @@ function handleRewrites(event, rewrites) {
       ...convertFromQueryString(rewrittenQuery)
     };
     rewrittenUrl += convertToQueryString(finalQuery);
-    debug2("rewrittenUrl", { rewrittenUrl, finalQuery, isUsingParams });
+    debug3("rewrittenUrl", { rewrittenUrl, finalQuery, isUsingParams });
   }
   return {
     internalEvent: {
@@ -81701,7 +84094,7 @@ async function routingHandler(event, { assetResolver }) {
     const redirect = handleRedirects(eventOrResult, RoutesManifest.redirects);
     if (redirect) {
       redirect.headers.Location = normalizeLocationHeader(redirect.headers.Location, event.url, true);
-      debug2("redirect", redirect);
+      debug3("redirect", redirect);
       return redirect;
     }
     const middlewareEventOrResult = await handleMiddleware(
@@ -81775,7 +84168,7 @@ async function routingHandler(event, { assetResolver }) {
       };
     }
     if (globalThis.openNextConfig.dangerous?.enableCacheInterception && !isInternalResult(eventOrResult)) {
-      debug2("Cache interception enabled");
+      debug3("Cache interception enabled");
       eventOrResult = await cacheInterceptor(eventOrResult);
       if (isInternalResult(eventOrResult)) {
         applyMiddlewareHeaders(eventOrResult, headers);
@@ -81787,7 +84180,7 @@ async function routingHandler(event, { assetResolver }) {
       ...foundStaticRoute,
       ...foundDynamicRoute
     ];
-    debug2("resolvedRoutes", resolvedRoutes);
+    debug3("resolvedRoutes", resolvedRoutes);
     return {
       internalEvent: eventOrResult,
       isExternalRewrite,
@@ -81799,7 +84192,7 @@ async function routingHandler(event, { assetResolver }) {
       rewriteStatusCode: middlewareEventOrResult.rewriteStatusCode
     };
   } catch (e) {
-    error2("Error in routingHandler", e);
+    error3("Error in routingHandler", e);
     return {
       internalEvent: {
         type: "core",
@@ -81834,6 +84227,9 @@ var defaultHandler = /* @__PURE__ */ __name(async (internalEvent, options) => {
   const originResolver = await resolveOriginResolver(middlewareConfig?.originResolver);
   const externalRequestProxy = await resolveProxyRequest(middlewareConfig?.override?.proxyExternalRequest);
   const assetResolver = await resolveAssetResolver(middlewareConfig?.assetResolver);
+  globalThis.tagCache = await resolveTagCache2(middlewareConfig?.override?.tagCache);
+  globalThis.queue = await resolveQueue2(middlewareConfig?.override?.queue);
+  globalThis.incrementalCache = await resolveIncrementalCache2(middlewareConfig?.override?.incrementalCache);
   const requestId = Math.random().toString(36);
   return runWithOpenNextRequestContext({
     isISRRevalidation: internalEvent.headers["x-isr"] === "1",
@@ -81842,7 +84238,7 @@ var defaultHandler = /* @__PURE__ */ __name(async (internalEvent, options) => {
   }, async () => {
     const result = await routingHandler(internalEvent, { assetResolver });
     if ("internalEvent" in result) {
-      debug2("Middleware intercepted event", internalEvent);
+      debug3("Middleware intercepted event", internalEvent);
       if (!result.isExternalRewrite) {
         const origin = await originResolver.resolve(result.internalEvent.rawPath);
         return {
@@ -81867,7 +84263,7 @@ var defaultHandler = /* @__PURE__ */ __name(async (internalEvent, options) => {
       try {
         return externalRequestProxy.proxy(result.internalEvent);
       } catch (e) {
-        error2("External request failed.", e);
+        error3("External request failed.", e);
         return {
           type: "middleware",
           internalEvent: {
@@ -81892,7 +84288,7 @@ var defaultHandler = /* @__PURE__ */ __name(async (internalEvent, options) => {
     if (process.env.OPEN_NEXT_REQUEST_ID_HEADER || globalThis.openNextDebug) {
       result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
     }
-    debug2("Middleware response", result);
+    debug3("Middleware response", result);
     return result;
   });
 }, "defaultHandler");
@@ -81907,7 +84303,7 @@ import { DurableObject } from "cloudflare:workers";
 globalThis.openNextDebug = false;
 globalThis.openNextVersion = "4.1.0";
 globalThis.nextVersion = "16.2.12";
-var IgnorableError = class extends Error {
+var IgnorableError3 = class extends Error {
   static {
     __name(this, "IgnorableError");
   }
@@ -81931,7 +84327,7 @@ var RecoverableError = class extends Error {
     this.name = "RecoverableError";
   }
 };
-var FatalError = class extends Error {
+var FatalError2 = class extends Error {
   static {
     __name(this, "FatalError");
   }
@@ -81943,373 +84339,6 @@ var FatalError = class extends Error {
     this.name = "FatalError";
   }
 };
-function isOpenNextError3(e) {
-  try {
-    return "__openNextInternal" in e;
-  } catch {
-    return false;
-  }
-}
-__name(isOpenNextError3, "isOpenNextError");
-function debug3(...args) {
-  if (globalThis.openNextDebug) {
-    console.log(...args);
-  }
-}
-__name(debug3, "debug");
-function warn3(...args) {
-  console.warn(...args);
-}
-__name(warn3, "warn");
-var DOWNPLAYED_ERROR_LOGS3 = [
-  {
-    clientName: "S3Client",
-    commandName: "GetObjectCommand",
-    errorName: "NoSuchKey"
-  }
-];
-var isDownplayedErrorLog3 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS3.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
-function error3(...args) {
-  if (args.some((arg) => isDownplayedErrorLog3(arg))) {
-    return debug3(...args);
-  }
-  if (args.some((arg) => isOpenNextError3(arg))) {
-    const error22 = args.find((arg) => isOpenNextError3(arg));
-    if (error22.logLevel < getOpenNextErrorLogLevel3()) {
-      return;
-    }
-    if (error22.logLevel === 0) {
-      return console.log(...args.map((arg) => isOpenNextError3(arg) ? `${arg.name}: ${arg.message}` : arg));
-    }
-    if (error22.logLevel === 1) {
-      return warn3(...args.map((arg) => isOpenNextError3(arg) ? `${arg.name}: ${arg.message}` : arg));
-    }
-    return console.error(...args);
-  }
-  console.error(...args);
-}
-__name(error3, "error");
-function getOpenNextErrorLogLevel3() {
-  const strLevel = process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1";
-  switch (strLevel.toLowerCase()) {
-    case "debug":
-    case "0":
-      return 0;
-    case "error":
-    case "2":
-      return 2;
-    default:
-      return 1;
-  }
-}
-__name(getOpenNextErrorLogLevel3, "getOpenNextErrorLogLevel");
-var DEFAULT_MAX_REVALIDATION = 5;
-var DEFAULT_REVALIDATION_TIMEOUT_MS = 1e4;
-var DEFAULT_RETRY_INTERVAL_MS = 2e3;
-var DEFAULT_MAX_RETRIES = 6;
-var DOQueueHandler = class extends DurableObject {
-  static {
-    __name(this, "DOQueueHandler");
-  }
-  // Ongoing revalidations are deduped by the deduplication id
-  // Since this is running in waitUntil, we expect the durable object state to persist this during the duration of the revalidation
-  // TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
-  ongoingRevalidations = /* @__PURE__ */ new Map();
-  sql;
-  routeInFailedState = /* @__PURE__ */ new Map();
-  service;
-  // Configurable params
-  maxRevalidations;
-  revalidationTimeout;
-  revalidationRetryInterval;
-  maxRetries;
-  disableSQLite;
-  constructor(ctx, env) {
-    super(ctx, env);
-    if (!env.WORKER_SELF_REFERENCE) {
-      throw new IgnorableError("No service binding for cache revalidation worker");
-    }
-    this.service = env.WORKER_SELF_REFERENCE;
-    this.sql = ctx.storage.sql;
-    this.maxRevalidations = env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION) : DEFAULT_MAX_REVALIDATION;
-    this.revalidationTimeout = env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS ? parseInt(env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS) : DEFAULT_REVALIDATION_TIMEOUT_MS;
-    this.revalidationRetryInterval = env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS ? parseInt(env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS) : DEFAULT_RETRY_INTERVAL_MS;
-    this.maxRetries = env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES) : DEFAULT_MAX_RETRIES;
-    this.disableSQLite = env.NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE === "true";
-    ctx.blockConcurrencyWhile(async () => {
-      debug3(`Restoring the state of the durable object`);
-      await this.initState();
-    });
-    debug3(`Durable object initialized`);
-  }
-  async revalidate(msg) {
-    if (this.ongoingRevalidations.size > 2 * this.maxRevalidations) {
-      warn3(`Your durable object has 2 times the maximum number of revalidations (${this.maxRevalidations}) in progress. If this happens often, you should consider increasing the NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION or the number of durable objects with the MAX_REVALIDATE_CONCURRENCY env var.`);
-    }
-    if (this.ongoingRevalidations.has(msg.MessageDeduplicationId))
-      return;
-    if (this.routeInFailedState.has(msg.MessageDeduplicationId))
-      return;
-    if (this.checkSyncTable(msg))
-      return;
-    if (this.ongoingRevalidations.size >= this.maxRevalidations) {
-      debug3(`The maximum number of revalidations (${this.maxRevalidations}) is reached. Blocking until one of the revalidations finishes.`);
-      while (this.ongoingRevalidations.size >= this.maxRevalidations) {
-        const ongoingRevalidations = this.ongoingRevalidations.values();
-        debug3(`Waiting for one of the revalidations to finish`);
-        await Promise.race(ongoingRevalidations);
-      }
-    }
-    const revalidationPromise = this.executeRevalidation(msg);
-    this.ongoingRevalidations.set(msg.MessageDeduplicationId, revalidationPromise);
-    this.ctx.waitUntil(revalidationPromise);
-  }
-  async executeRevalidation(msg) {
-    let response;
-    try {
-      debug3(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
-      const { MessageBody: { host, url } } = msg;
-      const protocol = host.includes("localhost") ? "http" : "https";
-      response = await this.service.fetch(`${protocol}://${host}${url}`, {
-        method: "HEAD",
-        headers: {
-          // This is defined during build
-          "x-prerender-revalidate": "1dcb06c0c10fccb8fd565d67a878e458",
-          "x-isr": "1"
-        },
-        // This one is kind of problematic, it will always show the wall time of the revalidation to `this.revalidationTimeout`
-        signal: AbortSignal.timeout(this.revalidationTimeout)
-      });
-      if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
-        this.routeInFailedState.delete(msg.MessageDeduplicationId);
-        throw new FatalError(`The revalidation for ${host}${url} cannot be done. This error should never happen.`);
-      } else if (response.status === 404) {
-        this.routeInFailedState.delete(msg.MessageDeduplicationId);
-        throw new IgnorableError(`The revalidation for ${host}${url} cannot be done because the page is not found. It's either expected or an error in user code itself`);
-      } else if (response.status === 500) {
-        await this.addToFailedState(msg);
-        throw new IgnorableError(`Something went wrong while revalidating ${host}${url}`);
-      } else if (response.status !== 200) {
-        await this.addToFailedState(msg);
-        throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
-      }
-      if (!this.disableSQLite) {
-        this.sql.exec(
-          "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
-          // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
-          `${host}${url}`,
-          "dQwrh8rvPnBuMCKErsfZ_"
-        );
-      }
-      this.routeInFailedState.delete(msg.MessageDeduplicationId);
-    } catch (e) {
-      if (!isOpenNextError3(e)) {
-        await this.addToFailedState(msg);
-      }
-      error3(e);
-    } finally {
-      this.ongoingRevalidations.delete(msg.MessageDeduplicationId);
-      try {
-        await response?.body?.cancel();
-      } catch {
-      }
-    }
-  }
-  async alarm() {
-    const currentDateTime = Date.now();
-    const nextEventToRetry = Array.from(this.routeInFailedState.values()).filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime).sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
-    const expiredEvents = Array.from(this.routeInFailedState.values()).filter(({ nextAlarmMs }) => nextAlarmMs <= currentDateTime);
-    const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
-    for (const event of allEventsToRetry) {
-      debug3(`Retrying revalidation for ${event.msg.MessageBody.host}${event.msg.MessageBody.url}`);
-      await this.executeRevalidation(event.msg);
-    }
-  }
-  async addToFailedState(msg) {
-    debug3(`Adding ${msg.MessageBody.host}${msg.MessageBody.url} to the failed state`);
-    const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
-    let updatedFailedState;
-    if (existingFailedState) {
-      if (existingFailedState.retryCount >= this.maxRetries) {
-        error3(`The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`);
-        this.routeInFailedState.delete(msg.MessageDeduplicationId);
-        return;
-      }
-      const nextAlarmMs = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * this.revalidationRetryInterval;
-      updatedFailedState = {
-        ...existingFailedState,
-        retryCount: existingFailedState.retryCount + 1,
-        nextAlarmMs
-      };
-    } else {
-      updatedFailedState = {
-        msg,
-        retryCount: 1,
-        nextAlarmMs: Date.now() + 2e3
-      };
-    }
-    this.routeInFailedState.set(msg.MessageDeduplicationId, updatedFailedState);
-    if (!this.disableSQLite) {
-      this.sql.exec("INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)", msg.MessageDeduplicationId, JSON.stringify(updatedFailedState), "dQwrh8rvPnBuMCKErsfZ_");
-    }
-    await this.addAlarm();
-  }
-  async addAlarm() {
-    const existingAlarm = await this.ctx.storage.getAlarm({ allowConcurrency: false });
-    if (existingAlarm)
-      return;
-    if (this.routeInFailedState.size === 0)
-      return;
-    let nextAlarmToSetup = Math.min(...Array.from(this.routeInFailedState.values()).map(({ nextAlarmMs }) => nextAlarmMs));
-    if (nextAlarmToSetup < Date.now()) {
-      nextAlarmToSetup = Date.now() + this.revalidationRetryInterval;
-    }
-    await this.ctx.storage.setAlarm(nextAlarmToSetup);
-  }
-  // This function is used to restore the state of the durable object
-  // We don't restore the ongoing revalidations because we cannot know in which state they are
-  // We only restore the failed state and the alarm
-  async initState() {
-    if (this.disableSQLite)
-      return;
-    this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT, buildId TEXT)");
-    this.sql.exec("CREATE TABLE IF NOT EXISTS sync (id TEXT PRIMARY KEY, lastSuccess INTEGER, buildId TEXT)");
-    this.sql.exec("DELETE FROM failed_state WHERE buildId != ?", "dQwrh8rvPnBuMCKErsfZ_");
-    this.sql.exec("DELETE FROM sync WHERE buildId != ?", "dQwrh8rvPnBuMCKErsfZ_");
-    const failedStateCursor = this.sql.exec("SELECT * FROM failed_state");
-    for (const row of failedStateCursor) {
-      this.routeInFailedState.set(row.id, JSON.parse(row.data));
-    }
-    await this.addAlarm();
-  }
-  /**
-   *
-   * @param msg
-   * @returns `true` if the route has been revalidated since the lastModified from the message, `false` otherwise
-   */
-  checkSyncTable(msg) {
-    try {
-      if (this.disableSQLite)
-        return false;
-      return this.sql.exec("SELECT 1 FROM sync WHERE id = ? AND lastSuccess > ? LIMIT 1", `${msg.MessageBody.host}${msg.MessageBody.url}`, Math.round(msg.MessageBody.lastModified / 1e3)).toArray().length > 0;
-    } catch {
-      return false;
-    }
-  }
-};
-
-// .open-next/.build/durable-objects/sharded-tag-cache.js
-init_modules_watch_stub();
-import { DurableObject as DurableObject2 } from "cloudflare:workers";
-globalThis.openNextDebug = false;
-globalThis.openNextVersion = "4.1.0";
-globalThis.nextVersion = "16.2.12";
-var debugCache = /* @__PURE__ */ __name((name, ...args) => {
-  if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
-    console.log(`[${name}] `, ...args);
-  }
-}, "debugCache");
-var DOShardedTagCache = class extends DurableObject2 {
-  static {
-    __name(this, "DOShardedTagCache");
-  }
-  sql;
-  constructor(state, env) {
-    super(state, env);
-    this.sql = state.storage.sql;
-    state.blockConcurrencyWhile(async () => {
-      this.sql.exec(`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
-      try {
-        this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
-      } catch {
-      }
-    });
-  }
-  async getTagData(tags) {
-    if (tags.length === 0)
-      return {};
-    try {
-      const result = this.sql.exec(`SELECT tag, revalidatedAt, stale, expire FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`, ...tags).toArray();
-      debugCache("DOShardedTagCache", `getTagData tags=${tags} -> ${result.length} results`);
-      return Object.fromEntries(result.map((row) => [
-        row.tag,
-        {
-          revalidatedAt: row.revalidatedAt ?? 0,
-          stale: row.stale ?? null,
-          expire: row.expire ?? null
-        }
-      ]));
-    } catch (e) {
-      console.error(e);
-      return {};
-    }
-  }
-  /**
-   * @deprecated since v1.19.
-   *
-   * Use `getTagData` instead - no processing should be done in the DO ao allow using the regional cache to cache all the values
-   * for a given tag using a single key.
-   *
-   * Kept for backward compatibility during rolling deploys.
-   */
-  async getLastRevalidated(tags) {
-    const data = await this.getTagData(tags);
-    const values = Object.values(data);
-    const timeMs = values.length === 0 ? 0 : Math.max(...values.map(({ revalidatedAt }) => revalidatedAt));
-    debugCache("DOShardedTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
-    return timeMs;
-  }
-  /**
-   * @deprecated since v1.19.
-   *
-   * Use `getTagData` instead - no processing should be done in the DO ao allow using the regional cache to cache all the values
-   * for a given tag using a single key.
-   *
-   * Kept for backward compatibility during rolling deploys.
-   */
-  async hasBeenRevalidated(tags, lastModified) {
-    const data = await this.getTagData(tags);
-    const lastModifiedOrNowMs = lastModified ?? Date.now();
-    const revalidated = Object.values(data).some(({ revalidatedAt }) => revalidatedAt > lastModifiedOrNowMs);
-    debugCache("DOShardedTagCache", `hasBeenRevalidated tags=${tags} -> revalidated=${revalidated}`);
-    return revalidated;
-  }
-  /**
-   * @deprecated since v1.19.
-   *
-   * Use `getTagData` instead - no processing should be done in the DO ao allow using the regional cache to cache all the values
-   * for a given tag using a single key.
-   *
-   * Kept for backward compatibility during rolling deploys.
-   */
-  async getRevalidationTimes(tags) {
-    const data = await this.getTagData(tags);
-    return Object.fromEntries(Object.entries(data).map(([tag, { revalidatedAt }]) => [tag, revalidatedAt]));
-  }
-  async writeTags(tags, lastModified) {
-    if (tags.length === 0)
-      return;
-    const nowMs = lastModified ?? Date.now();
-    debugCache("DOShardedTagCache", `writeTags tags=${JSON.stringify(tags)} time=${nowMs}`);
-    if (typeof tags[0] === "string") {
-      for (const tag of tags) {
-        this.sql.exec(`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale) VALUES (?, ?, ?)`, tag, nowMs, nowMs);
-      }
-    } else {
-      for (const entry of tags) {
-        const staleValue = entry.stale ?? nowMs;
-        this.sql.exec(`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)`, entry.tag, staleValue, staleValue, entry.expire ?? null);
-      }
-    }
-  }
-};
-
-// .open-next/.build/durable-objects/bucket-cache-purge.js
-init_modules_watch_stub();
-import { DurableObject as DurableObject3 } from "cloudflare:workers";
-globalThis.openNextDebug = false;
-globalThis.openNextVersion = "4.1.0";
-globalThis.nextVersion = "16.2.12";
 function isOpenNextError4(e) {
   try {
     return "__openNextInternal" in e;
@@ -82341,14 +84370,14 @@ function error4(...args) {
     return debug4(...args);
   }
   if (args.some((arg) => isOpenNextError4(arg))) {
-    const error22 = args.find((arg) => isOpenNextError4(arg));
-    if (error22.logLevel < getOpenNextErrorLogLevel4()) {
+    const error23 = args.find((arg) => isOpenNextError4(arg));
+    if (error23.logLevel < getOpenNextErrorLogLevel4()) {
       return;
     }
-    if (error22.logLevel === 0) {
+    if (error23.logLevel === 0) {
       return console.log(...args.map((arg) => isOpenNextError4(arg) ? `${arg.name}: ${arg.message}` : arg));
     }
-    if (error22.logLevel === 1) {
+    if (error23.logLevel === 1) {
       return warn4(...args.map((arg) => isOpenNextError4(arg) ? `${arg.name}: ${arg.message}` : arg));
     }
     return console.error(...args);
@@ -82370,14 +84399,381 @@ function getOpenNextErrorLogLevel4() {
   }
 }
 __name(getOpenNextErrorLogLevel4, "getOpenNextErrorLogLevel");
+var DEFAULT_MAX_REVALIDATION = 5;
+var DEFAULT_REVALIDATION_TIMEOUT_MS = 1e4;
+var DEFAULT_RETRY_INTERVAL_MS = 2e3;
+var DEFAULT_MAX_RETRIES = 6;
+var DOQueueHandler = class extends DurableObject {
+  static {
+    __name(this, "DOQueueHandler");
+  }
+  // Ongoing revalidations are deduped by the deduplication id
+  // Since this is running in waitUntil, we expect the durable object state to persist this during the duration of the revalidation
+  // TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
+  ongoingRevalidations = /* @__PURE__ */ new Map();
+  sql;
+  routeInFailedState = /* @__PURE__ */ new Map();
+  service;
+  // Configurable params
+  maxRevalidations;
+  revalidationTimeout;
+  revalidationRetryInterval;
+  maxRetries;
+  disableSQLite;
+  constructor(ctx, env) {
+    super(ctx, env);
+    if (!env.WORKER_SELF_REFERENCE) {
+      throw new IgnorableError3("No service binding for cache revalidation worker");
+    }
+    this.service = env.WORKER_SELF_REFERENCE;
+    this.sql = ctx.storage.sql;
+    this.maxRevalidations = env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION) : DEFAULT_MAX_REVALIDATION;
+    this.revalidationTimeout = env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS ? parseInt(env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS) : DEFAULT_REVALIDATION_TIMEOUT_MS;
+    this.revalidationRetryInterval = env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS ? parseInt(env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS) : DEFAULT_RETRY_INTERVAL_MS;
+    this.maxRetries = env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES) : DEFAULT_MAX_RETRIES;
+    this.disableSQLite = env.NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE === "true";
+    ctx.blockConcurrencyWhile(async () => {
+      debug4(`Restoring the state of the durable object`);
+      await this.initState();
+    });
+    debug4(`Durable object initialized`);
+  }
+  async revalidate(msg) {
+    if (this.ongoingRevalidations.size > 2 * this.maxRevalidations) {
+      warn4(`Your durable object has 2 times the maximum number of revalidations (${this.maxRevalidations}) in progress. If this happens often, you should consider increasing the NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION or the number of durable objects with the MAX_REVALIDATE_CONCURRENCY env var.`);
+    }
+    if (this.ongoingRevalidations.has(msg.MessageDeduplicationId))
+      return;
+    if (this.routeInFailedState.has(msg.MessageDeduplicationId))
+      return;
+    if (this.checkSyncTable(msg))
+      return;
+    if (this.ongoingRevalidations.size >= this.maxRevalidations) {
+      debug4(`The maximum number of revalidations (${this.maxRevalidations}) is reached. Blocking until one of the revalidations finishes.`);
+      while (this.ongoingRevalidations.size >= this.maxRevalidations) {
+        const ongoingRevalidations = this.ongoingRevalidations.values();
+        debug4(`Waiting for one of the revalidations to finish`);
+        await Promise.race(ongoingRevalidations);
+      }
+    }
+    const revalidationPromise = this.executeRevalidation(msg);
+    this.ongoingRevalidations.set(msg.MessageDeduplicationId, revalidationPromise);
+    this.ctx.waitUntil(revalidationPromise);
+  }
+  async executeRevalidation(msg) {
+    let response;
+    try {
+      debug4(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
+      const { MessageBody: { host, url } } = msg;
+      const protocol = host.includes("localhost") ? "http" : "https";
+      response = await this.service.fetch(`${protocol}://${host}${url}`, {
+        method: "HEAD",
+        headers: {
+          // This is defined during build
+          "x-prerender-revalidate": "1dcb06c0c10fccb8fd565d67a878e458",
+          "x-isr": "1"
+        },
+        // This one is kind of problematic, it will always show the wall time of the revalidation to `this.revalidationTimeout`
+        signal: AbortSignal.timeout(this.revalidationTimeout)
+      });
+      if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
+        this.routeInFailedState.delete(msg.MessageDeduplicationId);
+        throw new FatalError2(`The revalidation for ${host}${url} cannot be done. This error should never happen.`);
+      } else if (response.status === 404) {
+        this.routeInFailedState.delete(msg.MessageDeduplicationId);
+        throw new IgnorableError3(`The revalidation for ${host}${url} cannot be done because the page is not found. It's either expected or an error in user code itself`);
+      } else if (response.status === 500) {
+        await this.addToFailedState(msg);
+        throw new IgnorableError3(`Something went wrong while revalidating ${host}${url}`);
+      } else if (response.status !== 200) {
+        await this.addToFailedState(msg);
+        throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
+      }
+      if (!this.disableSQLite) {
+        this.sql.exec(
+          "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
+          // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
+          `${host}${url}`,
+          "h6FxDrRBln8Oc02cpmgYG"
+        );
+      }
+      this.routeInFailedState.delete(msg.MessageDeduplicationId);
+    } catch (e) {
+      if (!isOpenNextError4(e)) {
+        await this.addToFailedState(msg);
+      }
+      error4(e);
+    } finally {
+      this.ongoingRevalidations.delete(msg.MessageDeduplicationId);
+      try {
+        await response?.body?.cancel();
+      } catch {
+      }
+    }
+  }
+  async alarm() {
+    const currentDateTime = Date.now();
+    const nextEventToRetry = Array.from(this.routeInFailedState.values()).filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime).sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
+    const expiredEvents = Array.from(this.routeInFailedState.values()).filter(({ nextAlarmMs }) => nextAlarmMs <= currentDateTime);
+    const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
+    for (const event of allEventsToRetry) {
+      debug4(`Retrying revalidation for ${event.msg.MessageBody.host}${event.msg.MessageBody.url}`);
+      await this.executeRevalidation(event.msg);
+    }
+  }
+  async addToFailedState(msg) {
+    debug4(`Adding ${msg.MessageBody.host}${msg.MessageBody.url} to the failed state`);
+    const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
+    let updatedFailedState;
+    if (existingFailedState) {
+      if (existingFailedState.retryCount >= this.maxRetries) {
+        error4(`The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`);
+        this.routeInFailedState.delete(msg.MessageDeduplicationId);
+        return;
+      }
+      const nextAlarmMs = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * this.revalidationRetryInterval;
+      updatedFailedState = {
+        ...existingFailedState,
+        retryCount: existingFailedState.retryCount + 1,
+        nextAlarmMs
+      };
+    } else {
+      updatedFailedState = {
+        msg,
+        retryCount: 1,
+        nextAlarmMs: Date.now() + 2e3
+      };
+    }
+    this.routeInFailedState.set(msg.MessageDeduplicationId, updatedFailedState);
+    if (!this.disableSQLite) {
+      this.sql.exec("INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)", msg.MessageDeduplicationId, JSON.stringify(updatedFailedState), "h6FxDrRBln8Oc02cpmgYG");
+    }
+    await this.addAlarm();
+  }
+  async addAlarm() {
+    const existingAlarm = await this.ctx.storage.getAlarm({ allowConcurrency: false });
+    if (existingAlarm)
+      return;
+    if (this.routeInFailedState.size === 0)
+      return;
+    let nextAlarmToSetup = Math.min(...Array.from(this.routeInFailedState.values()).map(({ nextAlarmMs }) => nextAlarmMs));
+    if (nextAlarmToSetup < Date.now()) {
+      nextAlarmToSetup = Date.now() + this.revalidationRetryInterval;
+    }
+    await this.ctx.storage.setAlarm(nextAlarmToSetup);
+  }
+  // This function is used to restore the state of the durable object
+  // We don't restore the ongoing revalidations because we cannot know in which state they are
+  // We only restore the failed state and the alarm
+  async initState() {
+    if (this.disableSQLite)
+      return;
+    this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT, buildId TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS sync (id TEXT PRIMARY KEY, lastSuccess INTEGER, buildId TEXT)");
+    this.sql.exec("DELETE FROM failed_state WHERE buildId != ?", "h6FxDrRBln8Oc02cpmgYG");
+    this.sql.exec("DELETE FROM sync WHERE buildId != ?", "h6FxDrRBln8Oc02cpmgYG");
+    const failedStateCursor = this.sql.exec("SELECT * FROM failed_state");
+    for (const row of failedStateCursor) {
+      this.routeInFailedState.set(row.id, JSON.parse(row.data));
+    }
+    await this.addAlarm();
+  }
+  /**
+   *
+   * @param msg
+   * @returns `true` if the route has been revalidated since the lastModified from the message, `false` otherwise
+   */
+  checkSyncTable(msg) {
+    try {
+      if (this.disableSQLite)
+        return false;
+      return this.sql.exec("SELECT 1 FROM sync WHERE id = ? AND lastSuccess > ? LIMIT 1", `${msg.MessageBody.host}${msg.MessageBody.url}`, Math.round(msg.MessageBody.lastModified / 1e3)).toArray().length > 0;
+    } catch {
+      return false;
+    }
+  }
+};
+
+// .open-next/.build/durable-objects/sharded-tag-cache.js
+init_modules_watch_stub();
+import { DurableObject as DurableObject2 } from "cloudflare:workers";
+globalThis.openNextDebug = false;
+globalThis.openNextVersion = "4.1.0";
+globalThis.nextVersion = "16.2.12";
 var debugCache2 = /* @__PURE__ */ __name((name, ...args) => {
+  if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
+    console.log(`[${name}] `, ...args);
+  }
+}, "debugCache");
+var DOShardedTagCache = class extends DurableObject2 {
+  static {
+    __name(this, "DOShardedTagCache");
+  }
+  sql;
+  constructor(state, env) {
+    super(state, env);
+    this.sql = state.storage.sql;
+    state.blockConcurrencyWhile(async () => {
+      this.sql.exec(`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
+      try {
+        this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
+      } catch {
+      }
+    });
+  }
+  async getTagData(tags) {
+    if (tags.length === 0)
+      return {};
+    try {
+      const result = this.sql.exec(`SELECT tag, revalidatedAt, stale, expire FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`, ...tags).toArray();
+      debugCache2("DOShardedTagCache", `getTagData tags=${tags} -> ${result.length} results`);
+      return Object.fromEntries(result.map((row) => [
+        row.tag,
+        {
+          revalidatedAt: row.revalidatedAt ?? 0,
+          stale: row.stale ?? null,
+          expire: row.expire ?? null
+        }
+      ]));
+    } catch (e) {
+      console.error(e);
+      return {};
+    }
+  }
+  /**
+   * @deprecated since v1.19.
+   *
+   * Use `getTagData` instead - no processing should be done in the DO ao allow using the regional cache to cache all the values
+   * for a given tag using a single key.
+   *
+   * Kept for backward compatibility during rolling deploys.
+   */
+  async getLastRevalidated(tags) {
+    const data = await this.getTagData(tags);
+    const values = Object.values(data);
+    const timeMs = values.length === 0 ? 0 : Math.max(...values.map(({ revalidatedAt }) => revalidatedAt));
+    debugCache2("DOShardedTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
+    return timeMs;
+  }
+  /**
+   * @deprecated since v1.19.
+   *
+   * Use `getTagData` instead - no processing should be done in the DO ao allow using the regional cache to cache all the values
+   * for a given tag using a single key.
+   *
+   * Kept for backward compatibility during rolling deploys.
+   */
+  async hasBeenRevalidated(tags, lastModified) {
+    const data = await this.getTagData(tags);
+    const lastModifiedOrNowMs = lastModified ?? Date.now();
+    const revalidated = Object.values(data).some(({ revalidatedAt }) => revalidatedAt > lastModifiedOrNowMs);
+    debugCache2("DOShardedTagCache", `hasBeenRevalidated tags=${tags} -> revalidated=${revalidated}`);
+    return revalidated;
+  }
+  /**
+   * @deprecated since v1.19.
+   *
+   * Use `getTagData` instead - no processing should be done in the DO ao allow using the regional cache to cache all the values
+   * for a given tag using a single key.
+   *
+   * Kept for backward compatibility during rolling deploys.
+   */
+  async getRevalidationTimes(tags) {
+    const data = await this.getTagData(tags);
+    return Object.fromEntries(Object.entries(data).map(([tag, { revalidatedAt }]) => [tag, revalidatedAt]));
+  }
+  async writeTags(tags, lastModified) {
+    if (tags.length === 0)
+      return;
+    const nowMs = lastModified ?? Date.now();
+    debugCache2("DOShardedTagCache", `writeTags tags=${JSON.stringify(tags)} time=${nowMs}`);
+    if (typeof tags[0] === "string") {
+      for (const tag of tags) {
+        this.sql.exec(`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale) VALUES (?, ?, ?)`, tag, nowMs, nowMs);
+      }
+    } else {
+      for (const entry of tags) {
+        const staleValue = entry.stale ?? nowMs;
+        this.sql.exec(`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)`, entry.tag, staleValue, staleValue, entry.expire ?? null);
+      }
+    }
+  }
+};
+
+// .open-next/.build/durable-objects/bucket-cache-purge.js
+init_modules_watch_stub();
+import { DurableObject as DurableObject3 } from "cloudflare:workers";
+globalThis.openNextDebug = false;
+globalThis.openNextVersion = "4.1.0";
+globalThis.nextVersion = "16.2.12";
+function isOpenNextError5(e) {
+  try {
+    return "__openNextInternal" in e;
+  } catch {
+    return false;
+  }
+}
+__name(isOpenNextError5, "isOpenNextError");
+function debug5(...args) {
+  if (globalThis.openNextDebug) {
+    console.log(...args);
+  }
+}
+__name(debug5, "debug");
+function warn5(...args) {
+  console.warn(...args);
+}
+__name(warn5, "warn");
+var DOWNPLAYED_ERROR_LOGS5 = [
+  {
+    clientName: "S3Client",
+    commandName: "GetObjectCommand",
+    errorName: "NoSuchKey"
+  }
+];
+var isDownplayedErrorLog5 = /* @__PURE__ */ __name((errorLog) => DOWNPLAYED_ERROR_LOGS5.some((downplayedInput) => downplayedInput.clientName === errorLog?.clientName && downplayedInput.commandName === errorLog?.commandName && (downplayedInput.errorName === errorLog?.error?.name || downplayedInput.errorName === errorLog?.error?.Code)), "isDownplayedErrorLog");
+function error5(...args) {
+  if (args.some((arg) => isDownplayedErrorLog5(arg))) {
+    return debug5(...args);
+  }
+  if (args.some((arg) => isOpenNextError5(arg))) {
+    const error23 = args.find((arg) => isOpenNextError5(arg));
+    if (error23.logLevel < getOpenNextErrorLogLevel5()) {
+      return;
+    }
+    if (error23.logLevel === 0) {
+      return console.log(...args.map((arg) => isOpenNextError5(arg) ? `${arg.name}: ${arg.message}` : arg));
+    }
+    if (error23.logLevel === 1) {
+      return warn5(...args.map((arg) => isOpenNextError5(arg) ? `${arg.name}: ${arg.message}` : arg));
+    }
+    return console.error(...args);
+  }
+  console.error(...args);
+}
+__name(error5, "error");
+function getOpenNextErrorLogLevel5() {
+  const strLevel = process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1";
+  switch (strLevel.toLowerCase()) {
+    case "debug":
+    case "0":
+      return 0;
+    case "error":
+    case "2":
+      return 2;
+    default:
+      return 1;
+  }
+}
+__name(getOpenNextErrorLogLevel5, "getOpenNextErrorLogLevel");
+var debugCache3 = /* @__PURE__ */ __name((name, ...args) => {
   if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
     console.log(`[${name}] `, ...args);
   }
 }, "debugCache");
 async function internalPurgeCacheByTags(env, tags) {
   if (!env.CACHE_PURGE_ZONE_ID || !env.CACHE_PURGE_API_TOKEN) {
-    error4("No cache zone ID or API token provided. Skipping cache purge.");
+    error5("No cache zone ID or API token provided. Skipping cache purge.");
     return "missing-credentials";
   }
   let response;
@@ -82393,18 +84789,18 @@ async function internalPurgeCacheByTags(env, tags) {
       })
     });
     if (response.status === 429) {
-      error4("purgeCacheByTags: Rate limit exceeded. Skipping cache purge.");
+      error5("purgeCacheByTags: Rate limit exceeded. Skipping cache purge.");
       return "rate-limit-exceeded";
     }
     const bodyResponse = await response.json();
     if (!bodyResponse.success) {
-      error4("purgeCacheByTags: Cache purge failed. Errors:", bodyResponse.errors.map((error22) => `${error22.code}: ${error22.message}`));
+      error5("purgeCacheByTags: Cache purge failed. Errors:", bodyResponse.errors.map((error23) => `${error23.code}: ${error23.message}`));
       return "purge-failed";
     }
-    debugCache2("purgeCacheByTags", "Cache purged successfully for tags:", tags);
+    debugCache3("purgeCacheByTags", "Cache purged successfully for tags:", tags);
     return "purge-success";
-  } catch (error22) {
-    console.error("Error purging cache by tags:", error22);
+  } catch (error23) {
+    console.error("Error purging cache by tags:", error23);
     return "purge-failed";
   } finally {
     try {
@@ -82530,8 +84926,8 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
   try {
     return await middlewareCtx.next(request, env);
   } catch (e) {
-    const error6 = reduceError(e);
-    const body = JSON.stringify(error6);
+    const error7 = reduceError(e);
+    const body = JSON.stringify(error7);
     const headers = {
       "Content-Type": "application/json",
       "MF-Experimental-Error-Stack": "true"
@@ -82545,7 +84941,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-xD5IBI/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-NFZuLQ/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -82578,7 +84974,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-xD5IBI/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-NFZuLQ/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
