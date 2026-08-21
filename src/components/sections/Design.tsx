@@ -13,7 +13,7 @@ export function Design() {
   return (
     <section
       id="design"
-      className="border-t border-line px-6 py-20 md:px-10 md:py-28"
+      className="border-t border-line px-6 py-16 md:px-10 md:py-20"
     >
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-10 flex items-end justify-between gap-6">
