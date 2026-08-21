@@ -4,7 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const links = [
   { label: "Components", href: "#components" },
   { label: "Features", href: "#features" },
-  { label: "Install", href: "#install" },
+  { label: "Design", href: "#design" },
 ];
 
 export function Navbar() {
