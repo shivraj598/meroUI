@@ -5,7 +5,7 @@ const PRODUCT = [
 
 const LIBRARY = [
   { href: "/docs#components", label: "Components" },
-  { href: "#install", label: "Install" },
+  { href: "/docs#installation", label: "Install" },
 ];
 
 const CONNECT = [
