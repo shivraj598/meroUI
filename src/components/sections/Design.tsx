@@ -4,28 +4,35 @@ import { DesignShowcase } from "./DesignShowcase";
 /**
  * Design showcase section. A Server Component: it reads every `.md` file in
  * `content/web-design/` at build time and hands the parsed entries to the
- * client `DesignShowcase`, which owns the GSAP entrance animation.
- * Adding a new `.md` file to the content folder adds it to this grid and to the
- * page automatically on the next build.
+ * static `DesignShowcase` grid. Adding a new `.md` file to the content folder
+ * adds it to this grid and to the page automatically on the next build.
  */
 export function Design() {
   const entries = getDesigns();
 
   return (
-    <section className="relative overflow-hidden bg-canvas px-6 pt-28 pb-24 md:px-10 md:pt-40 md:pb-32">
-      <div className="relative mx-auto w-full max-w-6xl">
-        <div className="mb-14 flex items-end justify-between border-b border-line pb-6 md:mb-16">
-          <h2 className="text-5xl font-semibold tracking-tight text-ink md:text-7xl">
-            Design.
-          </h2>
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.3em] text-faint md:block">
-            {entries.length} selected works
+    <section
+      id="design"
+      className="border-t border-line px-6 py-20 md:px-10 md:py-28"
+    >
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-10 flex items-end justify-between gap-6">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-faint">
+              Design
+            </p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">
+              Selected work<span className="text-dim">.</span>
+            </h2>
+          </div>
+          <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.2em] text-faint">
+            {entries.length} live builds
           </span>
         </div>
 
         <DesignShowcase entries={entries} />
 
-        <p className="mt-8 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-faint">
+        <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.3em] text-faint">
           each card links to a live build
         </p>
       </div>
