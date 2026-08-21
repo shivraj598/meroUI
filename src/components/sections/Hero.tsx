@@ -2,60 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Toggle } from "@/components/ui/Toggle";
-import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/Badge";
-import { Progress } from "@/components/ui/Progress";
-import { Tabs } from "@/components/ui/Tabs";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { Magnetic } from "@/components/ui/Magnetic";
+import { BUILT_COUNT } from "@/components/docs/nav";
 
-const WORD = "meroUI";
+const INSTALL_CMD = "npx meroui add button";
 
-/* decorative mono tags, a couple with a slow drift */
-const CHIPS: { text: string; className: string; float?: number }[] = [
-  { text: "typescript", className: "left-[6%] top-[22%]", float: 6.5 },
-  { text: "rsc", className: "right-[5%] top-[30%] lg:right-[34%]" },
-  { text: "a11y", className: "left-[8%] bottom-[24%]", float: 8 },
-  { text: "zero-config", className: "right-[7%] bottom-[16%] lg:right-[38%]" },
-  { text: "tree-shaken", className: "left-[42%] top-[12%] hidden lg:block" },
-];
-
-/* six real components in a static facade — the only continuous motion is a
- * two-linked stagger entry and a slow drift on two of the floating tags. */
-function Panel({
-  index,
-  label,
-  delay,
-  children,
-}: {
-  index: string;
-  label: string;
-  delay: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="hero-anim flex"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex h-full w-full flex-col gap-3 rounded-lg border border-line bg-panel/70 p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised">
-        <div className="mb-0.5 flex items-center justify-between border-b border-line pb-2.5">
-          <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink">
-            {label}
-          </span>
-          <span className="font-mono text-[9px] text-dim">{index}</span>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
+/**
+ * Centered hero in the plain-modern register: badge pill, one headline,
+ * one line of subtext, two actions, and an installable command as the
+ * only visual. Entry waits for the preloader's mero:ready signal.
+ */
 export function Hero() {
   const [ready, setReady] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  /* run the entry once the preloader has slid away (or after a hard cap) */
   useEffect(() => {
     const start = () => setReady(true);
     window.addEventListener("mero:ready", start);
@@ -66,145 +25,73 @@ export function Hero() {
     };
   }, []);
 
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(INSTALL_CMD);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
   return (
     <section
       id="top"
-      className={`relative flex min-h-[100dvh] flex-col overflow-hidden pt-20 md:pt-24 ${ready ? "is-ready" : ""}`}
+      className={`relative flex min-h-[100dvh] items-center justify-center px-6 pt-24 pb-16 ${ready ? "is-ready" : ""}`}
     >
-      {/* vertical meta rails */}
-      <span className="hero-anim pointer-events-none absolute left-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block">
-        v1.0.0 · React 19 · TypeScript 5
-      </span>
-      <span className="hero-anim pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-dim [writing-mode:vertical-rl] lg:block">
-        Built for Next.js 16
-      </span>
-
-      {/* floating mono tags */}
-      {CHIPS.map((chip) => (
-        <span
-          key={chip.text}
-          className={`hero-anim pointer-events-none absolute hidden font-mono uppercase tracking-[0.24em] text-dim md:block ${
-            chip.className
-          } ${chip.float ? "hero-float" : ""}`}
-          style={chip.float ? { animationDuration: `${chip.float}s` } : undefined}
+      <div className="flex w-full max-w-3xl flex-col items-center text-center">
+        <a
+          href="/docs"
+          className="hero-anim inline-flex items-center gap-2 rounded-full border border-line bg-panel/60 px-4 py-1.5 font-mono text-[11px] tracking-wide text-muted transition-colors hover:border-line-strong hover:text-ink"
         >
-          {chip.text}
-        </span>
-      ))}
+          <span aria-hidden className="size-1.5 rounded-full bg-green dot-pulse" />
+          {BUILT_COUNT} components · React 19 + Tailwind CSS 4
+        </a>
 
-      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-16 px-6 pb-24 pt-8 md:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-12">
-        {/* wordmark column */}
-        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          <p className="hero-anim font-mono text-[11px] uppercase tracking-[0.3em] text-muted">
-            React + TypeScript · For Next.js 16
-          </p>
+        <h1
+          className="hero-anim mt-7 text-balance text-5xl font-semibold leading-[1.05] tracking-[-0.03em] md:text-7xl"
+          style={{ animationDelay: "80ms" }}
+        >
+          Production-ready UI for Next.js&nbsp;16<span className="text-dim">.</span>
+        </h1>
 
-          <h1
-            aria-label="meroUI"
-            className="hero-anim mt-5 text-[clamp(3.5rem,10vw,7.75rem)] font-semibold leading-[0.95] tracking-[-0.045em]"
-            style={{ animationDelay: "80ms" }}
-          >
-            <span className="text-ink">{WORD}</span>
-            <span className="text-dim">.</span>
-          </h1>
+        <p
+          className="hero-anim mt-6 max-w-xl text-balance text-base leading-relaxed text-muted md:text-lg"
+          style={{ animationDelay: "160ms" }}
+        >
+          Type-safe, accessible components you copy straight into your project.
+          Zero config, zero dependencies.
+        </p>
 
-          <p
-            className="hero-anim mt-6 max-w-[30rem] text-balance text-base leading-relaxed text-muted md:text-lg"
-            style={{ animationDelay: "160ms" }}
-          >
-            Type-safe components that ship in one command. Zero config. Zero
-            rework.
-          </p>
-
-          <div
-            className="hero-anim mt-8 flex flex-wrap items-center justify-center gap-4 lg:justify-start"
-            style={{ animationDelay: "240ms" }}
-          >
-            <Magnetic strength={0.3}>
-              <Button href="/docs" size="lg">
-                Get started
-              </Button>
-            </Magnetic>
-            <Magnetic strength={0.3}>
-              <Button href="#features" variant="ghost" size="lg">
-                Browse features
-              </Button>
-            </Magnetic>
-          </div>
-
-          <p
-            className="hero-anim mt-9 font-mono text-[10px] uppercase tracking-[0.3em] text-dim"
-            style={{ animationDelay: "320ms" }}
-          >
-            13 components · one command
-          </p>
+        <div
+          className="hero-anim mt-9 flex flex-wrap items-center justify-center gap-3"
+          style={{ animationDelay: "240ms" }}
+        >
+          <Button href="/docs" size="lg">
+            Get started
+          </Button>
+          <Button href="#components" variant="ghost" size="lg">
+            Browse components
+          </Button>
         </div>
 
-        {/* component facade */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
-          <Panel index="01" label="Button" delay={200}>
-            <div className="flex flex-col items-start gap-2">
-              <Button size="sm">Deploy</Button>
-              <div className="flex w-full items-center justify-between gap-2">
-                <Button size="sm" variant="ghost">
-                  Cancel
-                </Button>
-                <Badge>stable</Badge>
-              </div>
-            </div>
-          </Panel>
-
-          <Panel index="02" label="Toggle" delay={290}>
-            <div className="flex flex-col gap-3">
-              <Toggle defaultOn label="Autoplay" />
-              <Toggle label="Haptics" />
-            </div>
-          </Panel>
-
-          <div className="col-span-2">
-            <Panel index="03" label="Input" delay={380}>
-              <Input id="hero-email" label="Email" placeholder="you@ship.dev" />
-            </Panel>
-          </div>
-
-          <Panel index="04" label="Progress" delay={470}>
-            <div className="flex flex-col gap-4">
-              <Progress value={72} label="Shipped" />
-              <Badge variant="dot" pulse>
-                v1.0.0
-              </Badge>
-            </div>
-          </Panel>
-
-          <Panel index="05" label="Tabs" delay={560}>
-            <Tabs
-              items={[
-                { label: "App", content: <span className="font-mono text-[10px] text-muted">rsc</span> },
-                { label: "Page", content: <span className="font-mono text-[10px] text-muted">streamed</span> },
-                { label: "Data", content: <span className="font-mono text-[10px] text-muted">action</span> },
-              ]}
-            />
-          </Panel>
-
-          <div className="col-span-2">
-            <div className="hero-anim flex" style={{ animationDelay: "650ms" }}>
-              <div className="flex w-full flex-col gap-3 rounded-lg border border-line bg-panel/70 p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised">
-                <div className="mb-0.5 flex items-center justify-between border-b border-line pb-2.5">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink">
-                    CLI
-                  </span>
-                  <span className="font-mono text-[9px] text-dim">06</span>
-                </div>
-                <p className="caret font-mono text-[12px] leading-6 text-ink">
-                  $ npx meroui add
-                </p>
-                <div className="flex items-center gap-2.5">
-                  <Skeleton className="h-1.5 w-1/4" />
-                  <Skeleton className="h-1.5 w-1/3" />
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* install command */}
+        <div
+          className="hero-anim mt-12 flex w-full max-w-md items-center justify-between gap-3 rounded-md border border-code-border bg-code px-4 py-3"
+          style={{ animationDelay: "320ms" }}
+        >
+          <p className="truncate font-mono text-sm">
+            <span className="text-code-muted">$ </span>
+            <span className="text-code-ink">{INSTALL_CMD}</span>
+          </p>
+          <button
+            type="button"
+            onClick={copy}
+            className="shrink-0 rounded border border-code-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-code-muted transition-colors hover:border-code-ink/70 hover:text-code-ink"
+          >
+            {copied ? "copied" : "copy"}
+          </button>
         </div>
       </div>
     </section>
