@@ -25,7 +25,7 @@ export function Features() {
   return (
     <section
       id="features"
-      className="border-t border-line px-6 py-20 md:px-10 md:py-28"
+      className="border-t border-line px-6 py-16 md:px-10 md:py-20"
     >
       <div className="mx-auto w-full max-w-6xl">
         <h2 className="text-4xl font-semibold tracking-tight md:text-5xl">
@@ -34,8 +34,11 @@ export function Features() {
 
         <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
           {PRINCIPLES.map((p) => (
-            <div key={p.title} className="bg-canvas p-6">
-              <h3 className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink">
+            <div
+              key={p.title}
+              className="group bg-canvas p-6 transition-colors duration-200 hover:bg-panel"
+            >
+              <h3 className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink transition-transform duration-200 group-hover:translate-x-1">
                 {p.title}
               </h3>
               <p className="mt-3 text-sm leading-6 text-muted">{p.desc}</p>
