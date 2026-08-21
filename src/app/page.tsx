@@ -2,7 +2,6 @@ import { Navbar } from "@/components/sections/Navbar";
 import { Hero } from "@/components/sections/Hero";
 import { Components } from "@/components/sections/Components";
 import { Features } from "@/components/sections/Features";
-import { Install } from "@/components/sections/Install";
 import { Design } from "@/components/sections/Design";
 import { Footer } from "@/components/sections/Footer";
 
@@ -14,7 +13,6 @@ export default function Home() {
         <Hero />
         <Components />
         <Features />
-        <Install />
         <Design />
       </main>
       <Footer />
