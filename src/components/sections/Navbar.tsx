@@ -2,14 +2,14 @@ import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
+  { label: "Components", href: "#components" },
   { label: "Features", href: "#features" },
   { label: "Install", href: "#install" },
-  { label: "Changelog", href: "#changelog" },
 ];
 
 export function Navbar() {
   return (
-    <header className="fixed inset-x-0 top-0 z-40">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-sm">
       <nav className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10">
         <a href="#top" className="flex items-center gap-2.5">
           <span className="flex size-6 items-center justify-center bg-ink text-[11px] font-bold leading-none text-canvas">
