@@ -249,9 +249,8 @@ body {
   color: var(--accent);
 }
 
-/* ── hero entry + drift ──────────────────────────────────
-   Static component facade; the only continuous motion is a slow
-   drift on two floating tags. Entry runs once the preloader
+/* ── hero entry ───────────────────────────────────────────
+   Static centered hero; entry runs once the preloader
    signals mero:ready (the .is-ready class on the section). */
 .hero-anim {
   opacity: 0;
@@ -263,21 +262,10 @@ body {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.hero-float {
-  animation: hero-float 6.5s ease-in-out infinite alternate;
-}
-@keyframes hero-float {
-  from { transform: translateY(0); }
-  to { transform: translateY(-9px); }
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-anim,
-  .hero-float {
+  .hero-anim {
     animation: none !important;
-  }
-  .is-ready .hero-anim,
-  .hero-float {
     opacity: 1;
     transform: none;
   }
