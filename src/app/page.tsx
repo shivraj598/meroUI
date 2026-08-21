@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/sections/Navbar";
 import { Hero } from "@/components/sections/Hero";
-import { Marquee } from "@/components/sections/Marquee";
+import { Components } from "@/components/sections/Components";
 import { Features } from "@/components/sections/Features";
 import { Install } from "@/components/sections/Install";
 import { Design } from "@/components/sections/Design";
@@ -12,7 +12,7 @@ export default function Home() {
       <Navbar />
       <main id="main" className="flex-1">
         <Hero />
-        <Marquee />
+        <Components />
         <Features />
         <Install />
         <Design />
