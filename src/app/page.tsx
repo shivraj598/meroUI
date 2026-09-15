@@ -5,11 +5,8 @@
 
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
-import { ProofStrip } from "@/components/landing/ProofStrip";
 import { Inventory } from "@/components/landing/Inventory";
-import { Manifesto } from "@/components/landing/Manifesto";
 import { ComposerLab } from "@/components/landing/ComposerLab";
-import { TemplatesGallery } from "@/components/landing/TemplatesGallery";
 import { Footer } from "@/components/landing/Footer";
 
 export default function Home() {
@@ -18,11 +15,8 @@ export default function Home() {
       <Navbar />
       <main id="main" className="flex-1">
         <Hero />
-        <ProofStrip />
         <Inventory />
-        <Manifesto />
         <ComposerLab />
-        <TemplatesGallery />
       </main>
       <Footer />
     </>
