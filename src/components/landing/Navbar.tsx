@@ -5,9 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LINKS = [
   { label: "Index", href: "#index" },
-  { label: "Manifesto", href: "#manifesto" },
   { label: "Composer", href: "#composer" },
-  { label: "Templates", href: "#templates" },
 ];
 
 export function Navbar() {
