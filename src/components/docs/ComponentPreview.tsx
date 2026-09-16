@@ -6,186 +6,61 @@
  * primitives (Modal, Toast, Tooltip) are wired to real triggers so the preview
  * is usable, not decorative.
  */
-import { useState } from "react";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Progress } from "@/components/ui/Progress";
-import { Tabs } from "@/components/ui/Tabs";
-import { Toggle } from "@/components/ui/Toggle";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/Card";
-import { Skeleton } from "@/components/ui/Skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/Table";
-import { ToastProvider, ToastViewport, useToast } from "@/components/ui/Toast";
-import { Tooltip } from "@/components/ui/Tooltip";
-import { Modal } from "@/components/ui/Modal";
 import PromptBar from "@/components/ui/PromptBar";
-
-function ToastDemo() {
-  const { toast } = useToast();
-  return (
-    <>
-      <Button
-        size="sm"
-        onClick={() =>
-          toast({ title: "Component added", description: "copied to src/components/ui" })
-        }
-      >
-        Notify
-      </Button>
-      <ToastViewport />
-    </>
-  );
-}
-
-function ModalDemo() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        Open
-      </Button>
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Dialog"
-        description="A focus-trapped surface."
-      >
-        <p className="text-sm leading-6 text-muted">
-          Escape closes it, the backdrop closes it, Tab stays inside, and focus
-          returns to the trigger when it closes.
-        </p>
-      </Modal>
-    </>
-  );
-}
+import Thinking from "@/components/ui/Thinking";
+import RecommendationCard from "@/components/ui/RecommendationCard";
+import { StreamText } from "@/components/ui/StreamText";
+import { ImageGenesis } from "@/components/ui/ImageGenesis";
+import { ToolProgress } from "@/components/ui/ToolProgress";
+import Sidebar from "@/components/ui/Sidebar";
 
 const DEMOS: Record<string, React.ReactNode> = {
-  button: (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <Button size="sm">Deploy</Button>
-      <Button size="sm" variant="ghost">
-        Cancel
-      </Button>
+  "prompt-bar": (
+    <div className="w-full max-w-[560px]">
+      <PromptBar />
     </div>
   ),
-  badge: (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <Badge variant="dot" pulse>
-        v1.0.0
-      </Badge>
-      <Badge>stable</Badge>
+  "recommendation-card": (
+    <div className="flex w-full max-w-[520px] items-center justify-center p-2">
+      <RecommendationCard />
     </div>
   ),
-  progress: (
-    <div className="w-full max-w-[11rem]">
-      <Progress value={72} label="Shipped" />
+  thinking: (
+    <div className="flex w-full max-w-[520px] items-start justify-center">
+      <Thinking variant="Steps" />
     </div>
   ),
-  toggle: (
-    <div className="flex flex-col items-center gap-3">
-      <Toggle defaultOn label="Autoplay" />
-      <Toggle label="Haptics" />
+  "stream-text": (
+    <div className="w-full max-w-[560px] rounded-xl bg-white p-6 shadow-sm border border-zinc-100">
+      <StreamText text="Hello, I am meroUI. I stream word by word, just like ChatGPT — the selective AI primitive library for chatbots and agents." speed={22} />
     </div>
   ),
-  input: (
-    <div className="w-full max-w-[11rem]">
-      <Input label="Email" placeholder="you@ship.dev" />
+  "image-genesis": (
+    <div className="w-full max-w-[560px]">
+      <ImageGenesis
+        src="https://picsum.photos/seed/mero-genesis/900/560"
+        alt="Genesis preview"
+        prompt="A minimal studio with soft light — Gemini image-creating effect"
+        loading={false}
+      />
     </div>
   ),
-  tabs: (
-    <Tabs
-      items={[
-        {
-          label: "App",
-          content: (
-            <span className="font-mono text-[10px] text-muted">rsc by default</span>
-          ),
-        },
-        {
-          label: "Page",
-          content: (
-            <span className="font-mono text-[10px] text-muted">streamed</span>
-          ),
-        },
-        {
-          label: "Data",
-          content: (
-            <span className="font-mono text-[10px] text-muted">server action</span>
-          ),
-        },
-      ]}
-    />
-  ),
-  card: (
-    <Card className="w-full max-w-[12rem]">
-      <CardHeader>
-        <CardTitle>Ship it</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-xs leading-5 text-muted">One file at a time.</p>
-      </CardContent>
-    </Card>
-  ),
-  skeleton: (
-    <div className="w-24 flex flex-col gap-2">
-      <Skeleton className="h-2 w-full" />
-      <Skeleton className="h-2 w-3/4" />
-      <Skeleton className="h-2 w-1/2" />
+  "tool-progress": (
+    <div className="w-full max-w-[640px]">
+      <ToolProgress
+        steps={[
+          { id: "1", label: "Searching", detail: "3 sources", status: "done" },
+          { id: "2", label: "Reading", status: "active" },
+          { id: "3", label: "Synthesizing", status: "pending" },
+        ]}
+      />
     </div>
   ),
-  table: (
-    <Table className="max-w-[12rem]">
-      <TableHeader>
-        <TableRow>
-          <TableHead>name</TableHead>
-          <TableHead>count</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow>
-          <TableCell mono>button</TableCell>
-          <TableCell mono>84</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell mono>modal</TableCell>
-          <TableCell mono>3</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  ),
-  tooltip: (
-    <Tooltip label="hover + focus" side="top">
-      <Button size="sm" variant="ghost">
-        Tip
-      </Button>
-    </Tooltip>
-  ),
-  modal: (
-    <div className="flex items-center justify-center">
-      <ModalDemo />
+  sidebar: (
+    <div className="w-full max-w-[880px] overflow-hidden rounded-xl border border-line bg-surface">
+      <Sidebar fill={false} className="h-[520px]" />
     </div>
   ),
-  toast: (
-    <ToastProvider>
-      <div className="flex items-center justify-center">
-        <ToastDemo />
-      </div>
-    </ToastProvider>
-  ),
-  "prompt-bar": <PromptBar />,
 };
 
 export function ComponentPreview({ slug }: { slug: string }) {
