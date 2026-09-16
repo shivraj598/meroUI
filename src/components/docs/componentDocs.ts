@@ -207,4 +207,110 @@ import PromptBar from "mero-ui";
       { name: "variant", type: '"Rounded" | "Pill"', desc: "Composer corner shape. Defaults to Rounded." },
     ],
   },
+  "recommendation-card": {
+    usage: `import RecommendationCard from "@/components/ui/RecommendationCard";
+
+<RecommendationCard />
+
+// Custom options
+<RecommendationCard
+  options={[
+    { key: "high", body: <>Reorder from <EntityChip name="Cone King" /></>, short: "Reorder", signal: 3, tone: "var(--green)", label: "High", cta: "Accept", ctaVariant: "accent" }
+  ]}
+  labels={{ title: "Want me to place this order?" }}
+/>`,
+    props: [
+      { name: "options", type: "RecommendationOption[]", desc: "{ key, body, short, signal, tone, label, cta, ctaVariant }[]." },
+      { name: "labels", type: "Partial<RecommendationLabels>", desc: "Override title, alternatives, otherOptions, accepted." },
+    ],
+  },
+  thinking: {
+    usage: `import Thinking from "@/components/ui/Thinking";
+
+<Thinking variant="Steps" />
+<Thinking variant="Reasoning" />
+<Thinking variant="Search" />
+<Thinking variant="Coding" />
+
+// Custom content
+<Thinking
+  variant="Steps"
+  rows={[{ primary: "Reading briefs" }]}
+  active="Thinking"
+  done="Done"
+  onSettled={() => {}}
+/>`,
+    props: [
+      { name: "variant", type: '"Steps" | "Reasoning" | "Search" | "Coding"', desc: "Trace variant. Defaults to Steps." },
+      { name: "rows", type: "Row[]", desc: "Override built-in rows: { primary, secondary?, mono?, add?, del?, href? }[]." },
+      { name: "active", type: "string", desc: "Working header label." },
+      { name: "done", type: "string", desc: "Settled header label." },
+      { name: "onSettled", type: "fn()", desc: "Called once when trace settles." },
+      { name: "icon", type: "ReactNode", desc: "Override header glyph." },
+    ],
+  },
+  "stream-text": {
+    usage: `import { StreamText } from "mero-ui";
+
+<StreamText text="Hello, I am meroUI." streaming speed={24} />
+
+// Toggle streaming off to render instantly, or set speed per token (ms).`,
+    props: [
+      { name: "text", type: "string", desc: "Full text to reveal." },
+      { name: "streaming", type: "boolean", desc: "Animate token by token. Defaults to true." },
+      { name: "speed", type: "number", desc: "Ms per token. Defaults to 22." },
+      { name: "showCaret", type: "boolean", desc: "Blinking caret while streaming. Defaults to true." },
+    ],
+  },
+  "image-genesis": {
+    usage: `import { ImageGenesis } from "mero-ui";
+
+<ImageGenesis
+  src="/gen/image.jpg"
+  alt="Generated image"
+  prompt="A minimal studio"
+  loading={isGenerating}
+  aspect="16/10"
+/>`,
+    props: [
+      { name: "src", type: "string", desc: "Final image src." },
+      { name: "alt", type: "string", desc: "Alt text." },
+      { name: "prompt", type: "string", desc: "Prompt shown in header." },
+      { name: "aspect", type: "string", desc: "CSS aspect-ratio. Defaults to 16/10." },
+      { name: "loading", type: "boolean", desc: "Show shimmer + blur while true." },
+    ],
+  },
+  "tool-progress": {
+    usage: `import { ToolProgress } from "mero-ui";
+
+<ToolProgress
+  steps={[
+    { id: "1", label: "Searching", detail: "3 sources", status: "done" },
+    { id: "2", label: "Reading", status: "active" },
+    { id: "3", label: "Synthesizing", status: "pending" },
+  ]}
+/>`,
+    props: [
+      { name: "steps", type: "ToolStep[]", desc: "{ id, label, detail?, status: pending|active|done|error }[]" },
+    ],
+  },
+  sidebar: {
+    usage: `// Soon — Sidebar shell primitive
+// Will be a standalone file: Sidebar.tsx
+// Preview: collapsible threads + search`,
+    props: [{ name: "soon", type: "boolean", desc: "Not yet built." }],
+  },
+  history: {
+    usage: `// Soon — History list primitive
+// Grouped by time, keyboard nav`,
+    props: [{ name: "soon", type: "boolean", desc: "Not yet built." }],
+  },
+  "model-selector": {
+    usage: `// Soon — Model selector inside PromptBar`,
+    props: [{ name: "soon", type: "boolean", desc: "Not yet built." }],
+  },
+  "user-settings": {
+    usage: `// Soon — User settings popover`,
+    props: [{ name: "soon", type: "boolean", desc: "Not yet built." }],
+  },
 };
