@@ -38,31 +38,22 @@ export default async function ComponentPage({ params }: PageProps) {
 
   return (
     <div className="flex max-w-[56rem] flex-col">
-      <Link
-        href="/docs"
-        className="font-mono text-[11px] uppercase tracking-[0.24em] text-faint transition-colors hover:text-ink"
-      >
-        <span className="text-dim">/</span>components
-        <span className="text-dim">/</span>
-        <span className="text-muted">{item.slug}</span>
-      </Link>
-
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">
-        {item.name}.
-      </h1>
-      <p className="mt-3 max-w-xl text-base leading-7 text-muted">
-        {item.blurb}
-      </p>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line pb-3">
+        <Link
+          href="/docs"
+          className="font-mono text-[11px] uppercase tracking-[0.24em] text-faint transition-colors hover:text-ink"
+        >
+          <span className="text-dim">/</span>components<span className="text-dim">/</span>
+          <span className="text-muted">{item.slug}</span>
+        </Link>
+        <span className="hidden h-3 w-px bg-line sm:block" aria-hidden />
+        <h1 className="text-[15px] font-semibold tracking-tight text-ink">{item.name}</h1>
+        <span className="hidden max-w-[36ch] truncate text-xs leading-5 text-muted md:inline">· {item.blurb}</span>
+      </div>
 
       {/* live preview + source */}
       <ComponentToolbar source={getComponentSource(slug) ?? ""}>
-        <div
-          className={
-            item.slug === "prompt-bar"
-              ? "flex min-h-[28rem] items-center justify-center rounded-md border border-line bg-canvas/40 p-8"
-              : "flex h-56 items-center justify-center rounded-md border border-line bg-canvas/40 p-8"
-          }
-        >
+        <div className="flex min-h-[32rem] items-center justify-center rounded-xl border border-line bg-canvas/40 p-6 md:min-h-[36rem] md:p-10">
           <ComponentPreview slug={item.slug} />
         </div>
       </ComponentToolbar>
