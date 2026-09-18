@@ -64,7 +64,7 @@ export function Hero() {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-line pt-6 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
-              <span className="text-muted">13 → 1 kept</span>
+              <span className="text-muted">7 live · 3 soon</span>
               <span className="h-3 w-px bg-line" />
               <span>Zero runtime</span>
               <span className="h-3 w-px bg-line" />
